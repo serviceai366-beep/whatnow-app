@@ -54,7 +54,7 @@ a { color: inherit; text-decoration: none; }
 .prototype-badge { color: var(--accent-dark); background: var(--accent-soft); border: 1px solid #bfe4dc; border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 700; }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 .account-loading { width: 142px; height: 40px; border-radius: 999px; background: linear-gradient(90deg, #edf2f0, #f8faf9, #edf2f0); background-size: 200% 100%; animation: account-pulse 1.4s ease-in-out infinite; }
-.account-sign-in { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--accent-dark); font-size: 13px; font-weight: 750; white-space: nowrap; }
+.account-sign-in { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--accent-dark); font: inherit; font-size: 13px; font-weight: 750; white-space: nowrap; cursor: pointer; }
 .account-sign-in:hover { border-color: var(--accent); background: var(--accent-soft); }
 .account-control { min-width: 0; display: flex; align-items: center; gap: 9px; padding: 5px 8px 5px 5px; border: 1px solid var(--border); border-radius: 999px; background: #fff; }
 .account-avatar { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--accent); font-size: 13px; font-weight: 800; }
@@ -62,7 +62,33 @@ a { color: inherit; text-decoration: none; }
 .account-details strong, .account-details small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-details strong { font-size: 12px; }
 .account-details small { margin-top: 2px; color: var(--muted); font-size: 10px; }
-.account-control a { color: var(--accent-dark); font-size: 12px; font-weight: 750; white-space: nowrap; }
+.account-avatar-image { object-fit: cover; }
+.account-sign-out { padding: 4px 6px; border: 0; background: transparent; color: var(--accent-dark); font: inherit; font-size: 12px; font-weight: 750; white-space: nowrap; cursor: pointer; }
+.account-sign-out:hover { text-decoration: underline; }
+.auth-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 20px; background: rgb(19 38 34 / 58%); backdrop-filter: blur(4px); }
+.auth-dialog { position: relative; width: min(100%, 430px); max-height: calc(100vh - 40px); overflow: auto; padding: 30px; border: 1px solid var(--border); border-radius: 24px; background: #fff; box-shadow: 0 26px 80px rgb(14 43 36 / 22%); text-align: center; }
+.auth-close { position: absolute; top: 13px; right: 14px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--surface-muted); color: var(--text); font-size: 25px; line-height: 1; cursor: pointer; }
+.auth-close:hover { background: var(--accent-soft); }
+.auth-mark { width: 46px; height: 46px; display: grid; place-items: center; margin: 0 auto 14px; border-radius: 14px; background: var(--accent); color: #fff; font-weight: 850; }
+.auth-dialog h2 { margin: 0; font-size: clamp(24px, 5vw, 30px); }
+.auth-intro { margin: 10px auto 22px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.google-sign-in, .email-sign-in button { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 13px; font: inherit; font-size: 14px; font-weight: 780; cursor: pointer; }
+.google-sign-in { border: 1px solid #cfd8d5; background: #fff; color: #263632; }
+.google-sign-in:hover { border-color: var(--accent); background: #f9fbfa; }
+.google-sign-in span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1px solid #d9d9d9; color: #4285f4; font-weight: 850; }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--muted); font-size: 12px; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: var(--border); }
+.email-sign-in { display: grid; gap: 9px; text-align: left; }
+.email-sign-in label { font-size: 13px; font-weight: 750; }
+.email-sign-in input { width: 100%; min-height: 46px; padding: 11px 13px; border: 1px solid #cbd8d4; border-radius: 11px; background: #fff; color: var(--text); font: inherit; font-size: 15px; }
+.email-sign-in input:focus { outline: 3px solid rgb(28 123 101 / 18%); border-color: var(--accent); }
+.email-sign-in button { border: 0; background: var(--accent); color: #fff; }
+.email-sign-in button:hover:not(:disabled) { background: var(--accent-dark); }
+.email-sign-in button:disabled { opacity: .55; cursor: not-allowed; }
+.auth-message, .auth-error { margin: 14px 0 0; padding: 11px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; text-align: left; }
+.auth-message { background: var(--accent-soft); color: var(--accent-dark); }
+.auth-error { background: #fff0f0; color: #8d2929; }
+.auth-privacy { margin: 17px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 @keyframes account-pulse { 50% { background-position: 100% 0; } }
 
 .hero {
@@ -303,6 +329,8 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .account-details { max-width: 92px; }
   .account-details small { display: none; }
   .account-control { gap: 6px; }
+  .auth-backdrop { padding: 10px; align-items: end; }
+  .auth-dialog { width: 100%; max-height: calc(100vh - 20px); padding: 26px 20px 22px; border-radius: 22px 22px 14px 14px; }
   .hero { margin: 22px auto 66px; gap: 30px; }
   h1 { font-size: clamp(38px, 11vw, 50px); }
   .hero-lead { margin-top: 19px; font-size: 17px; }

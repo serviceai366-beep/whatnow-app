@@ -10,6 +10,7 @@ import {
 } from "./file-validation";
 import type { AnalysisResult, Deadline, Finding, SupportedLanguage } from "./analysis-schema";
 import { apiErrorKeyByCode, translations, type UiCopy } from "./i18n";
+import { AccountWidget } from "./account-widget";
 
 const languages = [
   { code: "ru", label: "Русский", short: "RU" },
@@ -21,12 +22,6 @@ type SelectedDocument = {
   file: File;
   kind: DocumentKind;
   previewUrl: string;
-};
-
-type AccountUser = {
-  displayName: string;
-  email: string;
-  fullName: string | null;
 };
 
 function fingerprintText(text: string): string {
@@ -56,8 +51,6 @@ export default function Home() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [textError, setTextError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [accountUser, setAccountUser] = useState<AccountUser | null>(null);
-  const [accountLoaded, setAccountLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
   const t = translations[language];
@@ -65,18 +58,6 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/me", { signal: controller.signal, credentials: "same-origin" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((payload: { user?: AccountUser | null } | null) => setAccountUser(payload?.user ?? null))
-      .catch((error) => {
-        if (!(error instanceof Error && error.name === "AbortError")) setAccountUser(null);
-      })
-      .finally(() => setAccountLoaded(true));
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     return () => {
@@ -220,20 +201,7 @@ export default function Home() {
         </a>
         <div className="header-actions">
           <span className="prototype-badge">{t.badge}</span>
-          {!accountLoaded ? (
-            <span className="account-loading" aria-hidden="true" />
-          ) : accountUser ? (
-            <div className="account-control" aria-label={t.accountAria}>
-              <span className="account-avatar" aria-hidden="true">{accountUser.displayName.trim().charAt(0).toUpperCase() || "W"}</span>
-              <span className="account-details">
-                <strong title={accountUser.displayName}>{accountUser.displayName}</strong>
-                <small title={accountUser.email}>{accountUser.email}</small>
-              </span>
-              <a href="/signout-with-chatgpt?return_to=%2F">{t.signOut}</a>
-            </div>
-          ) : (
-            <a className="account-sign-in" href="/signin-with-chatgpt?return_to=%2F">{t.signIn}</a>
-          )}
+          <AccountWidget locale={language} accountAria={t.accountAria} />
         </div>
       </header>
 

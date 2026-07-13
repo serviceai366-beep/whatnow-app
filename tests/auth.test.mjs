@@ -14,9 +14,18 @@ test("prevents external and reserved authentication return paths", () => {
   assert.equal(chatGPTSignOutPath("https://attacker.example"), "/signout-with-chatgpt?return_to=%2F");
 });
 
-test("uses the Sites-owned ChatGPT routes and does not ship fake external OAuth", async () => {
-  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /\/signin-with-chatgpt\?return_to=%2F/);
-  assert.match(source, /\/signout-with-chatgpt\?return_to=%2F/);
-  assert.doesNotMatch(source, /accounts\.google\.com|appleid\.apple\.com|login\.microsoftonline\.com/);
+test("uses Supabase for Google and passwordless email accounts without shipping provider secrets", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const widget = await readFile(new URL("../app/account-widget.tsx", import.meta.url), "utf8");
+  const auth = await readFile(new URL("../app/supabase-auth.ts", import.meta.url), "utf8");
+
+  assert.match(page, /<AccountWidget/);
+  assert.match(widget, /startGoogleSignIn/);
+  assert.match(widget, /sendEmailSignInLink/);
+  assert.match(auth, /\/auth\/v1\/authorize/);
+  assert.match(auth, /searchParams\.set\("provider", "google"\)/);
+  assert.match(auth, /\/auth\/v1\/otp/);
+  assert.match(auth, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(`${page}\n${widget}\n${auth}`, /GOCSPX|CLIENT_SECRET|service_role/);
+  assert.doesNotMatch(auth, /accounts\.google\.com|appleid\.apple\.com|login\.microsoftonline\.com/);
 });
