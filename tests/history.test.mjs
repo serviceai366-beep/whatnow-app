@@ -5,9 +5,11 @@ import { readFile } from "node:fs/promises";
 test("history uses the signed-in user's Supabase token and never a privileged server key", async () => {
   const history = await readFile(new URL("../app/analysis-history.ts", import.meta.url), "utf8");
   const auth = await readFile(new URL("../app/supabase-auth.ts", import.meta.url), "utf8");
+  const config = await readFile(new URL("../app/supabase-config.ts", import.meta.url), "utf8");
 
   assert.match(history, /Authorization: `Bearer \$\{accessToken\}`/);
-  assert.match(history, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(history, /SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(config, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(auth, /export async function getAccessToken/);
   assert.doesNotMatch(`${history}\n${auth}`, /service_role|SUPABASE_SERVICE|CLIENT_SECRET/);
 });

@@ -18,6 +18,7 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const widget = await readFile(new URL("../app/account-widget.tsx", import.meta.url), "utf8");
   const auth = await readFile(new URL("../app/supabase-auth.ts", import.meta.url), "utf8");
+  const config = await readFile(new URL("../app/supabase-config.ts", import.meta.url), "utf8");
 
   assert.match(page, /<AccountWidget/);
   assert.match(widget, /startGoogleSignIn/);
@@ -25,7 +26,8 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   assert.match(auth, /\/auth\/v1\/authorize/);
   assert.match(auth, /searchParams\.set\("provider", "google"\)/);
   assert.match(auth, /\/auth\/v1\/otp/);
-  assert.match(auth, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
-  assert.doesNotMatch(`${page}\n${widget}\n${auth}`, /GOCSPX|CLIENT_SECRET|service_role/);
+  assert.match(config, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(config, /sb_publishable_/);
+  assert.doesNotMatch(`${page}\n${widget}\n${auth}\n${config}`, /GOCSPX|CLIENT_SECRET|service_role/);
   assert.doesNotMatch(auth, /accounts\.google\.com|appleid\.apple\.com|login\.microsoftonline\.com/);
 });

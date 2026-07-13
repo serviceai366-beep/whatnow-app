@@ -1,9 +1,7 @@
 import type { AnalysisResult, SupportedLanguage } from "./analysis-schema";
 import { validateAnalysisResult } from "./analysis-schema";
 import { getAccessToken } from "./supabase-auth";
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") ?? "";
-const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-config";
 
 export type AnalysisHistoryItem = {
   id: string;
@@ -53,7 +51,7 @@ async function authenticatedRequest(path: string, init?: RequestInit): Promise<R
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: PUBLISHABLE_KEY,
+      apikey: SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
       ...init?.headers,

@@ -1,3 +1,5 @@
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-config";
+
 export type SupabaseAccount = {
   id: string;
   email: string;
@@ -12,12 +14,10 @@ type StoredSession = {
   user: Record<string, unknown>;
 };
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") ?? "";
-const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
 const SESSION_KEY = "whatnow.supabase.session.v1";
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && PUBLISHABLE_KEY);
+  return Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 }
 
 function accountFromUser(user: Record<string, unknown>): SupabaseAccount | null {
@@ -105,7 +105,7 @@ async function refreshSession(session: StoredSession): Promise<StoredSession | n
   try {
     const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: "POST",
-      headers: { apikey: PUBLISHABLE_KEY, "Content-Type": "application/json" },
+      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: session.refreshToken }),
     });
     if (!response.ok) return null;
@@ -167,7 +167,7 @@ export async function sendEmailSignInLink(email: string): Promise<void> {
   const redirectTo = `${window.location.origin}${window.location.pathname}`;
   const response = await fetch(`${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: "POST",
-    headers: { apikey: PUBLISHABLE_KEY, "Content-Type": "application/json" },
+    headers: { apikey: SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ email, create_user: true }),
   });
   if (!response.ok) {
@@ -183,7 +183,7 @@ export async function signOutAccount(): Promise<void> {
   try {
     await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
       method: "POST",
-      headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${session.accessToken}` },
+      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${session.accessToken}` },
     });
   } catch {
     // Local sign-out is complete even if remote cleanup is unavailable.
