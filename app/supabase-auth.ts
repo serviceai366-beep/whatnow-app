@@ -67,6 +67,12 @@ function clearSession(): void {
   window.localStorage.removeItem(SESSION_KEY);
 }
 
+function authRedirectUrl(): string {
+  const redirect = new URL(window.location.origin + window.location.pathname);
+  redirect.searchParams.set("auth_return", "1");
+  return redirect.toString();
+}
+
 function sessionFromLocation(): StoredSession | null {
   const parameters = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const accessToken = parameters.get("access_token");
@@ -93,7 +99,7 @@ function sessionFromLocation(): StoredSession | null {
         user_metadata: userMetadata,
       },
     };
-    window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+    window.history.replaceState({}, document.title, window.location.pathname);
     storeSession(session);
     return session;
   } catch {
@@ -155,7 +161,7 @@ export async function getAccessToken(): Promise<string | null> {
 
 export function startGoogleSignIn(): void {
   if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const redirectTo = authRedirectUrl();
   const authorizeUrl = new URL(`${SUPABASE_URL}/auth/v1/authorize`);
   authorizeUrl.searchParams.set("provider", "google");
   authorizeUrl.searchParams.set("redirect_to", redirectTo);
@@ -164,7 +170,7 @@ export function startGoogleSignIn(): void {
 
 export async function sendEmailSignInLink(email: string): Promise<void> {
   if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const redirectTo = authRedirectUrl();
   const response = await fetch(`${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: "POST",
     headers: { apikey: SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },

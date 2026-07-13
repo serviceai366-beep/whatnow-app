@@ -26,6 +26,8 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   assert.match(auth, /\/auth\/v1\/authorize/);
   assert.match(auth, /searchParams\.set\("provider", "google"\)/);
   assert.match(auth, /\/auth\/v1\/otp/);
+  assert.match(auth, /searchParams\.set\("auth_return", "1"\)/);
+  assert.match(auth, /history\.replaceState\(\{\}, document\.title, window\.location\.pathname\)/);
   assert.match(config, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(config, /sb_publishable_/);
   assert.doesNotMatch(`${page}\n${widget}\n${auth}\n${config}`, /GOCSPX|CLIENT_SECRET|service_role/);
