@@ -42,8 +42,24 @@ const worker = {
 
     const response = await handler.fetch(request, env, ctx);
     const headers = new Headers(response.headers);
+    headers.set("Content-Security-Policy", [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'self' https://chatgpt.com https://*.chatgpt.com https://*.openai.com",
+      "form-action 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://vrcbgpmevieccopqembx.supabase.co",
+      "frame-src 'self' blob:",
+      "media-src 'none'",
+      "worker-src 'self' blob:",
+    ].join("; "));
     headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
     headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     headers.set("X-Content-Type-Options", "nosniff");
 
     return new Response(response.body, {

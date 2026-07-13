@@ -1,3 +1,4 @@
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-config";
 
 export type SupabaseAccount = {
@@ -7,191 +8,119 @@ export type SupabaseAccount = {
   avatarUrl: string | null;
 };
 
-type StoredSession = {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  user: Record<string, unknown>;
-};
-
-const SESSION_KEY = "whatnow.supabase.session.v1";
+let client: SupabaseClient | null = null;
 
 export function isSupabaseConfigured(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 }
 
-function accountFromUser(user: Record<string, unknown>): SupabaseAccount | null {
-  const email = typeof user.email === "string" ? user.email : "";
-  const id = typeof user.id === "string" ? user.id : "";
-  if (!email || !id) return null;
+function getClient(): SupabaseClient {
+  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
+  if (typeof window === "undefined") throw new Error("Supabase auth is browser-only");
+  // Remove the legacy hand-rolled implicit-flow session. It is intentionally
+  // not migrated: users authenticate once more through the safer PKCE flow.
+  window.localStorage.removeItem("whatnow.supabase.session.v1");
+  client ??= createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      flowType: "pkce",
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: window.localStorage,
+    },
+  });
+  return client;
+}
 
-  const metadata = user.user_metadata && typeof user.user_metadata === "object"
-    ? user.user_metadata as Record<string, unknown>
-    : {};
+function accountFromUser(user: User): SupabaseAccount | null {
+  const email = user.email?.trim() ?? "";
+  if (!email || !user.id || !user.email_confirmed_at || user.is_anonymous) return null;
+  const metadata = user.user_metadata ?? {};
   const name = [metadata.full_name, metadata.name, metadata.user_name]
     .find((value): value is string => typeof value === "string" && value.trim().length > 0);
   const avatar = [metadata.avatar_url, metadata.picture]
     .find((value): value is string => typeof value === "string" && value.startsWith("https://"));
-
   return {
-    id,
+    id: user.id,
     email,
     displayName: name?.trim() || email.split("@")[0] || email,
     avatarUrl: avatar ?? null,
   };
 }
 
-function readStoredSession(): StoredSession | null {
-  try {
-    const value = window.localStorage.getItem(SESSION_KEY);
-    if (!value) return null;
-    const session = JSON.parse(value) as Partial<StoredSession>;
-    if (
-      typeof session.accessToken !== "string" ||
-      typeof session.refreshToken !== "string" ||
-      typeof session.expiresAt !== "number" ||
-      !session.user ||
-      typeof session.user !== "object"
-    ) return null;
-    return session as StoredSession;
-  } catch {
-    return null;
-  }
-}
-
-function storeSession(session: StoredSession): void {
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-function clearSession(): void {
-  window.localStorage.removeItem(SESSION_KEY);
-}
-
 function authRedirectUrl(): string {
-  const redirect = new URL(window.location.origin + window.location.pathname);
-  redirect.searchParams.set("auth_return", "1");
-  return redirect.toString();
+  // Production uses the exact, wildcard-free Site URL configured in Supabase.
+  return new URL("/", window.location.origin).toString();
 }
 
-function sessionFromLocation(): StoredSession | null {
-  const parameters = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const accessToken = parameters.get("access_token");
-  const refreshToken = parameters.get("refresh_token");
-  const expiresIn = Number(parameters.get("expires_in"));
-  if (!accessToken || !refreshToken || !Number.isFinite(expiresIn)) return null;
-
-  const tokenParts = accessToken.split(".");
-  if (tokenParts.length !== 3) return null;
-  try {
-    const encoded = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
-    const payload = JSON.parse(atob(padded)) as Record<string, unknown>;
-    const userMetadata = payload.user_metadata && typeof payload.user_metadata === "object"
-      ? payload.user_metadata
-      : {};
-    const session: StoredSession = {
-      accessToken,
-      refreshToken,
-      expiresAt: Date.now() + expiresIn * 1000,
-      user: {
-        id: payload.sub,
-        email: payload.email,
-        user_metadata: userMetadata,
-      },
-    };
-    window.history.replaceState({}, document.title, window.location.pathname);
-    storeSession(session);
-    return session;
-  } catch {
-    return null;
-  }
-}
-
-async function refreshSession(session: StoredSession): Promise<StoredSession | null> {
-  try {
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-      method: "POST",
-      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: session.refreshToken }),
-    });
-    if (!response.ok) return null;
-    const payload = await response.json() as {
-      access_token?: string;
-      refresh_token?: string;
-      expires_in?: number;
-      user?: Record<string, unknown>;
-    };
-    if (!payload.access_token || !payload.refresh_token || !payload.expires_in || !payload.user) return null;
-    const refreshed: StoredSession = {
-      accessToken: payload.access_token,
-      refreshToken: payload.refresh_token,
-      expiresAt: Date.now() + payload.expires_in * 1000,
-      user: payload.user,
-    };
-    storeSession(refreshed);
-    return refreshed;
-  } catch {
-    return null;
-  }
+function cleanAuthUrl(): void {
+  const url = new URL(window.location.href);
+  const hadAuthData = url.searchParams.has("code") || url.searchParams.has("auth_return")
+    || url.searchParams.has("error") || url.searchParams.has("error_description") || Boolean(url.hash);
+  if (!hadAuthData) return;
+  url.searchParams.delete("code");
+  url.searchParams.delete("auth_return");
+  url.searchParams.delete("error");
+  url.searchParams.delete("error_code");
+  url.searchParams.delete("error_description");
+  url.hash = "";
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
 }
 
 export async function loadAccount(): Promise<SupabaseAccount | null> {
-  if (!isSupabaseConfigured()) return null;
-  let session = sessionFromLocation() ?? readStoredSession();
-  if (!session) return null;
-  if (session.expiresAt <= Date.now() + 60_000) session = await refreshSession(session);
-  if (!session) {
-    clearSession();
+  if (!isSupabaseConfigured() || typeof window === "undefined") return null;
+  const auth = getClient().auth;
+  const { data: sessionData, error: sessionError } = await auth.getSession();
+  if (sessionError || !sessionData.session) {
+    cleanAuthUrl();
     return null;
   }
-  return accountFromUser(session.user);
+
+  // getUser verifies the access token with Supabase; UI identity never comes
+  // from an unverified JWT payload or arbitrary callback fragment.
+  const { data, error } = await auth.getUser();
+  cleanAuthUrl();
+  if (error || !data.user) {
+    await auth.signOut({ scope: "local" }).catch(() => undefined);
+    return null;
+  }
+  return accountFromUser(data.user);
 }
 
 export async function getAccessToken(): Promise<string | null> {
-  if (!isSupabaseConfigured()) return null;
-  let session = readStoredSession();
-  if (!session) return null;
-  if (session.expiresAt <= Date.now() + 60_000) session = await refreshSession(session);
-  if (!session) {
-    clearSession();
-    return null;
-  }
-  return session.accessToken;
+  if (!isSupabaseConfigured() || typeof window === "undefined") return null;
+  const { data, error } = await getClient().auth.getSession();
+  return error ? null : data.session?.access_token ?? null;
 }
 
-export function startGoogleSignIn(): void {
-  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
-  const redirectTo = authRedirectUrl();
-  const authorizeUrl = new URL(`${SUPABASE_URL}/auth/v1/authorize`);
-  authorizeUrl.searchParams.set("provider", "google");
-  authorizeUrl.searchParams.set("redirect_to", redirectTo);
-  window.location.assign(authorizeUrl.toString());
+export async function startGoogleSignIn(): Promise<void> {
+  const { error } = await getClient().auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: authRedirectUrl(),
+      scopes: "openid email profile",
+    },
+  });
+  if (error) throw error;
 }
 
 export async function sendEmailSignInLink(email: string): Promise<void> {
-  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
-  const redirectTo = authRedirectUrl();
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, {
-    method: "POST",
-    headers: { apikey: SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ email, create_user: true }),
+  const { error } = await getClient().auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: authRedirectUrl(),
+      shouldCreateUser: true,
+    },
   });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { msg?: string; message?: string } | null;
-    throw new Error(payload?.msg || payload?.message || "Email sign-in failed");
-  }
+  if (error) throw error;
 }
 
 export async function signOutAccount(): Promise<void> {
-  const session = readStoredSession();
-  clearSession();
-  if (!session || !isSupabaseConfigured()) return;
-  try {
-    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
-      method: "POST",
-      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${session.accessToken}` },
-    });
-  } catch {
-    // Local sign-out is complete even if remote cleanup is unavailable.
+  if (!isSupabaseConfigured() || typeof window === "undefined") return;
+  const auth = getClient().auth;
+  const { error } = await auth.signOut();
+  if (error) {
+    // If the network is unavailable, remove this browser's session anyway.
+    await auth.signOut({ scope: "local" }).catch(() => undefined);
   }
 }

@@ -22,16 +22,19 @@ test("server-renders the WhatNow prototype", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.match(response.headers.get("permissions-policy") ?? "", /camera=\(\)/);
+  assert.match(response.headers.get("content-security-policy") ?? "", /object-src 'none'/);
+  assert.match(response.headers.get("content-security-policy") ?? "", /vrcbgpmevieccopqembx\.supabase\.co/);
+  assert.match(response.headers.get("strict-transport-security") ?? "", /max-age=31536000/);
 
   const html = await response.text();
   assert.match(html, /<title>WhatNow\? — поймите, что делать дальше<\/title>/i);
   assert.match(html, /Не просто переводи документ/);
   assert.match(html, /Проанализировать документ/);
-  assert.match(html, /PDF, JPG, PNG или WEBP/);
+  assert.match(html, /PDF, фото, TXT, RTF, DOCX или ODT/);
   assert.match(html, /Как обрабатывается документ/);
   assert.match(html, /не заменяет юриста, врача/);
   assert.match(html, /type="file"/);
-  assert.match(html, /accept="application\/pdf,image\/jpeg,image\/png,image\/webp/);
+  assert.match(html, /accept="application\/pdf,image\/jpeg,image\/png,image\/webp,text\/plain/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });
 

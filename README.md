@@ -1,98 +1,71 @@
-# vinext-starter
+# WhatNow?
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+WhatNow? explains official and difficult documents in plain Russian, Latvian,
+or English and turns them into a cautious, evidence-linked action plan.
 
-## Prerequisites
+## MVP capabilities
 
-- Node.js `>=22.13.0`
+- Photo: JPG, PNG, WEBP (up to 10 MiB)
+- PDF (up to 10 MiB)
+- Word DOCX and OpenDocument ODT (up to 5 MiB)
+- RTF (up to 1 MiB)
+- UTF-8 or BOM-marked UTF-16 TXT (up to 256 KiB and 50,000 characters)
+- Pasted text (up to 50,000 characters)
+- Google OAuth and passwordless email accounts through Supabase
+- Optional per-user analysis history; original documents are never stored
+- Rolling limits: 3 analyses per user per 24 hours and 10 per 7 days
+- Additional service-wide request and weighted-cost guards
+- Light and dark themes
 
-## Quick Start
+Legacy `.doc` is intentionally not accepted. Reliably distinguishing old Word
+files from other OLE Office documents requires a larger parser; save them as
+`.docx` or PDF instead. Images embedded in DOCX, ODT, and RTF are not read by
+the file parser, so image-heavy documents should be exported to PDF.
+
+## Security model
+
+- `OPENAI_API_KEY` exists only in the Sites runtime environment.
+- Every analysis requires a Supabase bearer token. The server validates it with
+  Supabase and uses only the verified user ID for quota accounting.
+- Browser authentication uses the official Supabase client with OAuth PKCE.
+- Google validates access to the Google account. Email sign-in requires the
+  one-time inbox link; knowing an address alone is not enough.
+- D1 records only a pseudonymous user ID, timestamp, and cost units for limits.
+- The Responses request uses `store: false`; uploaded source data is not written
+  to application storage or logs.
+- History is protected by Supabase row-level security and contains only the
+  structured result after an explicit Save action.
+- Production fails closed before OpenAI whenever account or durable quota
+  verification is unavailable.
+
+## Local development
+
+Requires Node.js 22.13 or newer.
 
 ```bash
 npm install
 npm run dev
-npm run build
+npm run lint
+npm test
 ```
 
-This starter does not use `wrangler.jsonc`.
+Copy `.env.example` to `.env.local` and provide local values. Never commit the
+real OpenAI key. Supabase URL and publishable key are public client
+configuration; the service-role key is not used by this app.
 
-## Included Shape
+## Data and migrations
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+- `db/schema.ts` defines the D1 rolling-usage event table.
+- `drizzle/` contains generated D1 migrations.
+- `supabase/migrations/` defines the private analysis-history table and RLS.
+- `.openai/hosting.json` identifies the existing Sites project and D1 binding.
 
-## Workspace Auth Headers
+Run `npm run db:generate` after changing the D1 schema. Runtime initialization
+also uses `CREATE TABLE IF NOT EXISTS`, so a new Sites deployment can safely
+create the quota table before its first paid request.
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
+## Production
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Build, test, commit, and push the exact source state before saving a Sites
+version. Deploy only the saved version. Runtime values are managed through
+Sites and are not stored in `.openai/hosting.json`.

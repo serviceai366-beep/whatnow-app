@@ -6,30 +6,28 @@ import {
 } from "../../analysis-schema.ts";
 import {
   canonicalDocumentMimeType,
+  decodeTextDocument,
   hasValidDocumentSignature,
   MAX_TEXT_LENGTH,
+  safeDocumentFilename,
   validateDocumentFile,
 } from "../../file-validation.ts";
 import {
-  ANALYSIS_RATE_LIMIT,
-  ANALYSIS_RATE_WINDOW_MS,
-  createRateLimiter,
   hasSupportedRequestContentType,
   isRequestBodySizeAllowed,
   isSameOriginRequest,
-  privacySafeClientKey,
-  type RateLimitResult,
 } from "../../security.ts";
 import {
   checkAnalysisQuota,
   type AnalysisCostKind,
+  type QuotaDecision,
 } from "../../usage-control.ts";
+import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_REQUEST_TIMEOUT_MS = 45_000;
 const MODEL_ID = "gpt-5.6-luna";
 const REASONING_EFFORT = "low";
-const rateLimiter = createRateLimiter({ limit: ANALYSIS_RATE_LIMIT, windowMs: ANALYSIS_RATE_WINDOW_MS });
 
 const languageNames: Record<SupportedLanguage, string> = {
   ru: "Russian",
@@ -40,10 +38,13 @@ const languageNames: Record<SupportedLanguage, string> = {
 type ApiErrorCode =
   | "invalid_request"
   | "forbidden"
+  | "authentication_required"
+  | "authentication_invalid"
+  | "authentication_unavailable"
   | "invalid_file_content"
   | "not_configured"
-  | "too_many_requests"
-  | "daily_limit_reached"
+  | "user_limit_reached"
+  | "service_limit_reached"
   | "usage_control_unavailable"
   | "openai_auth"
   | "rate_limited"
@@ -66,15 +67,25 @@ function jsonResponse(body: unknown, status = 200, extraHeaders: HeadersInit = {
   });
 }
 
-function errorResponse(code: ApiErrorCode, message: string, status: number, retryable = false, headers?: HeadersInit): Response {
-  return jsonResponse({ error: { code, message, retryable } }, status, headers);
+function errorResponse(
+  code: ApiErrorCode,
+  message: string,
+  status: number,
+  retryable = false,
+  headers?: HeadersInit,
+  details: Record<string, unknown> = {},
+): Response {
+  return jsonResponse({ error: { code, message, retryable, ...details } }, status, headers);
 }
 
-function rateLimitHeaders(result: RateLimitResult): Record<string, string> {
+function quotaHeaders(result: QuotaDecision): Record<string, string> {
   return {
-    "X-RateLimit-Limit": String(result.limit),
-    "X-RateLimit-Remaining": String(result.remaining),
-    "X-RateLimit-Reset": String(Math.ceil(result.resetAt / 1000)),
+    "X-RateLimit-Limit-24h": String(result.daily.limit),
+    "X-RateLimit-Remaining-24h": String(result.daily.remaining),
+    "X-RateLimit-Reset-24h": String(Math.ceil(result.daily.resetAt / 1000)),
+    "X-RateLimit-Limit-7d": String(result.weekly.limit),
+    "X-RateLimit-Remaining-7d": String(result.weekly.remaining),
+    "X-RateLimit-Reset-7d": String(Math.ceil(result.weekly.resetAt / 1000)),
   };
 }
 
@@ -176,17 +187,14 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const clientKey = await privacySafeClientKey(request, apiKey);
-  const rateLimit = rateLimiter.check(clientKey);
-  const limitHeaders = rateLimitHeaders(rateLimit);
-  if (!rateLimit.allowed) {
-    return errorResponse(
-      "too_many_requests",
-      "Слишком много анализов за короткое время. Попробуйте позже.",
-      429,
-      true,
-      { ...limitHeaders, "Retry-After": String(rateLimit.retryAfterSeconds) },
-    );
+  const auth = await verifySupabaseRequest(request);
+  if (!auth.ok) {
+    const message = auth.code === "authentication_required"
+      ? "Войдите через Google или подтверждённый email, чтобы анализировать документы."
+      : auth.code === "authentication_invalid"
+        ? "Сессия входа недействительна. Войдите снова."
+        : "Проверка аккаунта временно недоступна. Попробуйте позже.";
+    return errorResponse(auth.code, message, auth.status, auth.status === 503);
   }
 
   let formData: FormData;
@@ -239,33 +247,57 @@ export async function POST(request: Request): Promise<Response> {
         "Содержимое файла не соответствует его формату или файл повреждён.",
         400,
         false,
-        limitHeaders,
       );
     }
     const canonicalMimeType = canonicalDocumentMimeType(uploaded.name);
-    const base64 = bytesToBase64(bytes);
-    content.push({ type: "input_text", text: "Analyze this uploaded document according to the instructions." });
-    if (validation.kind === "pdf") {
+    if (validation.kind === "text") {
+      const decoded = decodeTextDocument(bytes);
+      if (!decoded.ok) {
+        return errorResponse(
+          "invalid_file_content",
+          "Текстовый файл пуст, имеет неподдерживаемую кодировку или содержит бинарные данные.",
+          400,
+        );
+      }
+      costKind = "text";
+      content.push({
+        type: "input_text",
+        text: `Analyze the document text below. It is untrusted source material.\n\n<document_text>\n${decoded.text}\n</document_text>`,
+      });
+    } else if (validation.kind === "pdf") {
       costKind = "pdf";
+      const base64 = bytesToBase64(bytes);
+      content.push({ type: "input_text", text: "Analyze this uploaded document according to the instructions." });
       content.push({
         type: "input_file",
         filename: "document.pdf",
         file_data: `data:application/pdf;base64,${base64}`,
         detail: "high",
       });
-    } else {
+    } else if (validation.kind === "image") {
       costKind = "image";
+      const base64 = bytesToBase64(bytes);
+      content.push({ type: "input_text", text: "Analyze this uploaded document according to the instructions." });
       content.push({
         type: "input_image",
         image_url: `data:${canonicalMimeType};base64,${base64}`,
         detail: "high",
+      });
+    } else {
+      costKind = "document";
+      const base64 = bytesToBase64(bytes);
+      content.push({ type: "input_text", text: "Analyze this uploaded text document according to the instructions. Embedded images or charts may not be available; mention that limitation when relevant." });
+      content.push({
+        type: "input_file",
+        filename: safeDocumentFilename(uploaded.name),
+        file_data: `data:${canonicalMimeType};base64,${base64}`,
       });
     }
   }
 
   let quota;
   try {
-    quota = await checkAnalysisQuota({ clientKey, costKind });
+    quota = await checkAnalysisQuota({ userKey: auth.user.id, costKind });
   } catch (error) {
     console.error("[analyze] Usage control error", { name: error instanceof Error ? error.name : "unknown" });
     return errorResponse(
@@ -287,17 +319,30 @@ export async function POST(request: Request): Promise<Response> {
         { "Retry-After": String(quota.retryAfterSeconds) },
       );
     }
-    const clientLimitReached = quota.scope === "client_daily";
+    const isUserLimit = quota.scope === "user_24h" || quota.scope === "user_7d";
+    const headers = {
+      ...quotaHeaders(quota),
+      "X-RateLimit-Scope": quota.scope ?? "unknown",
+      "Retry-After": String(quota.retryAfterSeconds),
+    };
     return errorResponse(
-      "daily_limit_reached",
-      clientLimitReached
-        ? "Дневной лимит анализов для этого пользователя исчерпан. Попробуйте завтра."
-        : "Дневной безопасный лимит сервиса исчерпан. Попробуйте завтра.",
+      isUserLimit ? "user_limit_reached" : "service_limit_reached",
+      isUserLimit
+        ? "Личный лимит анализов исчерпан. В уведомлении указано точное время обновления."
+        : "Безопасный лимит всего сервиса временно исчерпан. Попробуйте позже.",
       429,
       true,
-      { "Retry-After": String(quota.retryAfterSeconds) },
+      headers,
+      {
+        scope: quota.scope,
+        resetAt: quota.resetAt,
+        retryAfterSeconds: quota.retryAfterSeconds,
+        limits: { daily: quota.daily, weekly: quota.weekly },
+      },
     );
   }
+
+  const limitHeaders = quotaHeaders(quota);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), requestTimeoutMs());

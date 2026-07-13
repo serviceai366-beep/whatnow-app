@@ -10,10 +10,10 @@ import {
 } from "./file-validation";
 import type { AnalysisResult, Deadline, Finding, SupportedLanguage } from "./analysis-schema";
 import { apiErrorKeyByCode, translations, type UiCopy } from "./i18n";
-import { AccountWidget } from "./account-widget";
+import { AccountWidget, type ColorTheme } from "./account-widget";
 import { saveAnalysisToHistory, type AnalysisHistoryItem } from "./analysis-history";
 import { HistoryPanel } from "./history-panel";
-import type { SupabaseAccount } from "./supabase-auth";
+import { getAccessToken, type SupabaseAccount } from "./supabase-auth";
 
 const languages = [
   { code: "ru", label: "Русский", short: "RU" },
@@ -25,6 +25,20 @@ const historyCopy = {
   ru: { save: "Сохранить в историю", saving: "Сохраняем…", saved: "Сохранено в истории", signIn: "Войдите в аккаунт, чтобы сохранить этот разбор.", error: "Не удалось сохранить разбор. Попробуйте ещё раз." },
   lv: { save: "Saglabāt vēsturē", saving: "Saglabājam…", saved: "Saglabāts vēsturē", signIn: "Pierakstieties, lai saglabātu šo analīzi.", error: "Neizdevās saglabāt analīzi. Mēģiniet vēlreiz." },
   en: { save: "Save to history", saving: "Saving…", saved: "Saved to history", signIn: "Sign in to save this analysis.", error: "We could not save this analysis. Please try again." },
+} as const;
+
+type LimitNoticeData = {
+  scope: "user_24h" | "user_7d";
+  resetAt: number;
+  observedAt: number;
+  daily: { limit: number; remaining: number; resetAt: number };
+  weekly: { limit: number; remaining: number; resetAt: number };
+};
+
+const limitCopy = {
+  ru: { title: "Лимит анализов исчерпан", daily: "Использованы 3 анализа за 24 часа.", weekly: "Использованы 10 анализов за 7 дней.", available: "Новый анализ будет доступен", left: "Осталось", close: "Закрыть уведомление", now: "уже сейчас" },
+  lv: { title: "Analīžu limits ir sasniegts", daily: "Izmantotas 3 analīzes 24 stundās.", weekly: "Izmantotas 10 analīzes 7 dienās.", available: "Nākamā analīze būs pieejama", left: "Atlikušais laiks", close: "Aizvērt paziņojumu", now: "jau tagad" },
+  en: { title: "Analysis limit reached", daily: "You used 3 analyses in 24 hours.", weekly: "You used 10 analyses in 7 days.", available: "A new analysis will be available", left: "Time remaining", close: "Close notification", now: "now" },
 } as const;
 
 type SelectedDocument = {
@@ -48,6 +62,17 @@ function scrollToResult() {
   }, 80);
 }
 
+function getInitialTheme(): ColorTheme {
+  if (typeof window === "undefined") return "light";
+  try {
+    const saved = window.localStorage.getItem("whatnow.theme");
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+    // Storage can be unavailable in hardened browser modes; the system theme remains a safe fallback.
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export default function Home() {
   const [language, setLanguage] = useState<SupportedLanguage>("ru");
   const [inputMode, setInputMode] = useState<"file" | "text">("file");
@@ -65,12 +90,32 @@ export default function Home() {
   const [savingHistory, setSavingHistory] = useState(false);
   const [savedHistoryId, setSavedHistoryId] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ColorTheme>(getInitialTheme);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [limitNotice, setLimitNotice] = useState<LimitNoticeData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
+  const accountIdRef = useRef<string | null | undefined>(undefined);
   const t = translations[language];
   const h = historyCopy[language];
 
   const handleAccountChange = useCallback((value: SupabaseAccount | null) => {
+    const nextId = value?.id ?? null;
+    if (accountIdRef.current !== undefined && accountIdRef.current !== nextId) {
+      lastAnalysisRef.current = null;
+      setAnalysis(null);
+      setShowResult(false);
+      setSelectedDocument(null);
+      setDocumentText("");
+      setFileError(null);
+      setTextError(null);
+      setAnalysisError(null);
+      setSavedHistoryId(null);
+      setHistoryError(null);
+      setLimitNotice(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+    accountIdRef.current = nextId;
     setAccount(value);
     if (!value) setHistoryOpen(false);
   }, []);
@@ -79,6 +124,12 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    try { window.localStorage.setItem("whatnow.theme", theme); } catch { /* Theme persistence is optional. */ }
+  }, [theme]);
 
   useEffect(() => {
     return () => {
@@ -134,6 +185,11 @@ export default function Home() {
 
   const analyzeDocument = async () => {
     if (isAnalyzing) return;
+    if (!account) {
+      setAnalysisError(t.errorAuthenticationRequired);
+      setAuthOpen(true);
+      return;
+    }
     if (inputMode === "file" && !selectedDocument) {
       setFileError(t.fileMissing);
       return;
@@ -147,6 +203,7 @@ export default function Home() {
     setFileError(null);
     setTextError(null);
     setAnalysisError(null);
+    setLimitNotice(null);
 
     const fingerprint = inputMode === "file"
       ? `${language}:file:${selectedDocument!.file.name}:${selectedDocument!.file.size}:${selectedDocument!.file.lastModified}`
@@ -172,16 +229,36 @@ export default function Home() {
     setShowResult(false);
 
     try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        setAnalysisError(t.errorAuthenticationInvalid);
+        setAuthOpen(true);
+        return;
+      }
       const response = await fetch("/api/analyze", {
         method: "POST",
         body: formData,
+        headers: { Authorization: `Bearer ${accessToken}` },
         signal: controller.signal,
       });
       const payload = await response.json().catch(() => null) as
-        | { result?: AnalysisResult; error?: { code?: string } }
+        | { result?: AnalysisResult; error?: { code?: string; scope?: string; resetAt?: number; limits?: LimitNoticeData extends { daily: infer D; weekly: infer W } ? { daily: D; weekly: W } : never } }
         | null;
 
       if (!response.ok || !payload?.result) {
+        const limit = payload?.error;
+        if (
+          limit?.code === "user_limit_reached"
+          && (limit.scope === "user_24h" || limit.scope === "user_7d")
+          && typeof limit.resetAt === "number"
+          && limit.limits?.daily && limit.limits?.weekly
+        ) {
+          setLimitNotice({ scope: limit.scope, resetAt: limit.resetAt, observedAt: Date.now(), daily: limit.limits.daily, weekly: limit.limits.weekly });
+          return;
+        }
+        if (limit?.code === "authentication_required" || limit?.code === "authentication_invalid") {
+          setAuthOpen(true);
+        }
         const errorKey = payload?.error?.code ? apiErrorKeyByCode[payload.error.code] : undefined;
         throw new Error(errorKey ? t[errorKey] : t.genericError);
       }
@@ -253,9 +330,12 @@ export default function Home() {
         </a>
         <div className="header-actions">
           <span className="prototype-badge">{t.badge}</span>
-          <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange} onOpenHistory={() => setHistoryOpen(true)} />
+          <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
+            onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={setTheme} open={authOpen} onOpenChange={setAuthOpen} />
         </div>
       </header>
+
+      {limitNotice && <LimitToast key={`${limitNotice.scope}:${limitNotice.observedAt}`} data={limitNotice} locale={language} onClose={() => setLimitNotice(null)} />}
 
       {showResult && analysis ? (
         <AnalysisResultView result={analysis} onRestart={resetAnalysis} t={t} locale={language}
@@ -346,7 +426,7 @@ export default function Home() {
                 aria-label={t.chooseDocument}
                 tabIndex={-1}
                 type="file"
-                accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp"
+                accept="application/pdf,image/jpeg,image/png,image/webp,text/plain,application/rtf,text/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,.pdf,.jpg,.jpeg,.png,.webp,.txt,.rtf,.docx,.odt"
                 onChange={handleFileChange}
                 disabled={isAnalyzing}
               />
@@ -365,7 +445,7 @@ export default function Home() {
                   }}
                   onDrop={handleDrop}
                 >
-                  <div className="document-icon" aria-hidden="true"><span>PDF</span></div>
+                  <div className="document-icon" aria-hidden="true"><span>DOC</span></div>
                   <strong>{isDragging ? t.releaseHere : t.dropHere}</strong>
                   <p>{t.orChoose}</p>
                   <button className="secondary-button" type="button" onClick={() => fileInputRef.current?.click()}>
@@ -471,6 +551,43 @@ function localeTag(locale: SupportedLanguage): string {
   return locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-US";
 }
 
+function durationLabel(milliseconds: number, locale: SupportedLanguage): string {
+  const totalMinutes = Math.max(0, Math.ceil(milliseconds / 60_000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days) parts.push(locale === "ru" ? `${days} д.` : locale === "lv" ? `${days} d.` : `${days}d`);
+  if (hours) parts.push(locale === "ru" ? `${hours} ч.` : locale === "lv" ? `${hours} st.` : `${hours}h`);
+  if (minutes || !parts.length) parts.push(locale === "ru" ? `${minutes} мин.` : locale === "lv" ? `${minutes} min.` : `${minutes}m`);
+  return parts.join(" ");
+}
+
+function LimitToast({ data, locale, onClose }: { data: LimitNoticeData; locale: SupportedLanguage; onClose: () => void }) {
+  const [now, setNow] = useState(data.observedAt);
+  const t = limitCopy[locale];
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+  useEffect(() => {
+    if (now >= data.resetAt) onClose();
+  }, [data.resetAt, now, onClose]);
+  const availableAt = new Intl.DateTimeFormat(localeTag(locale), { dateStyle: "medium", timeStyle: "short" }).format(data.resetAt);
+  return (
+    <aside className="limit-toast" role="alert" aria-live="assertive">
+      <button type="button" className="limit-toast-close" onClick={onClose} aria-label={t.close}>×</button>
+      <span className="limit-toast-icon" aria-hidden="true">⏳</span>
+      <div>
+        <strong>{t.title}</strong>
+        <p>{data.scope === "user_24h" ? t.daily : t.weekly}</p>
+        <p><b>{t.left}: {data.resetAt > now ? durationLabel(data.resetAt - now, locale) : t.now}</b></p>
+        <small>{t.available}: {availableAt}</small>
+      </div>
+    </aside>
+  );
+}
+
 function FilePreview({
   document,
   onRemove,
@@ -486,10 +603,10 @@ function FilePreview({
     <div className="file-preview" data-testid="file-preview">
       <div className="file-preview-header">
         <div className="file-summary">
-          <span className="file-type" aria-hidden="true">{document.kind === "pdf" ? "PDF" : "IMG"}</span>
+          <span className="file-type" aria-hidden="true">{document.kind === "pdf" ? "PDF" : document.kind === "image" ? "IMG" : document.file.name.split(".").pop()?.toUpperCase()}</span>
           <div>
             <strong>{document.file.name}</strong>
-            <p>{document.kind === "pdf" ? t.pdfDocument : t.imageDocument} · {formatFileSize(document.file.size, locale)}</p>
+            <p>{document.kind === "pdf" ? t.pdfDocument : document.kind === "image" ? t.imageDocument : document.kind === "text" ? t.textDocument : t.officeDocument} · {formatFileSize(document.file.size, locale)}</p>
           </div>
         </div>
         <button type="button" className="remove-file" onClick={onRemove} aria-label={`${t.removeFileAria}: ${document.file.name}`}>{t.removeFile}</button>
@@ -499,8 +616,10 @@ function FilePreview({
           // Blob URLs exist only in the browser and cannot use the server-side Next image loader.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={document.previewUrl} alt={`${t.previewFile}: ${document.file.name}`} />
-        ) : (
+        ) : document.kind === "pdf" ? (
           <iframe src={document.previewUrl} title={`${t.previewPdf}: ${document.file.name}`} />
+        ) : (
+          <div className="document-preview-message"><span aria-hidden="true">Aa</span><strong>{t.textFileReady}</strong><p>{t.officePreviewNote}</p></div>
         )}
       </div>
       <p className="preview-note"><span aria-hidden="true">✓</span> {t.fileReady}</p>
