@@ -15,7 +15,7 @@ import {
 const copy = {
   ru: {
     signIn: "Войти", signOut: "Выйти", title: "Войти в WhatNow?",
-    intro: "Один аккаунт для входа с разных устройств. История разборов появится на следующем этапе.",
+    intro: "Один аккаунт для входа с разных устройств и защищённой истории разборов.", history: "История",
     google: "Продолжить через Google", divider: "или по email", email: "Email",
     emailPlaceholder: "name@example.com", emailAction: "Получить ссылку для входа", sending: "Отправляем…",
     sent: "Проверьте почту — мы отправили безопасную ссылку для входа.",
@@ -25,7 +25,7 @@ const copy = {
   },
   lv: {
     signIn: "Pierakstīties", signOut: "Iziet", title: "Pierakstīties WhatNow?",
-    intro: "Viens konts darbam dažādās ierīcēs. Analīžu vēsture tiks pievienota nākamajā posmā.",
+    intro: "Viens konts darbam dažādās ierīcēs un aizsargātai analīžu vēsturei.", history: "Vēsture",
     google: "Turpināt ar Google", divider: "vai ar e-pastu", email: "E-pasts",
     emailPlaceholder: "vards@piemers.lv", emailAction: "Saņemt pierakstīšanās saiti", sending: "Nosūtām…",
     sent: "Pārbaudiet e-pastu — nosūtījām drošu pierakstīšanās saiti.",
@@ -35,7 +35,7 @@ const copy = {
   },
   en: {
     signIn: "Sign in", signOut: "Sign out", title: "Sign in to WhatNow?",
-    intro: "Use one account across your devices. Analysis history will be added in the next stage.",
+    intro: "Use one account across devices and keep a protected analysis history.", history: "History",
     google: "Continue with Google", divider: "or use email", email: "Email",
     emailPlaceholder: "name@example.com", emailAction: "Email me a sign-in link", sending: "Sending…",
     sent: "Check your inbox — we sent you a secure sign-in link.",
@@ -45,7 +45,12 @@ const copy = {
   },
 } as const;
 
-export function AccountWidget({ locale, accountAria }: { locale: SupportedLanguage; accountAria: string }) {
+export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHistory }: {
+  locale: SupportedLanguage;
+  accountAria: string;
+  onAccountChange?: (account: SupabaseAccount | null) => void;
+  onOpenHistory?: () => void;
+}) {
   const t = copy[locale];
   const [account, setAccount] = useState<SupabaseAccount | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -57,9 +62,11 @@ export function AccountWidget({ locale, accountAria }: { locale: SupportedLangua
 
   useEffect(() => {
     let active = true;
-    loadAccount().then((value) => { if (active) setAccount(value); }).finally(() => { if (active) setLoaded(true); });
+    loadAccount().then((value) => {
+      if (active) { setAccount(value); onAccountChange?.(value); }
+    }).finally(() => { if (active) setLoaded(true); });
     return () => { active = false; };
-  }, []);
+  }, [onAccountChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -98,9 +105,11 @@ export function AccountWidget({ locale, accountAria }: { locale: SupportedLangua
           <strong title={account.displayName}>{account.displayName}</strong>
           <small title={account.email}>{account.email}</small>
         </span>
+        <button className="account-history" type="button" onClick={onOpenHistory}>{t.history}</button>
         <button className="account-sign-out" type="button" onClick={async () => {
           await signOutAccount();
           setAccount(null);
+          onAccountChange?.(null);
         }}>{t.signOut}</button>
       </div>
     );

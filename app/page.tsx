@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import {
   formatFileSize,
@@ -11,12 +11,21 @@ import {
 import type { AnalysisResult, Deadline, Finding, SupportedLanguage } from "./analysis-schema";
 import { apiErrorKeyByCode, translations, type UiCopy } from "./i18n";
 import { AccountWidget } from "./account-widget";
+import { saveAnalysisToHistory, type AnalysisHistoryItem } from "./analysis-history";
+import { HistoryPanel } from "./history-panel";
+import type { SupabaseAccount } from "./supabase-auth";
 
 const languages = [
   { code: "ru", label: "Русский", short: "RU" },
   { code: "lv", label: "Latviešu", short: "LV" },
   { code: "en", label: "English", short: "EN" },
 ] as const;
+
+const historyCopy = {
+  ru: { save: "Сохранить в историю", saving: "Сохраняем…", saved: "Сохранено в истории", signIn: "Войдите в аккаунт, чтобы сохранить этот разбор.", error: "Не удалось сохранить разбор. Попробуйте ещё раз." },
+  lv: { save: "Saglabāt vēsturē", saving: "Saglabājam…", saved: "Saglabāts vēsturē", signIn: "Pierakstieties, lai saglabātu šo analīzi.", error: "Neizdevās saglabāt analīzi. Mēģiniet vēlreiz." },
+  en: { save: "Save to history", saving: "Saving…", saved: "Saved to history", signIn: "Sign in to save this analysis.", error: "We could not save this analysis. Please try again." },
+} as const;
 
 type SelectedDocument = {
   file: File;
@@ -51,9 +60,21 @@ export default function Home() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [textError, setTextError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [account, setAccount] = useState<SupabaseAccount | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [savingHistory, setSavingHistory] = useState(false);
+  const [savedHistoryId, setSavedHistoryId] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
   const t = translations[language];
+  const h = historyCopy[language];
+
+  const handleAccountChange = useCallback((value: SupabaseAccount | null) => {
+    setAccount(value);
+    if (!value) setHistoryOpen(false);
+  }, []);
+  const closeHistory = useCallback(() => setHistoryOpen(false), []);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -69,9 +90,11 @@ export default function Home() {
     const validation = validateDocumentFile(file);
     setShowResult(false);
     setAnalysis(null);
+    setSavedHistoryId(null);
+    setHistoryError(null);
     setAnalysisError(null);
 
-    if (!validation.ok) {
+    if (validation.ok === false) {
       setSelectedDocument(null);
       setFileError(
         validation.code === "empty"
@@ -165,6 +188,7 @@ export default function Home() {
 
       lastAnalysisRef.current = { fingerprint, result: payload.result };
       setAnalysis(payload.result);
+      setSavedHistoryId(null);
       setShowResult(true);
       scrollToResult();
     } catch (error) {
@@ -189,7 +213,35 @@ export default function Home() {
     setAnalysis(null);
     setAnalysisError(null);
     setShowResult(false);
+    setSavedHistoryId(null);
+    setHistoryError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const saveCurrentAnalysis = async () => {
+    if (!analysis || !account || savingHistory || savedHistoryId) return;
+    setSavingHistory(true);
+    setHistoryError(null);
+    try {
+      const title = analysis.documentType.value || analysis.summary || "WhatNow?";
+      const item = await saveAnalysisToHistory({ title, sourceKind: inputMode, language, result: analysis });
+      setSavedHistoryId(item.id);
+    } catch {
+      setHistoryError(h.error);
+    } finally {
+      setSavingHistory(false);
+    }
+  };
+
+  const openHistoryItem = (item: AnalysisHistoryItem) => {
+    setLanguage(item.language);
+    setInputMode(item.sourceKind);
+    setAnalysis(item.result);
+    setShowResult(true);
+    setSavedHistoryId(item.id);
+    setHistoryError(null);
+    setHistoryOpen(false);
+    scrollToResult();
   };
 
   return (
@@ -201,12 +253,13 @@ export default function Home() {
         </a>
         <div className="header-actions">
           <span className="prototype-badge">{t.badge}</span>
-          <AccountWidget locale={language} accountAria={t.accountAria} />
+          <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange} onOpenHistory={() => setHistoryOpen(true)} />
         </div>
       </header>
 
       {showResult && analysis ? (
-        <AnalysisResultView result={analysis} onRestart={resetAnalysis} t={t} locale={language} />
+        <AnalysisResultView result={analysis} onRestart={resetAnalysis} t={t} locale={language}
+          account={account} onSave={saveCurrentAnalysis} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : (
         <>
       <section className="hero" id="top">
@@ -399,6 +452,7 @@ export default function Home() {
       </section>
         </>
       )}
+      {historyOpen && account && <HistoryPanel locale={language} onClose={closeHistory} onOpen={openHistoryItem} />}
 
       <section className="privacy-strip">
         <div><span className="privacy-icon" aria-hidden="true">✓</span><p><strong>{t.documentsNotPublished}</strong><br />{t.documentsNotPublishedText}</p></div>
@@ -517,11 +571,23 @@ function AnalysisResultView({
   onRestart,
   t,
   locale,
+  account,
+  onSave,
+  saving,
+  saved,
+  historyError,
+  h,
 }: {
   result: AnalysisResult;
   onRestart: () => void;
   t: UiCopy;
   locale: SupportedLanguage;
+  account: SupabaseAccount | null;
+  onSave: () => void;
+  saving: boolean;
+  saved: boolean;
+  historyError: string | null;
+  h: (typeof historyCopy)[SupportedLanguage];
 }) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const primaryDeadline = result.deadlines.find((item) => item.status === "found") || result.deadlines[0];
@@ -681,8 +747,14 @@ function AnalysisResultView({
       <article className="safety-notice"><span aria-hidden="true">i</span><div><strong>{t.importantWarning}</strong><p>{result.safetyNotice}</p></div></article>
 
       <div className="result-actions">
+        {account && (
+          <button className="history-save-button" type="button" onClick={onSave} disabled={saving || saved}>
+            {saved ? `✓ ${h.saved}` : saving ? h.saving : h.save}
+          </button>
+        )}
         <button className="primary-action-button" type="button" onClick={onRestart}>{t.analyzeAnother}</button>
-        <p>{t.historyNotice}</p>
+        <p>{account ? (saved ? h.saved : t.historyNotice) : h.signIn}</p>
+        {historyError && <p className="history-inline-error" role="alert">{historyError}</p>}
       </div>
     </section>
   );

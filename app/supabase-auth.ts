@@ -141,6 +141,18 @@ export async function loadAccount(): Promise<SupabaseAccount | null> {
   return accountFromUser(session.user);
 }
 
+export async function getAccessToken(): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  let session = readStoredSession();
+  if (!session) return null;
+  if (session.expiresAt <= Date.now() + 60_000) session = await refreshSession(session);
+  if (!session) {
+    clearSession();
+    return null;
+  }
+  return session.accessToken;
+}
+
 export function startGoogleSignIn(): void {
   if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
   const redirectTo = `${window.location.origin}${window.location.pathname}`;
