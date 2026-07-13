@@ -1,0 +1,18 @@
+export const validAnalysisResult = {
+  schemaVersion: "1.0",
+  outputLanguage: "ru",
+  documentType: { value: "Уведомление", status: "found", evidenceIds: ["e1"], confidence: "high", basis: "fact" },
+  sender: { value: null, status: "not_found", evidenceIds: [], confidence: "low", basis: "fact" },
+  summary: "Документ сообщает о проверке данных.",
+  requiredActions: [],
+  deadlines: [],
+  requiredDocuments: [],
+  consequencesOfInaction: [],
+  actionPlan: [{ step: 1, action: "Проверить контактные данные организации.", evidenceIds: [], confidence: "medium", basis: "inference" }],
+  replyNeeded: "unclear",
+  suggestedReply: null,
+  evidence: [{ id: "e1", quote: "Уведомление", location: "Страница 1", supports: ["documentType"] }],
+  uncertainties: ["Отправитель не найден."],
+  confidence: "medium",
+  safetyNotice: "Это информационное объяснение, а не профессиональная консультация.",
+};
