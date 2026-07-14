@@ -1,13 +1,37 @@
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import {
   analysisCostUnits,
   checkAnalysisQuota,
+  createDurableQuotaStoreForTests,
   createMemoryQuotaStoreForTests,
+  readAnalysisQuota,
 } from "../app/usage-control.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
+
+class SqliteD1Statement {
+  constructor(statement, bindings = []) {
+    this.statement = statement;
+    this.bindings = bindings;
+  }
+
+  bind(...values) { return new SqliteD1Statement(this.statement, values); }
+  async first() { return this.statement.get(...this.bindings) ?? null; }
+  async run() { return this.statement.run(...this.bindings); }
+}
+
+class SqliteD1Database {
+  constructor(database) { this.database = database; }
+  prepare(query) { return new SqliteD1Statement(this.database.prepare(query)); }
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
+  }
+}
 
 async function consume({ store, userKey, now, costKind = "text" }) {
   return checkAnalysisQuota({ userKey, costKind, now, store });
@@ -46,6 +70,45 @@ test("allows three requests per rolling 24 hours and rejects the fourth", async 
   assert.equal(blocked.daily.remaining, 0);
   assert.equal(blocked.resetAt, now + DAY_MS);
   assert.equal(blocked.retryAfterSeconds, DAY_MS / 1000);
+});
+
+test("reports the live remaining quota without consuming another analysis", async () => {
+  const store = createMemoryQuotaStoreForTests();
+  const now = Date.UTC(2026, 6, 14, 15, 30);
+
+  const initial = await readAnalysisQuota({ store, userKey: "visible-user", now });
+  assert.equal(initial.daily.remaining, 3);
+  assert.equal(initial.weekly.remaining, 10);
+
+  await consume({ store, userKey: "visible-user", now });
+  const afterOne = await readAnalysisQuota({ store, userKey: "visible-user", now });
+  assert.equal(afterOne.daily.remaining, 2);
+  assert.equal(afterOne.weekly.remaining, 9);
+
+  const repeatedRead = await readAnalysisQuota({ store, userKey: "visible-user", now });
+  assert.deepEqual(repeatedRead, afterOne);
+});
+
+test("durable SQLite-compatible storage atomically blocks the fourth concurrent analysis", async () => {
+  const database = new DatabaseSync(":memory:");
+  try {
+    const d1 = new SqliteD1Database(database);
+    const store = createDurableQuotaStoreForTests(d1);
+    const now = Date.UTC(2026, 6, 14, 15, 45);
+    const decisions = await Promise.all(Array.from({ length: 4 }, () => consume({ store, userKey: "durable-user", now })));
+
+    assert.equal(decisions.filter((decision) => decision.allowed).length, 3);
+    assert.equal(decisions.filter((decision) => !decision.allowed).length, 1);
+    assert.equal(decisions.find((decision) => !decision.allowed).scope, "user_24h");
+
+    const secondWorkerStore = createDurableQuotaStoreForTests(d1);
+    const snapshot = await readAnalysisQuota({ store: secondWorkerStore, userKey: "durable-user", now });
+    assert.equal(snapshot.backend, "durable");
+    assert.equal(snapshot.daily.remaining, 0);
+    assert.equal(snapshot.weekly.remaining, 7);
+  } finally {
+    database.close();
+  }
 });
 
 test("the daily window is rolling rather than a UTC calendar day", async () => {

@@ -413,28 +413,28 @@ export async function POST(request: Request): Promise<Response> {
       const requestId = openaiResponse.headers.get("x-request-id") ?? "unavailable";
       console.error("[analyze] OpenAI request failed", { status: openaiResponse.status, requestId });
       if (openaiResponse.status === 401 || openaiResponse.status === 403) {
-        return errorResponse("openai_auth", "Серверный ключ OpenAI недействителен или не имеет доступа.", 502);
+        return errorResponse("openai_auth", "Серверный ключ OpenAI недействителен или не имеет доступа.", 502, false, limitHeaders);
       }
       if (openaiResponse.status === 429) {
-        return errorResponse("rate_limited", "Сервис временно перегружен. Попробуйте немного позже.", 429, true);
+        return errorResponse("rate_limited", "Сервис временно перегружен. Попробуйте немного позже.", 429, true, limitHeaders);
       }
-      return errorResponse("upstream_error", "OpenAI не смог обработать документ. Попробуйте позже.", 502, true);
+      return errorResponse("upstream_error", "OpenAI не смог обработать документ. Попробуйте позже.", 502, true, limitHeaders);
     }
 
     const outputText = extractOutputText(payload);
     if (!outputText) {
-      return errorResponse("invalid_model_response", "Модель вернула пустой результат.", 502, true);
+      return errorResponse("invalid_model_response", "Модель вернула пустой результат.", 502, true, limitHeaders);
     }
 
     let result: unknown;
     try {
       result = JSON.parse(outputText);
     } catch {
-      return errorResponse("invalid_model_response", "Модель вернула некорректный формат результата.", 502, true);
+      return errorResponse("invalid_model_response", "Модель вернула некорректный формат результата.", 502, true, limitHeaders);
     }
 
     if (!validateAnalysisResult(result) || result.outputLanguage !== language) {
-      return errorResponse("invalid_model_response", "Результат анализа не прошёл проверку структуры.", 502, true);
+      return errorResponse("invalid_model_response", "Результат анализа не прошёл проверку структуры.", 502, true, limitHeaders);
     }
 
     return jsonResponse({
@@ -447,10 +447,10 @@ export async function POST(request: Request): Promise<Response> {
     }, 200, limitHeaders);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      return errorResponse("timeout", "Анализ занял слишком много времени. Попробуйте снова.", 504, true);
+      return errorResponse("timeout", "Анализ занял слишком много времени. Попробуйте снова.", 504, true, limitHeaders);
     }
     console.error("[analyze] OpenAI transport error", { name: error instanceof Error ? error.name : "unknown" });
-    return errorResponse("upstream_error", "Не удалось связаться с OpenAI. Попробуйте позже.", 502, true);
+    return errorResponse("upstream_error", "Не удалось связаться с OpenAI. Попробуйте позже.", 502, true, limitHeaders);
   } finally {
     clearTimeout(timeout);
   }

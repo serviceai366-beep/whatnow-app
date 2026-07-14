@@ -53,13 +53,19 @@ test("limit notice is localized, accessible, dismissible, and uses server reset 
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.limit-toast/);
 });
 
-test("profile offers persistent light and dark themes with accessible controls", async () => {
+test("profile offers themes and displays live server-backed quota counters", async () => {
   const [page, widget, css] = await files;
   assert.match(page, /localStorage\.getItem\("whatnow\.theme"\)/);
   assert.match(page, /document\.documentElement\.dataset\.theme = theme/);
   assert.match(widget, /aria-pressed=\{theme === "light"\}/);
   assert.match(widget, /aria-pressed=\{theme === "dark"\}/);
-  assert.match(widget, /3 анализа за 24 часа · 10 за 7 дней/);
+  assert.match(widget, /fetch\("\/api\/quota"/);
+  assert.match(widget, /quota\.daily/);
+  assert.match(widget, /quota\.weekly/);
+  assert.match(widget, /item\.remaining\}\/\{item\.limit/);
+  assert.match(page, /response\.headers\.has\("X-RateLimit-Limit-24h"\)/);
+  assert.match(page, /setQuotaRefreshKey\(\(current\) => current \+ 1\)/);
+  assert.match(css, /\.quota-row progress/);
   assert.match(css, /:root\[data-theme="dark"\]/);
 });
 

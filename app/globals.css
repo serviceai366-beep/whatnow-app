@@ -135,6 +135,18 @@ a { color: inherit; text-decoration: none; }
 .quota-summary { padding: 13px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface-muted); }
 .quota-summary h3 { margin-bottom: 3px; }
 .quota-summary p { margin: 0; color: var(--muted); font-size: 12px; }
+.quota-grid { display: grid; gap: 12px; margin-top: 10px; }
+.quota-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 5px 12px; text-align: left; }
+.quota-row > span { display: grid; gap: 2px; }
+.quota-row strong { font-size: 13px; }
+.quota-row small { color: var(--muted); font-size: 11px; }
+.quota-row b { color: var(--accent-dark); font-size: 14px; font-variant-numeric: tabular-nums; }
+.quota-row progress { grid-column: 1 / -1; width: 100%; height: 7px; overflow: hidden; border: 0; border-radius: 999px; background: var(--border); }
+.quota-row progress::-webkit-progress-bar { border-radius: 999px; background: var(--border); }
+.quota-row progress::-webkit-progress-value { border-radius: 999px; background: var(--accent); }
+.quota-row progress::-moz-progress-bar { border-radius: 999px; background: var(--accent); }
+.quota-row .quota-reset { grid-column: 1 / -1; color: var(--accent-dark); }
+.quota-summary .quota-error, .quota-summary .quota-stale { margin-top: 8px; color: var(--danger); }
 .profile-actions { display: grid; grid-template-columns: 1fr auto; gap: 9px; margin-top: 18px; }
 .profile-actions .account-history, .profile-actions .account-sign-out { min-height: 43px; border-radius: 11px; padding: 9px 12px; }
 .profile-actions .account-sign-out { border: 1px solid #efc9c6; color: var(--danger); background: transparent; }

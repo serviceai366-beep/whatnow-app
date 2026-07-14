@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import type { SupportedLanguage } from "./analysis-schema";
 import {
   isSupabaseConfigured,
+  getAccessToken,
   loadAccount,
   sendEmailSignInLink,
   signOutAccount,
@@ -12,6 +13,7 @@ import {
   type SupabaseAccount,
 } from "./supabase-auth";
 import { TurnstileWidget } from "./turnstile";
+import type { QuotaSnapshot, WindowQuota } from "./quota-types";
 
 export type ColorTheme = "light" | "dark";
 
@@ -26,7 +28,9 @@ const copy = {
     close: "Закрыть окно", unavailable: "Вход временно не настроен. Попробуйте позже.",
     error: "Не удалось начать вход. Попробуйте ещё раз.", secure: "Email подтверждён",
     securityText: "Сессия проверяется Supabase перед каждым анализом.", appearance: "Оформление",
-    light: "Светлая", dark: "Тёмная", quota: "Ваши лимиты", quotaText: "3 анализа за 24 часа · 10 за 7 дней",
+    light: "Светлая", dark: "Тёмная", quota: "Ваши лимиты", dailyQuota: "За 24 часа", weeklyQuota: "За 7 дней",
+    quotaLoading: "Считаем доступные анализы…", quotaUnavailable: "Не удалось обновить остаток. Ограничения продолжают действовать на сервере.",
+    quotaRemaining: "Осталось {remaining} из {limit}", quotaReset: "Обновится {time}",
     accountActions: "Управление аккаунтом",
     captchaWaiting: "Проверка защиты от ботов выполняется автоматически.",
     captchaReady: "Защита подтверждена.", captchaError: "Не удалось выполнить защитную проверку. Обновите её и попробуйте снова.",
@@ -41,7 +45,9 @@ const copy = {
     close: "Aizvērt logu", unavailable: "Pierakstīšanās pašlaik nav iestatīta. Mēģiniet vēlāk.",
     error: "Neizdevās sākt pierakstīšanos. Mēģiniet vēlreiz.", secure: "E-pasts apstiprināts",
     securityText: "Supabase pārbauda sesiju pirms katras analīzes.", appearance: "Izskats",
-    light: "Gaišs", dark: "Tumšs", quota: "Jūsu limiti", quotaText: "3 analīzes 24 stundās · 10 analīzes 7 dienās",
+    light: "Gaišs", dark: "Tumšs", quota: "Jūsu limiti", dailyQuota: "24 stundās", weeklyQuota: "7 dienās",
+    quotaLoading: "Aprēķinām pieejamās analīzes…", quotaUnavailable: "Neizdevās atjaunināt atlikumu. Limiti joprojām darbojas serverī.",
+    quotaRemaining: "Atlikušas {remaining} no {limit}", quotaReset: "Atjaunosies {time}",
     accountActions: "Konta pārvaldība",
     captchaWaiting: "Aizsardzības pārbaude pret robotiem notiek automātiski.",
     captchaReady: "Aizsardzība apstiprināta.", captchaError: "Neizdevās veikt aizsardzības pārbaudi. Atjaunojiet to un mēģiniet vēlreiz.",
@@ -56,7 +62,9 @@ const copy = {
     close: "Close window", unavailable: "Sign-in is not configured right now. Try again later.",
     error: "We could not start sign-in. Please try again.", secure: "Email verified",
     securityText: "Supabase verifies the session before every analysis.", appearance: "Appearance",
-    light: "Light", dark: "Dark", quota: "Your limits", quotaText: "3 analyses per 24 hours · 10 per 7 days",
+    light: "Light", dark: "Dark", quota: "Your limits", dailyQuota: "Per 24 hours", weeklyQuota: "Per 7 days",
+    quotaLoading: "Checking available analyses…", quotaUnavailable: "The remaining allowance could not be refreshed. Server limits are still enforced.",
+    quotaRemaining: "{remaining} of {limit} remaining", quotaReset: "Refreshes {time}",
     accountActions: "Account management",
     captchaWaiting: "The bot-protection check runs automatically.",
     captchaReady: "Protection verified.", captchaError: "The protection check could not be completed. Refresh it and try again.",
@@ -72,7 +80,18 @@ function Avatar({ account, large = false }: { account: SupabaseAccount; large?: 
   );
 }
 
-export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHistory, theme, onThemeChange, open, onOpenChange }: {
+function quotaText(template: string, quota: WindowQuota): string {
+  return template.replace("{remaining}", String(quota.remaining)).replace("{limit}", String(quota.limit));
+}
+
+function quotaResetText(template: string, quota: WindowQuota, locale: SupportedLanguage): string | null {
+  if (quota.remaining > 0) return null;
+  const languageTag = locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-US";
+  const time = new Intl.DateTimeFormat(languageTag, { dateStyle: "short", timeStyle: "short" }).format(quota.resetAt);
+  return template.replace("{time}", time);
+}
+
+export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHistory, theme, onThemeChange, open, onOpenChange, quotaRefreshKey }: {
   locale: SupportedLanguage;
   accountAria: string;
   onAccountChange?: (account: SupabaseAccount | null) => void;
@@ -81,6 +100,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   onThemeChange: (theme: ColorTheme) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  quotaRefreshKey: number;
 }) {
   const t = copy[locale];
   const [account, setAccount] = useState<SupabaseAccount | null>(null);
@@ -93,6 +113,9 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   const [emailCaptchaToken, setEmailCaptchaToken] = useState<string | null>(null);
   const [emailCaptchaResetKey, setEmailCaptchaResetKey] = useState(0);
   const [emailCaptchaError, setEmailCaptchaError] = useState(false);
+  const [quota, setQuota] = useState<QuotaSnapshot | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  const [quotaError, setQuotaError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -101,6 +124,31 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
     }).finally(() => { if (active) setLoaded(true); });
     return () => { active = false; };
   }, [onAccountChange]);
+
+  useEffect(() => {
+    if (!account) {
+      setQuota(null);
+      setQuotaLoading(false);
+      setQuotaError(false);
+      return;
+    }
+    let active = true;
+    setQuotaLoading(true);
+    setQuotaError(false);
+    (async () => {
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error("Missing access token");
+      const response = await fetch("/api/quota", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const payload = await response.json().catch(() => null) as { quota?: QuotaSnapshot } | null;
+      if (!response.ok || !payload?.quota) throw new Error("Quota unavailable");
+      if (active) setQuota(payload.quota);
+    })().catch(() => { if (active) setQuotaError(true); })
+      .finally(() => { if (active) setQuotaLoading(false); });
+    return () => { active = false; };
+  }, [account, quotaRefreshKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -158,7 +206,22 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                     <button type="button" className={theme === "dark" ? "active" : ""} aria-pressed={theme === "dark"} onClick={() => onThemeChange("dark")}>☾ {t.dark}</button>
                   </div>
                 </section>
-                <section className="profile-section quota-summary" aria-labelledby="quota-title"><h3 id="quota-title">{t.quota}</h3><p>{t.quotaText}</p></section>
+                <section className="profile-section quota-summary" aria-labelledby="quota-title">
+                  <h3 id="quota-title">{t.quota}</h3>
+                  {quotaLoading && !quota ? <p role="status">{t.quotaLoading}</p> : quotaError && !quota ? <p className="quota-error">{t.quotaUnavailable}</p> : quota ? (
+                    <div className="quota-grid">
+                      {([[t.dailyQuota, quota.daily], [t.weeklyQuota, quota.weekly]] as const).map(([label, item]) => (
+                        <div className="quota-row" key={label}>
+                          <span><strong>{label}</strong><small>{quotaText(t.quotaRemaining, item)}</small></span>
+                          <b aria-label={quotaText(t.quotaRemaining, item)}>{item.remaining}/{item.limit}</b>
+                          <progress max={item.limit} value={item.remaining}>{item.remaining}</progress>
+                          {quotaResetText(t.quotaReset, item, locale) && <small className="quota-reset">{quotaResetText(t.quotaReset, item, locale)}</small>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p>{t.quotaUnavailable}</p>}
+                  {quotaError && quota && <p className="quota-stale">{t.quotaUnavailable}</p>}
+                </section>
                 <div className="profile-actions" aria-label={t.accountActions}>
                   <button type="button" className="account-history" onClick={() => { onOpenChange(false); onOpenHistory?.(); }}>{t.history}</button>
                   <button type="button" className="account-sign-out" onClick={async () => {

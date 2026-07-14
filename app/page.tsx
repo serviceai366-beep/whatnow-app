@@ -97,6 +97,7 @@ export default function Home() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const [quotaRefreshKey, setQuotaRefreshKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
   const accountIdRef = useRef<string | null | undefined>(undefined);
@@ -275,6 +276,9 @@ export default function Home() {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: controller.signal,
       });
+      if (response.headers.has("X-RateLimit-Limit-24h")) {
+        setQuotaRefreshKey((current) => current + 1);
+      }
       const payload = await response.json().catch(() => null) as
         | { result?: AnalysisResult; error?: { code?: string; scope?: string; resetAt?: number; limits?: LimitNoticeData extends { daily: infer D; weekly: infer W } ? { daily: D; weekly: W } : never } }
         | null;
@@ -353,7 +357,8 @@ export default function Home() {
         <div className="header-actions">
           <span className="prototype-badge">{t.badge}</span>
           <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
-            onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={setTheme} open={authOpen} onOpenChange={setAuthOpen} />
+            onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={setTheme} open={authOpen} onOpenChange={setAuthOpen}
+            quotaRefreshKey={quotaRefreshKey} />
         </div>
       </header>
 

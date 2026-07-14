@@ -292,11 +292,13 @@ test("maps upstream auth, rate, and transport failures without leaking details",
   globalThis.fetch = routedFetch(() => upstream.shift());
   try {
     const expected = [[502, "openai_auth"], [429, "rate_limited"], [502, "upstream_error"]];
-    for (const [status, code] of expected) {
-      const response = await POST(requestWithText());
+    for (const [index, [status, code]] of expected.entries()) {
+      const response = await POST(requestWithText("ru", "Документ", { userId: "upstream-failure-user" }));
       const payload = await response.json();
       assert.equal(response.status, status);
       assert.equal(payload.error.code, code);
+      assert.equal(response.headers.get("x-ratelimit-remaining-24h"), String(2 - index));
+      assert.equal(response.headers.get("x-ratelimit-remaining-7d"), String(9 - index));
       assert.doesNotMatch(JSON.stringify(payload), /secret upstream detail|req-secret|throttled/);
     }
   } finally { globalThis.fetch = previousFetch; }
