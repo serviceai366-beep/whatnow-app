@@ -5,7 +5,9 @@ import type { SupportedLanguage } from "./analysis-schema";
 import { TURNSTILE_SITE_KEY } from "./turnstile-config";
 
 const SCRIPT_ID = "whatnow-turnstile-script";
-const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+const SCRIPT_CALLBACK = "whatNowTurnstileReady";
+const SCRIPT_URL = `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=${SCRIPT_CALLBACK}`;
+const SCRIPT_TIMEOUT_MS = 12_000;
 
 type TurnstileApi = {
   render(container: HTMLElement, options: Record<string, unknown>): string;
@@ -16,6 +18,7 @@ type TurnstileApi = {
 declare global {
   interface Window {
     turnstile?: TurnstileApi;
+    whatNowTurnstileReady?: () => void;
   }
 }
 
@@ -26,14 +29,32 @@ function loadTurnstile(): Promise<TurnstileApi> {
   if (scriptPromise) return scriptPromise;
 
   scriptPromise = new Promise((resolve, reject) => {
-    const finish = () => {
-      if (window.turnstile) resolve(window.turnstile);
-      else reject(new Error("turnstile_unavailable"));
+    let settled = false;
+    const startedAt = Date.now();
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      scriptPromise = null;
+      reject(new Error("turnstile_unavailable"));
     };
+    const waitForApi = () => {
+      if (settled) return;
+      if (window.turnstile) {
+        settled = true;
+        resolve(window.turnstile);
+        return;
+      }
+      if (Date.now() - startedAt >= SCRIPT_TIMEOUT_MS) {
+        fail();
+        return;
+      }
+      window.setTimeout(waitForApi, 50);
+    };
+    window.whatNowTurnstileReady = waitForApi;
     const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
     if (existing) {
-      existing.addEventListener("load", finish, { once: true });
-      existing.addEventListener("error", () => reject(new Error("turnstile_unavailable")), { once: true });
+      existing.addEventListener("error", fail, { once: true });
+      waitForApi();
       return;
     }
     const script = document.createElement("script");
@@ -41,9 +62,10 @@ function loadTurnstile(): Promise<TurnstileApi> {
     script.src = SCRIPT_URL;
     script.async = true;
     script.defer = true;
-    script.addEventListener("load", finish, { once: true });
-    script.addEventListener("error", () => reject(new Error("turnstile_unavailable")), { once: true });
+    script.addEventListener("load", waitForApi, { once: true });
+    script.addEventListener("error", fail, { once: true });
     document.head.appendChild(script);
+    waitForApi();
   });
   return scriptPromise;
 }
