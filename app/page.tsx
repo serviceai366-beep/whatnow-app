@@ -119,7 +119,6 @@ export default function Home() {
   const [quotaRefreshKey, setQuotaRefreshKey] = useState(0);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [userHubOpen, setUserHubOpen] = useState(false);
-  const [languageSaving, setLanguageSaving] = useState(false);
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
@@ -145,7 +144,6 @@ export default function Home() {
       setLimitNotice(null);
       setCalendarOpen(false);
       setUserHubOpen(false);
-      setLanguageSaving(false);
       setFileSaveNotice(null);
       setCaptchaToken(null);
       setCaptchaResetKey((current) => current + 1);
@@ -209,27 +207,6 @@ export default function Home() {
   const changeTheme = useCallback((value: ColorTheme) => {
     setTheme(value);
     if (account) void applyPreferences({ theme: value });
-  }, [account, applyPreferences]);
-
-  const changeLanguage = useCallback((value: SupportedLanguage) => {
-    setLanguage(value);
-    setAnalysisLanguage(value);
-    setPreferences((current) => ({
-      ...current,
-      uiLanguage: value,
-      analysisLanguage: value,
-    }));
-    if (account) {
-      setLanguageSaving(true);
-      void applyPreferences({ uiLanguage: value, analysisLanguage: value })
-        .catch(() => {
-          // Keep the requested language active for this session if saving is temporarily unavailable.
-        })
-        .finally(() => setLanguageSaving(false));
-    }
-    setAnalysis(null);
-    setAnalysisError(null);
-    setShowResult(false);
   }, [account, applyPreferences]);
 
   useEffect(() => {
@@ -512,10 +489,16 @@ export default function Home() {
                 <button
                   className={analysisLanguage === item.code ? "active" : ""}
                   key={item.code}
-                  onClick={() => changeLanguage(item.code)}
+                  onClick={() => {
+                    setAnalysisLanguage(item.code);
+                    if (account) void applyPreferences({ analysisLanguage: item.code });
+                    setAnalysis(null);
+                    setAnalysisError(null);
+                    setShowResult(false);
+                  }}
                   type="button"
                   aria-pressed={analysisLanguage === item.code}
-                  disabled={isAnalyzing || languageSaving}
+                  disabled={isAnalyzing}
                 >
                   <span className="language-short">{item.short}</span>
                   <span>{item.label}</span>
