@@ -15,6 +15,7 @@ import { saveAnalysisToHistory, type AnalysisHistoryItem } from "./analysis-hist
 import { HistoryPanel } from "./history-panel";
 import { getAccessToken, type SupabaseAccount } from "./supabase-auth";
 import { TurnstileWidget } from "./turnstile";
+import { ReminderCenter } from "./reminder-center";
 
 const languages = [
   { code: "ru", label: "Русский", short: "RU" },
@@ -366,7 +367,7 @@ export default function Home() {
 
       {showResult && analysis ? (
         <AnalysisResultView result={analysis} onRestart={resetAnalysis} t={t} locale={language}
-          account={account} onSave={() => void persistAnalysisHistory(analysis, inputMode, language)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
+          account={account} analysisId={savedHistoryId} onSave={() => void persistAnalysisHistory(analysis, inputMode, language)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : (
         <>
       <section className="hero" id="top">
@@ -725,6 +726,7 @@ function AnalysisResultView({
   t,
   locale,
   account,
+  analysisId,
   onSave,
   saving,
   saved,
@@ -736,6 +738,7 @@ function AnalysisResultView({
   t: UiCopy;
   locale: SupportedLanguage;
   account: SupabaseAccount | null;
+  analysisId: string | null;
   onSave: () => void;
   saving: boolean;
   saved: boolean;
@@ -806,6 +809,8 @@ function AnalysisResultView({
           <p>{primaryDeadline?.dateText ? `${t.linkedDeadline}: ${primaryDeadline.dateText}` : t.ambiguousContact}</p>
         </div>
       </article>
+
+      {account && <ReminderCenter key={analysisId ?? `${result.summary}:${result.outputLanguage}`} result={result} analysisId={analysisId} locale={locale} />}
 
       <div className="result-columns">
         <div className="result-main">

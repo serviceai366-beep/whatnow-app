@@ -121,12 +121,17 @@ Rules:
 - If information is ambiguous, use status "unclear" and explain it in uncertainties.
 - Every important fact should reference one or more evidence IDs. Evidence quotes must be short, exact excerpts from the document, with a page or visible location when possible.
 - normalizedDate must be YYYY-MM-DD only when the full date is certain; otherwise use null and preserve the original date text.
+- sourceLanguage is the primary language of the source document: ru, lv, en, or unknown when it cannot be determined confidently.
+- Add an events item only for an appointment, meeting, deadline, payment date, or other concrete dated event supported by the document. Use stable IDs event_1, event_2, and so on in document order.
+- For every event, localDate must be YYYY-MM-DD only when the complete calendar date is certain. localTime must be HH:mm only when an exact time is printed or stated. Never invent a default time.
+- documentTimeZone must be an IANA time-zone name only when the document explicitly identifies that zone or an unambiguous UTC offset. Do not infer a time zone merely from the sender's country or language.
+- If a date or time is ambiguous, preserve the original wording in dateText, use null for the uncertain normalized field, and describe the issue in uncertainties.
 - suggestedReply must be null unless a reply is actually needed or would clearly help. Never claim that sending it has legal effect.
 - Mention unreadable or missing parts and poor image quality in uncertainties.
 - For legal, medical, financial, employment, insurance, banking, or government documents, include a clear informational-only warning in safetyNotice.
 - Do not evaluate authenticity or legality unless the document itself provides sufficient evidence.
 - Keep the action plan concrete and ordered. Do not add actions unsupported by the document except clearly labeled verification steps.
-- outputLanguage must be "${language}" and schemaVersion must be "1.0".`;
+- outputLanguage must be "${language}" and schemaVersion must be "1.1".`;
 }
 
 function extractOutputText(payload: unknown): string | null {

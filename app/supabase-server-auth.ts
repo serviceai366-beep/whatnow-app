@@ -6,7 +6,7 @@ export type SupabaseAuthResult =
   | { ok: true; user: VerifiedSupabaseUser }
   | { ok: false; code: "authentication_required" | "authentication_invalid" | "authentication_unavailable"; status: 401 | 503 };
 
-function bearerToken(request: Request): string | null {
+export function requestBearerToken(request: Request): string | null {
   const header = request.headers.get("authorization") ?? "";
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(header);
   if (!match || match[1].length > 4096) return null;
@@ -17,7 +17,7 @@ export async function verifySupabaseRequest(
   request: Request,
   fetchImpl: typeof fetch = fetch,
 ): Promise<SupabaseAuthResult> {
-  const token = bearerToken(request);
+  const token = requestBearerToken(request);
   if (!token) return { ok: false, code: "authentication_required", status: 401 };
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     return { ok: false, code: "authentication_unavailable", status: 503 };

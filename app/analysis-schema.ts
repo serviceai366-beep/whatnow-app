@@ -1,6 +1,7 @@
 export const supportedLanguages = ["ru", "lv", "en"] as const;
 
 export type SupportedLanguage = (typeof supportedLanguages)[number];
+export type SourceLanguage = SupportedLanguage | "unknown";
 export type FindingStatus = "found" | "not_found" | "unclear";
 export type Confidence = "low" | "medium" | "high";
 export type Basis = "fact" | "inference";
@@ -23,6 +24,21 @@ export type Deadline = {
   basis: Basis;
 };
 
+export type DocumentEvent = {
+  id: string;
+  title: string;
+  kind: "appointment" | "meeting" | "deadline" | "payment" | "other";
+  dateText: string | null;
+  localDate: string | null;
+  localTime: string | null;
+  documentTimeZone: string | null;
+  location: string | null;
+  status: FindingStatus;
+  evidenceIds: string[];
+  confidence: Confidence;
+  basis: Basis;
+};
+
 export type ActionStep = {
   step: number;
   action: string;
@@ -39,13 +55,15 @@ export type Evidence = {
 };
 
 export type AnalysisResult = {
-  schemaVersion: "1.0";
+  schemaVersion: "1.0" | "1.1";
   outputLanguage: SupportedLanguage;
+  sourceLanguage?: SourceLanguage;
   documentType: Finding;
   sender: Finding;
   summary: string;
   requiredActions: Finding[];
   deadlines: Deadline[];
+  events?: DocumentEvent[];
   requiredDocuments: Finding[];
   consequencesOfInaction: Finding[];
   actionPlan: ActionStep[];
@@ -78,8 +96,9 @@ const findingSchema = {
 export const documentAnalysisJsonSchema = {
   type: "object",
   properties: {
-    schemaVersion: { type: "string", enum: ["1.0"] },
+    schemaVersion: { type: "string", enum: ["1.1"] },
     outputLanguage: { type: "string", enum: supportedLanguages },
+    sourceLanguage: { type: "string", enum: [...supportedLanguages, "unknown"] },
     documentType: findingSchema,
     sender: findingSchema,
     summary: { type: "string" },
@@ -98,6 +117,28 @@ export const documentAnalysisJsonSchema = {
           basis: basisSchema,
         },
         required: ["dateText", "normalizedDate", "meaning", "status", "evidenceIds", "confidence", "basis"],
+        additionalProperties: false,
+      },
+    },
+    events: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", pattern: "^event_[1-9][0-9]*$" },
+          title: { type: "string" },
+          kind: { type: "string", enum: ["appointment", "meeting", "deadline", "payment", "other"] },
+          dateText: { type: ["string", "null"] },
+          localDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+          localTime: { type: ["string", "null"], pattern: "^[0-9]{2}:[0-9]{2}$" },
+          documentTimeZone: { type: ["string", "null"] },
+          location: { type: ["string", "null"] },
+          status: statusSchema,
+          evidenceIds: evidenceIdsSchema,
+          confidence: confidenceSchema,
+          basis: basisSchema,
+        },
+        required: ["id", "title", "kind", "dateText", "localDate", "localTime", "documentTimeZone", "location", "status", "evidenceIds", "confidence", "basis"],
         additionalProperties: false,
       },
     },
@@ -141,11 +182,13 @@ export const documentAnalysisJsonSchema = {
   required: [
     "schemaVersion",
     "outputLanguage",
+    "sourceLanguage",
     "documentType",
     "sender",
     "summary",
     "requiredActions",
     "deadlines",
+    "events",
     "requiredDocuments",
     "consequencesOfInaction",
     "actionPlan",
@@ -203,6 +246,28 @@ function isDeadline(value: unknown): value is Deadline {
   );
 }
 
+function isSourceLanguage(value: unknown): value is SourceLanguage {
+  return value === "unknown" || supportedLanguages.includes(value as SupportedLanguage);
+}
+
+function isDocumentEvent(value: unknown): value is DocumentEvent {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string" && /^event_[1-9][0-9]*$/.test(value.id) &&
+    typeof value.title === "string" &&
+    (value.kind === "appointment" || value.kind === "meeting" || value.kind === "deadline" || value.kind === "payment" || value.kind === "other") &&
+    (typeof value.dateText === "string" || value.dateText === null) &&
+    (typeof value.localDate === "string" || value.localDate === null) &&
+    (typeof value.localTime === "string" || value.localTime === null) &&
+    (typeof value.documentTimeZone === "string" || value.documentTimeZone === null) &&
+    (typeof value.location === "string" || value.location === null) &&
+    isStatus(value.status) &&
+    isStringArray(value.evidenceIds) &&
+    isConfidence(value.confidence) &&
+    isBasis(value.basis)
+  );
+}
+
 function isActionStep(value: unknown): value is ActionStep {
   if (!isRecord(value)) return false;
   return (
@@ -227,8 +292,12 @@ function isEvidence(value: unknown): value is Evidence {
 
 export function validateAnalysisResult(value: unknown): value is AnalysisResult {
   if (!isRecord(value)) return false;
+  const isLegacy = value.schemaVersion === "1.0";
+  const hasEventData = isSourceLanguage(value.sourceLanguage)
+    && Array.isArray(value.events) && value.events.every(isDocumentEvent);
   return (
-    value.schemaVersion === "1.0" &&
+    (isLegacy || value.schemaVersion === "1.1") &&
+    (isLegacy || hasEventData) &&
     supportedLanguages.includes(value.outputLanguage as SupportedLanguage) &&
     isFinding(value.documentType) &&
     isFinding(value.sender) &&

@@ -14,6 +14,7 @@ import {
 } from "./supabase-auth";
 import { TurnstileWidget } from "./turnstile";
 import type { QuotaSnapshot, WindowQuota } from "./quota-types";
+import { ReminderProfileSection } from "./reminder-profile-section";
 
 export type ColorTheme = "light" | "dark";
 
@@ -222,6 +223,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   ) : <p>{t.quotaUnavailable}</p>}
                   {quotaError && quota && <p className="quota-stale">{t.quotaUnavailable}</p>}
                 </section>
+                <ReminderProfileSection locale={locale} />
                 <div className="profile-actions" aria-label={t.accountActions}>
                   <button type="button" className="account-history" onClick={() => { onOpenChange(false); onOpenHistory?.(); }}>{t.history}</button>
                   <button type="button" className="account-sign-out" onClick={async () => {
