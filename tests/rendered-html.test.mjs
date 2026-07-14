@@ -20,6 +20,8 @@ test("server-renders the WhatNow prototype", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
+  assert.equal(response.headers.get("pragma"), "no-cache");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.match(response.headers.get("permissions-policy") ?? "", /camera=\(\)/);
   assert.match(response.headers.get("content-security-policy") ?? "", /object-src 'none'/);

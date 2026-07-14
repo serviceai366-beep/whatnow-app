@@ -42,6 +42,14 @@ const worker = {
 
     const response = await handler.fetch(request, env, ctx);
     const headers = new Headers(response.headers);
+    const contentType = headers.get("Content-Type")?.toLowerCase() ?? "";
+    if (request.method === "GET" && contentType.startsWith("text/html")) {
+      // Sites deployments replace hashed client assets. A cached HTML shell can
+      // otherwise point at files from the previous release and lose hydration.
+      headers.set("Cache-Control", "no-store, max-age=0");
+      headers.set("Pragma", "no-cache");
+      headers.set("Expires", "0");
+    }
     headers.set("Content-Security-Policy", [
       "default-src 'self'",
       "base-uri 'self'",
