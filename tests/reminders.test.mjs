@@ -73,15 +73,18 @@ test("dispatcher restricts pilot delivery and prevents duplicate email sends", a
 });
 
 test("result UI requires one-time consent and uses 24 hours as the automatic default", async () => {
-  const [center, profile, copy] = await Promise.all([
-    readFile(new URL("../app/reminder-center.tsx", import.meta.url), "utf8"),
+  const [suggestions, calendar, profile, copy, profileTypes] = await Promise.all([
+    readFile(new URL("../app/event-suggestions.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/calendar-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/reminder-profile-section.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/reminder-copy.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile-types.ts", import.meta.url), "utf8"),
   ]);
-  assert.match(center, /consentChecked/);
-  assert.match(center, /scheduleEvent\(candidate, 1_440, true\)/);
-  assert.match(center, /existingFor\(event\)/);
-  assert.match(center, /event\.localDate \|\| !event\.localTime/);
+  assert.match(suggestions, /consentChecked/);
+  assert.match(suggestions, /updateReminderState\(\{ action: "preference", consent: true/);
+  assert.match(calendar, /consentChecked/);
+  assert.match(calendar, /updateReminderState\(\{ action: "preference", consent: true/);
+  assert.match(profileTypes, /defaultReminderMinutes: 1_440/);
   assert.match(profile, /updatePreference\(false\)/);
   assert.match(profile, /action: "cancel"/);
   for (const phrase of ["Не пропустите важную дату", "Nepalaidiet garām svarīgu datumu", "Do not miss an important date"]) {

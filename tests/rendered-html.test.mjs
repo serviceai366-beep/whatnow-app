@@ -29,12 +29,12 @@ test("server-renders the WhatNow prototype", async () => {
   assert.match(response.headers.get("strict-transport-security") ?? "", /max-age=31536000/);
 
   const html = await response.text();
-  assert.match(html, /<title>WhatNow\? — поймите, что делать дальше<\/title>/i);
-  assert.match(html, /Не просто переводи документ/);
-  assert.match(html, /Проанализировать документ/);
-  assert.match(html, /PDF, фото, TXT, RTF, DOCX или ODT/);
-  assert.match(html, /Как обрабатывается документ/);
-  assert.match(html, /не заменяет юриста, врача/);
+  assert.match(html, /<title>WhatNow\? — know what to do next<\/title>/i);
+  assert.match(html, /Don’t just translate the document/);
+  assert.match(html, /Analyze document/);
+  assert.match(html, /PDF, photo, TXT, RTF, DOCX, or ODT/);
+  assert.match(html, /How the document is handled/);
+  assert.match(html, /does not replace a lawyer, doctor/);
   assert.match(html, /type="file"/);
   assert.match(html, /accept="application\/pdf,image\/jpeg,image\/png,image\/webp,text\/plain/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
@@ -54,7 +54,7 @@ test("removes the disposable starter preview", async () => {
   assert.match(page, /t\.importantFragments/);
   assert.match(page, /t\.copyReply/);
   assert.match(page, /t\.analyzeAnother/);
-  assert.match(layout, /lang="ru"/);
+  assert.match(layout, /lang="en"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview", templateRoot)));
 });

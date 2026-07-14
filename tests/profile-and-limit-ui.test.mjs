@@ -23,9 +23,9 @@ test("analysis is gated by a verified account and sends the fresh bearer token",
 
 test("successful analyses are saved automatically and the UI offers a retry on failure", async () => {
   const [page] = await files;
-  assert.match(page, /void persistAnalysisHistory\(payload\.result, inputMode, language, accessToken\)/);
-  assert.match(page, /Автоматически сохранено в истории/);
-  assert.match(page, /Повторить сохранение/);
+  assert.match(page, /void persistAnalysisHistory\(payload\.result, inputMode, analysisLanguage, accessToken\)/);
+  assert.match(page, /Automatically saved to history/);
+  assert.match(page, /Retry saving/);
 });
 
 test("switching accounts clears cached and visible analysis data", async () => {

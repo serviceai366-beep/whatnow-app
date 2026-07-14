@@ -15,13 +15,24 @@ import { saveAnalysisToHistory, type AnalysisHistoryItem } from "./analysis-hist
 import { HistoryPanel } from "./history-panel";
 import { getAccessToken, type SupabaseAccount } from "./supabase-auth";
 import { TurnstileWidget } from "./turnstile";
-import { ReminderCenter } from "./reminder-center";
+import { EventSuggestions } from "./event-suggestions";
+import { CalendarPanel } from "./calendar-panel";
+import { UserHub } from "./user-hub";
+import { loadUserProfile, updateUserProfile } from "./profile-client";
+import { DEFAULT_PROFILE_PREFERENCES, type UserProfilePatch, type UserProfilePreferences } from "./profile-types";
+import { FileClientError, uploadStoredFile } from "./file-client";
 
 const languages = [
+  { code: "en", label: "English", short: "EN" },
   { code: "ru", label: "Русский", short: "RU" },
   { code: "lv", label: "Latviešu", short: "LV" },
-  { code: "en", label: "English", short: "EN" },
 ] as const;
+
+const workspaceCopy = {
+  en: { calendar: "Calendar", space: "My space", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
+  ru: { calendar: "Календарь", space: "Моё пространство", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось." },
+  lv: { calendar: "Kalendārs", space: "Mana telpa", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt." },
+} as const;
 
 const historyCopy = {
   ru: { save: "Повторить сохранение", saving: "Сохраняем в историю…", saved: "Автоматически сохранено в истории", signIn: "Войдите, чтобы последние 10 разборов сохранялись в аккаунте.", error: "Не удалось сохранить разбор. Нажмите, чтобы повторить." },
@@ -75,8 +86,15 @@ function getInitialTheme(): ColorTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
+function resolvedProfileTheme(preferences: UserProfilePreferences): ColorTheme {
+  if (preferences.theme === "light" || preferences.theme === "dark") return preferences.theme;
+  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export default function Home() {
-  const [language, setLanguage] = useState<SupportedLanguage>("ru");
+  const [language, setLanguage] = useState<SupportedLanguage>("en");
+  const [analysisLanguage, setAnalysisLanguage] = useState<SupportedLanguage>("en");
+  const [preferences, setPreferences] = useState<UserProfilePreferences>({ ...DEFAULT_PROFILE_PREFERENCES });
   const [inputMode, setInputMode] = useState<"file" | "text">("file");
   const [showResult, setShowResult] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -99,11 +117,15 @@ export default function Home() {
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [quotaRefreshKey, setQuotaRefreshKey] = useState(0);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [userHubOpen, setUserHubOpen] = useState(false);
+  const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
   const accountIdRef = useRef<string | null | undefined>(undefined);
   const t = translations[language];
   const h = historyCopy[language];
+  const w = workspaceCopy[language];
 
   const handleAccountChange = useCallback((value: SupabaseAccount | null) => {
     const nextId = value?.id ?? null;
@@ -120,6 +142,9 @@ export default function Home() {
       setSavingHistory(false);
       setHistoryError(null);
       setLimitNotice(null);
+      setCalendarOpen(false);
+      setUserHubOpen(false);
+      setFileSaveNotice(null);
       setCaptchaToken(null);
       setCaptchaResetKey((current) => current + 1);
       setCaptchaError(null);
@@ -127,7 +152,12 @@ export default function Home() {
     }
     accountIdRef.current = nextId;
     setAccount(value);
-    if (!value) setHistoryOpen(false);
+    if (!value) {
+      setHistoryOpen(false);
+      setLanguage("en");
+      setAnalysisLanguage("en");
+      setPreferences({ ...DEFAULT_PROFILE_PREFERENCES });
+    }
   }, []);
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
 
@@ -136,10 +166,48 @@ export default function Home() {
   }, [language]);
 
   useEffect(() => {
+    if (!account) return;
+    let active = true;
+    loadUserProfile().then((profile) => {
+      if (!active || accountIdRef.current !== account.id) return;
+      setPreferences(profile);
+      setLanguage(profile.uiLanguage);
+      setAnalysisLanguage(profile.analysisLanguage);
+      setTheme(resolvedProfileTheme(profile));
+    }).catch(() => {
+      if (!active || accountIdRef.current !== account.id) return;
+      setPreferences({ ...DEFAULT_PROFILE_PREFERENCES });
+      setLanguage("en");
+      setAnalysisLanguage("en");
+    });
+    return () => { active = false; };
+  }, [account]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     try { window.localStorage.setItem("whatnow.theme", theme); } catch { /* Theme persistence is optional. */ }
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.fontScale = preferences.fontScale;
+    document.documentElement.dataset.density = preferences.density;
+    document.documentElement.dataset.reducedMotion = preferences.reducedMotion ? "true" : "false";
+  }, [preferences.density, preferences.fontScale, preferences.reducedMotion]);
+
+  const applyPreferences = useCallback(async (patch: UserProfilePatch) => {
+    if (!account) return;
+    const next = await updateUserProfile(patch);
+    setPreferences(next);
+    setLanguage(next.uiLanguage);
+    setAnalysisLanguage(next.analysisLanguage);
+    setTheme(resolvedProfileTheme(next));
+  }, [account]);
+
+  const changeTheme = useCallback((value: ColorTheme) => {
+    setTheme(value);
+    if (account) void applyPreferences({ theme: value });
+  }, [account, applyPreferences]);
 
   useEffect(() => {
     return () => {
@@ -198,20 +266,24 @@ export default function Home() {
     sourceKind: "file" | "text",
     outputLanguage: SupportedLanguage,
     accessToken?: string,
-  ) => {
-    if (!account || savingHistory) return;
+  ): Promise<string | null> => {
+    if (!account || savingHistory) return null;
     const accountId = account.id;
     setSavingHistory(true);
     setHistoryError(null);
     try {
       const title = result.documentType.value || result.summary || "WhatNow?";
       const item = await saveAnalysisToHistory({ title, sourceKind, language: outputLanguage, result, accessToken });
-      if (accountIdRef.current === accountId) setSavedHistoryId(item.id);
+      if (accountIdRef.current === accountId) {
+        setSavedHistoryId(item.id);
+        return item.id;
+      }
     } catch {
       if (accountIdRef.current === accountId) setHistoryError(historyCopy[outputLanguage].error);
     } finally {
       if (accountIdRef.current === accountId) setSavingHistory(false);
     }
+    return null;
   };
 
   const analyzeDocument = async () => {
@@ -241,8 +313,8 @@ export default function Home() {
     setLimitNotice(null);
 
     const fingerprint = inputMode === "file"
-      ? `${language}:file:${selectedDocument!.file.name}:${selectedDocument!.file.size}:${selectedDocument!.file.lastModified}`
-      : `${language}:text:${fingerprintText(documentText.trim())}`;
+      ? `${analysisLanguage}:file:${selectedDocument!.file.name}:${selectedDocument!.file.size}:${selectedDocument!.file.lastModified}`
+      : `${analysisLanguage}:text:${fingerprintText(documentText.trim())}`;
 
     if (lastAnalysisRef.current?.fingerprint === fingerprint) {
       setAnalysis(lastAnalysisRef.current.result);
@@ -252,7 +324,7 @@ export default function Home() {
     }
 
     const formData = new FormData();
-    formData.set("language", language);
+    formData.set("language", analysisLanguage);
     formData.set("mode", inputMode);
     formData.set("turnstileToken", captchaToken);
     if (inputMode === "file") formData.set("file", selectedDocument!.file);
@@ -307,7 +379,16 @@ export default function Home() {
       setSavedHistoryId(null);
       setShowResult(true);
       scrollToResult();
-      void persistAnalysisHistory(payload.result, inputMode, language, accessToken);
+      void persistAnalysisHistory(payload.result, inputMode, analysisLanguage, accessToken);
+      if (inputMode === "file" && selectedDocument && preferences.autoSaveFiles) {
+        const file = selectedDocument.file;
+        void uploadStoredFile(file).then((savedFile) => {
+          setFileSaveNotice({ kind: "success", text: savedFile.deduplicated ? w.fileDuplicate : w.fileSaved });
+        }).catch((saveError) => {
+          const limited = saveError instanceof FileClientError && (saveError.code === "file_count_limit" || saveError.code === "file_bytes_limit");
+          setFileSaveNotice({ kind: "warning", text: limited ? w.fileLimit : w.fileSaveError });
+        });
+      }
     } catch (error) {
       setAnalysisError(
         error instanceof Error && error.name === "AbortError"
@@ -334,11 +415,12 @@ export default function Home() {
     setShowResult(false);
     setSavedHistoryId(null);
     setHistoryError(null);
+    setFileSaveNotice(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const openHistoryItem = (item: AnalysisHistoryItem) => {
-    setLanguage(item.language);
+    setAnalysisLanguage(item.language);
     setInputMode(item.sourceKind);
     setAnalysis(item.result);
     setShowResult(true);
@@ -346,6 +428,13 @@ export default function Home() {
     setHistoryError(null);
     setHistoryOpen(false);
     scrollToResult();
+  };
+
+  const useStoredFile = (file: File) => {
+    setInputMode("file");
+    selectDocument(file);
+    setUserHubOpen(false);
+    window.setTimeout(() => document.getElementById("analyzer-title")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   };
 
   return (
@@ -357,17 +446,20 @@ export default function Home() {
         </a>
         <div className="header-actions">
           <span className="prototype-badge">{t.badge}</span>
+          {account && <button className="header-tool-button" type="button" onClick={() => setCalendarOpen(true)}><span aria-hidden="true">□</span>{w.calendar}</button>}
+          {account && <button className="header-tool-button" type="button" onClick={() => setUserHubOpen(true)}><span aria-hidden="true">◇</span>{w.space}</button>}
           <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
-            onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={setTheme} open={authOpen} onOpenChange={setAuthOpen}
+            onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={changeTheme} open={authOpen} onOpenChange={setAuthOpen}
             quotaRefreshKey={quotaRefreshKey} />
         </div>
       </header>
 
       {limitNotice && <LimitToast key={`${limitNotice.scope}:${limitNotice.observedAt}`} data={limitNotice} locale={language} onClose={() => setLimitNotice(null)} />}
+      {fileSaveNotice && <div className={`storage-toast ${fileSaveNotice.kind}`} role="status"><span>{fileSaveNotice.kind === "success" ? "✓" : "!"}</span><p>{fileSaveNotice.text}</p><button type="button" aria-label="Close" onClick={() => setFileSaveNotice(null)}>×</button></div>}
 
       {showResult && analysis ? (
         <AnalysisResultView result={analysis} onRestart={resetAnalysis} t={t} locale={language}
-          account={account} analysisId={savedHistoryId} onSave={() => void persistAnalysisHistory(analysis, inputMode, language)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
+          account={account} analysisId={savedHistoryId} preferences={preferences} onSave={() => void persistAnalysisHistory(analysis, inputMode, analysisLanguage)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : (
         <>
       <section className="hero" id="top">
@@ -395,16 +487,17 @@ export default function Home() {
             <div className="language-switcher">
               {languages.map((item) => (
                 <button
-                  className={language === item.code ? "active" : ""}
+                  className={analysisLanguage === item.code ? "active" : ""}
                   key={item.code}
                   onClick={() => {
-                    setLanguage(item.code);
+                    setAnalysisLanguage(item.code);
+                    if (account) void applyPreferences({ analysisLanguage: item.code });
                     setAnalysis(null);
                     setAnalysisError(null);
                     setShowResult(false);
                   }}
                   type="button"
-                  aria-pressed={language === item.code}
+                  aria-pressed={analysisLanguage === item.code}
                   disabled={isAnalyzing}
                 >
                   <span className="language-short">{item.short}</span>
@@ -568,6 +661,8 @@ export default function Home() {
         </>
       )}
       {historyOpen && account && <HistoryPanel locale={language} onClose={closeHistory} onOpen={openHistoryItem} />}
+      {account && <CalendarPanel open={calendarOpen} locale={language} preferences={preferences} onClose={() => setCalendarOpen(false)} />}
+      {account && <UserHub open={userHubOpen} locale={language} preferences={preferences} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
 
       <section className="privacy-strip">
         <div><span className="privacy-icon" aria-hidden="true">✓</span><p><strong>{t.documentsNotPublished}</strong><br />{t.documentsNotPublishedText}</p></div>
@@ -727,6 +822,7 @@ function AnalysisResultView({
   locale,
   account,
   analysisId,
+  preferences,
   onSave,
   saving,
   saved,
@@ -739,6 +835,7 @@ function AnalysisResultView({
   locale: SupportedLanguage;
   account: SupabaseAccount | null;
   analysisId: string | null;
+  preferences: UserProfilePreferences;
   onSave: () => void;
   saving: boolean;
   saved: boolean;
@@ -810,7 +907,7 @@ function AnalysisResultView({
         </div>
       </article>
 
-      {account && <ReminderCenter key={analysisId ?? `${result.summary}:${result.outputLanguage}`} result={result} analysisId={analysisId} locale={locale} />}
+      {account && <EventSuggestions key={analysisId ?? `${result.summary}:${result.outputLanguage}`} result={result} analysisId={analysisId} locale={locale} preferences={preferences} />}
 
       <div className="result-columns">
         <div className="result-main">

@@ -127,27 +127,33 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   }, [onAccountChange]);
 
   useEffect(() => {
-    if (!account) {
-      setQuota(null);
-      setQuotaLoading(false);
-      setQuotaError(false);
-      return;
-    }
     let active = true;
-    setQuotaLoading(true);
-    setQuotaError(false);
-    (async () => {
-      const accessToken = await getAccessToken();
-      if (!accessToken) throw new Error("Missing access token");
-      const response = await fetch("/api/quota", {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${accessToken}` },
+    if (!account) {
+      queueMicrotask(() => {
+        if (!active) return;
+        setQuota(null);
+        setQuotaLoading(false);
+        setQuotaError(false);
       });
-      const payload = await response.json().catch(() => null) as { quota?: QuotaSnapshot } | null;
-      if (!response.ok || !payload?.quota) throw new Error("Quota unavailable");
-      if (active) setQuota(payload.quota);
-    })().catch(() => { if (active) setQuotaError(true); })
-      .finally(() => { if (active) setQuotaLoading(false); });
+      return () => { active = false; };
+    }
+    queueMicrotask(() => {
+      if (!active) return;
+      setQuotaLoading(true);
+      setQuotaError(false);
+      (async () => {
+        const accessToken = await getAccessToken();
+        if (!accessToken) throw new Error("Missing access token");
+        const response = await fetch("/api/quota", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const payload = await response.json().catch(() => null) as { quota?: QuotaSnapshot } | null;
+        if (!response.ok || !payload?.quota) throw new Error("Quota unavailable");
+        if (active) setQuota(payload.quota);
+      })().catch(() => { if (active) setQuotaError(true); })
+        .finally(() => { if (active) setQuotaLoading(false); });
+    });
     return () => { active = false; };
   }, [account, quotaRefreshKey]);
 
