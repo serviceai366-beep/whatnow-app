@@ -23,6 +23,7 @@ import {
   type QuotaDecision,
 } from "../../usage-control.ts";
 import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { verifyTurnstileToken } from "../../turnstile-server.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_REQUEST_TIMEOUT_MS = 45_000;
@@ -41,6 +42,9 @@ type ApiErrorCode =
   | "authentication_required"
   | "authentication_invalid"
   | "authentication_unavailable"
+  | "captcha_required"
+  | "captcha_failed"
+  | "captcha_unavailable"
   | "invalid_file_content"
   | "not_configured"
   | "user_limit_reached"
@@ -293,6 +297,31 @@ export async function POST(request: Request): Promise<Response> {
         file_data: `data:${canonicalMimeType};base64,${base64}`,
       });
     }
+  }
+
+  const captcha = await verifyTurnstileToken({
+    request,
+    token: formData.get("turnstileToken"),
+    action: "analyze",
+  });
+  if (!captcha.ok) {
+    if (captcha.code === "captcha_unavailable") {
+      return errorResponse(
+        captcha.code,
+        "Проверка защиты от ботов временно недоступна. Попробуйте через минуту.",
+        503,
+        true,
+        { "Retry-After": "60" },
+      );
+    }
+    return errorResponse(
+      captcha.code,
+      captcha.code === "captcha_required"
+        ? "Завершите проверку защиты от ботов перед анализом."
+        : "Проверка защиты от ботов не пройдена. Обновите её и попробуйте снова.",
+      400,
+      true,
+    );
   }
 
   let quota;

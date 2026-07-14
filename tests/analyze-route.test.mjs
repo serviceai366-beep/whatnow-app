@@ -14,6 +14,7 @@ function requestWithText(language = "ru", text = "Официальное уве�
   formData.set("language", language);
   formData.set("mode", "text");
   formData.set("text", text);
+  if (!options.withoutCaptcha) formData.set("turnstileToken", options.captchaToken ?? "test-turnstile-token");
   requestSequence += 1;
   const userId = options.userId ?? `route-user-${requestSequence}`;
   const headers = {
@@ -30,6 +31,7 @@ function requestWithFile(file, options = {}) {
   formData.set("language", options.language ?? "ru");
   formData.set("mode", "file");
   formData.set("file", file);
+  if (!options.withoutCaptcha) formData.set("turnstileToken", options.captchaToken ?? "test-turnstile-token");
   requestSequence += 1;
   const userId = options.userId ?? `file-user-${requestSequence}`;
   return new Request("http://localhost/api/analyze", {
@@ -46,7 +48,7 @@ function successfulOpenAI(language = "ru") {
   });
 }
 
-function routedFetch(openaiHandler, { authStatus = 200, authUser } = {}) {
+function routedFetch(openaiHandler, { authStatus = 200, authUser, captchaResponse } = {}) {
   return async (url, init = {}) => {
     const address = String(url);
     if (address.includes("/auth/v1/user")) {
@@ -60,17 +62,28 @@ function routedFetch(openaiHandler, { authStatus = 200, authUser } = {}) {
         is_anonymous: false,
       });
     }
+    if (address.includes("challenges.cloudflare.com/turnstile/v0/siteverify")) {
+      return Response.json(captchaResponse ?? { success: true, hostname: "localhost", action: "analyze" });
+    }
     return openaiHandler(url, init);
   };
 }
 
 async function withServerKey(callback) {
   const previousKey = process.env.OPENAI_API_KEY;
+  const previousCaptchaSecret = process.env.TURNSTILE_SECRET_KEY;
+  const previousCaptchaHostname = process.env.TURNSTILE_EXPECTED_HOSTNAME;
   process.env.OPENAI_API_KEY = "test-server-key";
+  process.env.TURNSTILE_SECRET_KEY = "test-turnstile-secret";
+  process.env.TURNSTILE_EXPECTED_HOSTNAME = "localhost";
   try { return await callback(); }
   finally {
     if (previousKey) process.env.OPENAI_API_KEY = previousKey;
     else delete process.env.OPENAI_API_KEY;
+    if (previousCaptchaSecret) process.env.TURNSTILE_SECRET_KEY = previousCaptchaSecret;
+    else delete process.env.TURNSTILE_SECRET_KEY;
+    if (previousCaptchaHostname) process.env.TURNSTILE_EXPECTED_HOSTNAME = previousCaptchaHostname;
+    else delete process.env.TURNSTILE_EXPECTED_HOSTNAME;
   }
 }
 
@@ -106,6 +119,25 @@ test("requires a verified Supabase account before OpenAI", async () => withServe
     const invalid = await POST(requestWithText());
     assert.equal(invalid.status, 401);
     assert.equal((await invalid.json()).error.code, "authentication_invalid");
+  } finally { globalThis.fetch = previousFetch; }
+}));
+
+test("requires a fresh server-validated Turnstile token before quota or OpenAI", async () => withServerKey(async () => {
+  const previousFetch = globalThis.fetch;
+  let openaiCalls = 0;
+  try {
+    globalThis.fetch = routedFetch(() => { openaiCalls += 1; return successfulOpenAI(); });
+    const missing = await POST(requestWithText("ru", "text", { withoutCaptcha: true }));
+    assert.equal(missing.status, 400);
+    assert.equal((await missing.json()).error.code, "captcha_required");
+
+    globalThis.fetch = routedFetch(() => { openaiCalls += 1; return successfulOpenAI(); }, {
+      captchaResponse: { success: false, hostname: "localhost", action: "analyze" },
+    });
+    const rejected = await POST(requestWithText());
+    assert.equal(rejected.status, 400);
+    assert.equal((await rejected.json()).error.code, "captcha_failed");
+    assert.equal(openaiCalls, 0);
   } finally { globalThis.fetch = previousFetch; }
 }));
 

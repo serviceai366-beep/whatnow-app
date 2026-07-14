@@ -17,6 +17,15 @@ test("analysis is gated by a verified account and sends the fresh bearer token",
   assert.match(page, /open=\{authOpen\} onOpenChange=\{setAuthOpen\}/);
   assert.match(widget, /open: boolean/);
   assert.match(widget, /onOpenChange: \(open: boolean\) => void/);
+  assert.match(page, /formData\.set\("turnstileToken", captchaToken\)/);
+  assert.match(page, /disabled=\{isAnalyzing \|\| !captchaToken\}/);
+});
+
+test("successful analyses are saved automatically and the UI offers a retry on failure", async () => {
+  const [page] = await files;
+  assert.match(page, /void persistAnalysisHistory\(payload\.result, inputMode, language, accessToken\)/);
+  assert.match(page, /Автоматически сохранено в истории/);
+  assert.match(page, /Повторить сохранение/);
 });
 
 test("switching accounts clears cached and visible analysis data", async () => {

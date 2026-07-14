@@ -3,6 +3,8 @@ import { validateAnalysisResult } from "./analysis-schema";
 import { getAccessToken } from "./supabase-auth";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-config";
 
+export const ANALYSIS_HISTORY_LIMIT = 10;
+
 export type AnalysisHistoryItem = {
   id: string;
   createdAt: string;
@@ -20,6 +22,8 @@ type HistoryRow = {
   language?: unknown;
   result?: unknown;
 };
+
+type HistoryIdRow = { id?: unknown };
 
 function isLanguage(value: unknown): value is SupportedLanguage {
   return value === "ru" || value === "lv" || value === "en";
@@ -45,8 +49,8 @@ function parseRow(row: HistoryRow): AnalysisHistoryItem | null {
   };
 }
 
-async function authenticatedRequest(path: string, init?: RequestInit): Promise<Response> {
-  const accessToken = await getAccessToken();
+async function authenticatedRequest(path: string, init?: RequestInit, suppliedAccessToken?: string): Promise<Response> {
+  const accessToken = suppliedAccessToken || await getAccessToken();
   if (!accessToken) throw new Error("not_authenticated");
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -59,9 +63,32 @@ async function authenticatedRequest(path: string, init?: RequestInit): Promise<R
   });
 }
 
-export async function listAnalysisHistory(): Promise<AnalysisHistoryItem[]> {
+async function trimAnalysisHistory(suppliedAccessToken?: string): Promise<void> {
   const response = await authenticatedRequest(
-    "document_analyses?select=id,created_at,title,source_kind,language,result&order=created_at.desc&limit=50",
+    `document_analyses?select=id&order=created_at.desc,id.desc&offset=${ANALYSIS_HISTORY_LIMIT}&limit=100`,
+    undefined,
+    suppliedAccessToken,
+  );
+  if (!response.ok) throw new Error("history_trim_load_failed");
+
+  const rows = await response.json() as HistoryIdRow[];
+  const ids = Array.isArray(rows)
+    ? rows.map((row) => row.id).filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id))
+    : [];
+  if (ids.length === 0) return;
+
+  const deletion = await authenticatedRequest(
+    `document_analyses?id=in.(${ids.join(",")})`,
+    { method: "DELETE" },
+    suppliedAccessToken,
+  );
+  if (!deletion.ok) throw new Error("history_trim_delete_failed");
+}
+
+export async function listAnalysisHistory(): Promise<AnalysisHistoryItem[]> {
+  await trimAnalysisHistory();
+  const response = await authenticatedRequest(
+    `document_analyses?select=id,created_at,title,source_kind,language,result&order=created_at.desc,id.desc&limit=${ANALYSIS_HISTORY_LIMIT}`,
   );
   if (!response.ok) throw new Error("history_load_failed");
   const rows = await response.json() as HistoryRow[];
@@ -73,7 +100,9 @@ export async function saveAnalysisToHistory(input: {
   sourceKind: "file" | "text";
   language: SupportedLanguage;
   result: AnalysisResult;
+  accessToken?: string;
 }): Promise<AnalysisHistoryItem> {
+  await trimAnalysisHistory(input.accessToken);
   const response = await authenticatedRequest("document_analyses?select=id,created_at,title,source_kind,language,result", {
     method: "POST",
     headers: { Prefer: "return=representation" },
@@ -83,18 +112,24 @@ export async function saveAnalysisToHistory(input: {
       language: input.language,
       result: input.result,
     }),
-  });
+  }, input.accessToken);
   if (!response.ok) throw new Error("history_save_failed");
   const rows = await response.json() as HistoryRow[];
   const item = Array.isArray(rows) ? parseRow(rows[0] ?? {}) : null;
   if (!item) throw new Error("history_invalid_response");
+  try {
+    await trimAnalysisHistory(input.accessToken);
+  } catch (error) {
+    await deleteAnalysisFromHistory(item.id, input.accessToken).catch(() => undefined);
+    throw error;
+  }
   return item;
 }
 
-export async function deleteAnalysisFromHistory(id: string): Promise<void> {
+export async function deleteAnalysisFromHistory(id: string, suppliedAccessToken?: string): Promise<void> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("history_invalid_id");
   const response = await authenticatedRequest(`document_analyses?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
-  });
+  }, suppliedAccessToken);
   if (!response.ok) throw new Error("history_delete_failed");
 }

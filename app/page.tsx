@@ -14,6 +14,7 @@ import { AccountWidget, type ColorTheme } from "./account-widget";
 import { saveAnalysisToHistory, type AnalysisHistoryItem } from "./analysis-history";
 import { HistoryPanel } from "./history-panel";
 import { getAccessToken, type SupabaseAccount } from "./supabase-auth";
+import { TurnstileWidget } from "./turnstile";
 
 const languages = [
   { code: "ru", label: "Русский", short: "RU" },
@@ -22,9 +23,9 @@ const languages = [
 ] as const;
 
 const historyCopy = {
-  ru: { save: "Сохранить в историю", saving: "Сохраняем…", saved: "Сохранено в истории", signIn: "Войдите в аккаунт, чтобы сохранить этот разбор.", error: "Не удалось сохранить разбор. Попробуйте ещё раз." },
-  lv: { save: "Saglabāt vēsturē", saving: "Saglabājam…", saved: "Saglabāts vēsturē", signIn: "Pierakstieties, lai saglabātu šo analīzi.", error: "Neizdevās saglabāt analīzi. Mēģiniet vēlreiz." },
-  en: { save: "Save to history", saving: "Saving…", saved: "Saved to history", signIn: "Sign in to save this analysis.", error: "We could not save this analysis. Please try again." },
+  ru: { save: "Повторить сохранение", saving: "Сохраняем в историю…", saved: "Автоматически сохранено в истории", signIn: "Войдите, чтобы последние 10 разборов сохранялись в аккаунте.", error: "Не удалось сохранить разбор. Нажмите, чтобы повторить." },
+  lv: { save: "Mēģināt saglabāt vēlreiz", saving: "Saglabājam vēsturē…", saved: "Automātiski saglabāts vēsturē", signIn: "Pierakstieties, lai kontā saglabātu pēdējās 10 analīzes.", error: "Neizdevās saglabāt analīzi. Nospiediet, lai mēģinātu vēlreiz." },
+  en: { save: "Retry saving", saving: "Saving to history…", saved: "Automatically saved to history", signIn: "Sign in to keep your latest 10 analyses in your account.", error: "We could not save this analysis. Select retry to try again." },
 } as const;
 
 type LimitNoticeData = {
@@ -93,6 +94,9 @@ export default function Home() {
   const [theme, setTheme] = useState<ColorTheme>(getInitialTheme);
   const [authOpen, setAuthOpen] = useState(false);
   const [limitNotice, setLimitNotice] = useState<LimitNoticeData | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
   const accountIdRef = useRef<string | null | undefined>(undefined);
@@ -111,8 +115,12 @@ export default function Home() {
       setTextError(null);
       setAnalysisError(null);
       setSavedHistoryId(null);
+      setSavingHistory(false);
       setHistoryError(null);
       setLimitNotice(null);
+      setCaptchaToken(null);
+      setCaptchaResetKey((current) => current + 1);
+      setCaptchaError(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
     accountIdRef.current = nextId;
@@ -183,6 +191,27 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const persistAnalysisHistory = async (
+    result: AnalysisResult,
+    sourceKind: "file" | "text",
+    outputLanguage: SupportedLanguage,
+    accessToken?: string,
+  ) => {
+    if (!account || savingHistory) return;
+    const accountId = account.id;
+    setSavingHistory(true);
+    setHistoryError(null);
+    try {
+      const title = result.documentType.value || result.summary || "WhatNow?";
+      const item = await saveAnalysisToHistory({ title, sourceKind, language: outputLanguage, result, accessToken });
+      if (accountIdRef.current === accountId) setSavedHistoryId(item.id);
+    } catch {
+      if (accountIdRef.current === accountId) setHistoryError(historyCopy[outputLanguage].error);
+    } finally {
+      if (accountIdRef.current === accountId) setSavingHistory(false);
+    }
+  };
+
   const analyzeDocument = async () => {
     if (isAnalyzing) return;
     if (!account) {
@@ -197,6 +226,10 @@ export default function Home() {
 
     if (inputMode === "text" && !documentText.trim()) {
       setTextError(t.textMissing);
+      return;
+    }
+    if (!captchaToken) {
+      setCaptchaError(t.errorCaptchaRequired);
       return;
     }
 
@@ -219,6 +252,7 @@ export default function Home() {
     const formData = new FormData();
     formData.set("language", language);
     formData.set("mode", inputMode);
+    formData.set("turnstileToken", captchaToken);
     if (inputMode === "file") formData.set("file", selectedDocument!.file);
     else formData.set("text", documentText.trim());
 
@@ -268,6 +302,7 @@ export default function Home() {
       setSavedHistoryId(null);
       setShowResult(true);
       scrollToResult();
+      void persistAnalysisHistory(payload.result, inputMode, language, accessToken);
     } catch (error) {
       setAnalysisError(
         error instanceof Error && error.name === "AbortError"
@@ -279,6 +314,8 @@ export default function Home() {
     } finally {
       window.clearTimeout(timeout);
       setIsAnalyzing(false);
+      setCaptchaToken(null);
+      setCaptchaResetKey((current) => current + 1);
     }
   };
 
@@ -293,21 +330,6 @@ export default function Home() {
     setSavedHistoryId(null);
     setHistoryError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const saveCurrentAnalysis = async () => {
-    if (!analysis || !account || savingHistory || savedHistoryId) return;
-    setSavingHistory(true);
-    setHistoryError(null);
-    try {
-      const title = analysis.documentType.value || analysis.summary || "WhatNow?";
-      const item = await saveAnalysisToHistory({ title, sourceKind: inputMode, language, result: analysis });
-      setSavedHistoryId(item.id);
-    } catch {
-      setHistoryError(h.error);
-    } finally {
-      setSavingHistory(false);
-    }
   };
 
   const openHistoryItem = (item: AnalysisHistoryItem) => {
@@ -339,7 +361,7 @@ export default function Home() {
 
       {showResult && analysis ? (
         <AnalysisResultView result={analysis} onRestart={resetAnalysis} t={t} locale={language}
-          account={account} onSave={saveCurrentAnalysis} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
+          account={account} onSave={() => void persistAnalysisHistory(analysis, inputMode, language)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : (
         <>
       <section className="hero" id="top">
@@ -505,7 +527,14 @@ export default function Home() {
             <p><strong>{t.professionalTitle}</strong><br />{t.professionalText}</p>
           </div>
 
-          <button className="primary-button" type="button" onClick={analyzeDocument} disabled={isAnalyzing}>
+          <div className={`captcha-box${captchaError ? " has-error" : ""}`}>
+            <div><strong>{t.captchaTitle}</strong><small>{captchaError || (captchaToken ? t.captchaReady : t.captchaWaiting)}</small></div>
+            <TurnstileWidget action="analyze" language={language} theme={theme} resetKey={captchaResetKey}
+              onToken={(token) => { setCaptchaToken(token); if (token) setCaptchaError(null); }}
+              onError={() => setCaptchaError(t.errorCaptchaUnavailable)} />
+          </div>
+
+          <button className="primary-button" type="button" onClick={analyzeDocument} disabled={isAnalyzing || !captchaToken}>
             {isAnalyzing
               ? t.analyzing
               : inputMode === "file"

@@ -11,6 +11,7 @@ import {
   startGoogleSignIn,
   type SupabaseAccount,
 } from "./supabase-auth";
+import { TurnstileWidget } from "./turnstile";
 
 export type ColorTheme = "light" | "dark";
 
@@ -27,6 +28,8 @@ const copy = {
     securityText: "Сессия проверяется Supabase перед каждым анализом.", appearance: "Оформление",
     light: "Светлая", dark: "Тёмная", quota: "Ваши лимиты", quotaText: "3 анализа за 24 часа · 10 за 7 дней",
     accountActions: "Управление аккаунтом",
+    captchaWaiting: "Проверка защиты от ботов выполняется автоматически.",
+    captchaReady: "Защита подтверждена.", captchaError: "Не удалось выполнить защитную проверку. Обновите её и попробуйте снова.",
   },
   lv: {
     signIn: "Pierakstīties", signOut: "Iziet", title: "Pierakstīties WhatNow?", profile: "Profils",
@@ -40,6 +43,8 @@ const copy = {
     securityText: "Supabase pārbauda sesiju pirms katras analīzes.", appearance: "Izskats",
     light: "Gaišs", dark: "Tumšs", quota: "Jūsu limiti", quotaText: "3 analīzes 24 stundās · 10 analīzes 7 dienās",
     accountActions: "Konta pārvaldība",
+    captchaWaiting: "Aizsardzības pārbaude pret robotiem notiek automātiski.",
+    captchaReady: "Aizsardzība apstiprināta.", captchaError: "Neizdevās veikt aizsardzības pārbaudi. Atjaunojiet to un mēģiniet vēlreiz.",
   },
   en: {
     signIn: "Sign in", signOut: "Sign out", title: "Sign in to WhatNow?", profile: "Profile",
@@ -53,6 +58,8 @@ const copy = {
     securityText: "Supabase verifies the session before every analysis.", appearance: "Appearance",
     light: "Light", dark: "Dark", quota: "Your limits", quotaText: "3 analyses per 24 hours · 10 per 7 days",
     accountActions: "Account management",
+    captchaWaiting: "The bot-protection check runs automatically.",
+    captchaReady: "Protection verified.", captchaError: "The protection check could not be completed. Refresh it and try again.",
   },
 } as const;
 
@@ -83,6 +90,9 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   const [googleLoading, setGoogleLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [emailCaptchaToken, setEmailCaptchaToken] = useState<string | null>(null);
+  const [emailCaptchaResetKey, setEmailCaptchaResetKey] = useState(0);
+  const [emailCaptchaError, setEmailCaptchaError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -101,10 +111,18 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
 
   const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!emailCaptchaToken) {
+      setEmailCaptchaError(true);
+      return;
+    }
     setError(null); setMessage(null); setSending(true);
-    try { await sendEmailSignInLink(email.trim()); setMessage(t.sent); }
+    try { await sendEmailSignInLink(email.trim(), emailCaptchaToken); setMessage(t.sent); }
     catch { setError(t.error); }
-    finally { setSending(false); }
+    finally {
+      setSending(false);
+      setEmailCaptchaToken(null);
+      setEmailCaptchaResetKey((value) => value + 1);
+    }
   };
 
   if (!loaded) return <span className="account-loading" aria-hidden="true" />;
@@ -164,7 +182,13 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   <label htmlFor="account-email">{t.email}</label>
                   <input id="account-email" type="email" value={email} required autoComplete="email"
                     placeholder={t.emailPlaceholder} onChange={(event) => setEmail(event.target.value)} />
-                  <button type="submit" disabled={sending || !email.trim()}>{sending ? t.sending : t.emailAction}</button>
+                  <div className={`captcha-box compact${emailCaptchaError ? " has-error" : ""}`}>
+                    <TurnstileWidget action="email-login" language={locale} theme={theme} resetKey={emailCaptchaResetKey}
+                      onToken={(token) => { setEmailCaptchaToken(token); if (token) setEmailCaptchaError(false); }}
+                      onError={() => setEmailCaptchaError(true)} />
+                    <small>{emailCaptchaError ? t.captchaError : emailCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
+                  </div>
+                  <button type="submit" disabled={sending || !email.trim() || !emailCaptchaToken}>{sending ? t.sending : t.emailAction}</button>
                 </form>
                 {message && <p className="auth-message" role="status">{message}</p>}
                 {error && <p className="auth-error" role="alert">{error}</p>}

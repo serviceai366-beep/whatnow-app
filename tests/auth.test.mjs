@@ -20,6 +20,7 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   const auth = await readFile(new URL("../app/supabase-auth.ts", import.meta.url), "utf8");
   const config = await readFile(new URL("../app/supabase-config.ts", import.meta.url), "utf8");
   const serverAuth = await readFile(new URL("../app/supabase-server-auth.ts", import.meta.url), "utf8");
+  const turnstile = await readFile(new URL("../app/turnstile.tsx", import.meta.url), "utf8");
   const packageJson = await readFile(new URL("../package.json", import.meta.url), "utf8");
 
   assert.match(page, /<AccountWidget/);
@@ -30,6 +31,9 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   assert.match(auth, /provider:\s*"google"/);
   assert.match(auth, /scopes:\s*"openid email profile"/);
   assert.match(auth, /signInWithOtp/);
+  assert.match(auth, /captchaToken/);
+  assert.match(widget, /TurnstileWidget/);
+  assert.match(turnstile, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?render=explicit/);
   assert.match(auth, /getUser\(\)/);
   assert.match(auth, /new URL\("\/", window\.location\.origin\)/);
   assert.match(auth, /history\.replaceState/);

@@ -104,12 +104,13 @@ export async function startGoogleSignIn(): Promise<void> {
   if (error) throw error;
 }
 
-export async function sendEmailSignInLink(email: string): Promise<void> {
+export async function sendEmailSignInLink(email: string, captchaToken: string): Promise<void> {
   const { error } = await getClient().auth.signInWithOtp({
     email,
     options: {
       emailRedirectTo: authRedirectUrl(),
       shouldCreateUser: true,
+      captchaToken,
     },
   });
   if (error) throw error;
