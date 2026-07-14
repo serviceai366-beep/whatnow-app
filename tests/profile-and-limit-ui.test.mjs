@@ -69,6 +69,15 @@ test("profile offers themes and displays live server-backed quota counters", asy
   assert.match(css, /:root\[data-theme="dark"\]/);
 });
 
+test("the main language switch changes and persists both UI and explanation language", async () => {
+  const [page] = await files;
+  assert.match(page, /const changeLanguage = useCallback/);
+  assert.match(page, /setLanguage\(value\)/);
+  assert.match(page, /setAnalysisLanguage\(value\)/);
+  assert.match(page, /applyPreferences\(\{ uiLanguage: value, analysisLanguage: value \}\)/);
+  assert.match(page, /onClick=\{\(\) => changeLanguage\(item\.code\)\}/);
+});
+
 test("rich text files use a safe non-iframe preview", async () => {
   const [page] = await files;
   assert.match(page, /\.txt,.rtf,.docx,.odt/);
