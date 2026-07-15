@@ -1,5 +1,8 @@
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-const DEFAULT_EXPECTED_HOSTNAME = "whatnow-app.timurka-0701.chatgpt.site";
+const DEFAULT_EXPECTED_HOSTNAMES = [
+  "whatnow-app.com",
+  "whatnow-app.timurka-0701.chatgpt.site",
+] as const;
 const DEVELOPMENT_SECRET_KEY = "1x0000000000000000000000000000000AA";
 
 export type TurnstileResult =
@@ -11,6 +14,15 @@ type SiteverifyPayload = {
   hostname?: unknown;
   action?: unknown;
 };
+
+function expectedHostnames(development: boolean, requestHostname: string): Set<string> {
+  if (development) return new Set([requestHostname]);
+  const configured = process.env.TURNSTILE_EXPECTED_HOSTNAME
+    ?.split(",")
+    .map((hostname) => hostname.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set(configured?.length ? configured : DEFAULT_EXPECTED_HOSTNAMES);
+}
 
 export async function verifyTurnstileToken({
   request,
@@ -46,10 +58,14 @@ export async function verifyTurnstileToken({
     const payload = await response.json().catch(() => null) as SiteverifyPayload | null;
     if (!payload || payload.success !== true) return { ok: false, code: "captcha_failed" };
 
-    const expectedHostname = development
-      ? new URL(request.url).hostname
-      : process.env.TURNSTILE_EXPECTED_HOSTNAME || DEFAULT_EXPECTED_HOSTNAME;
-    if (payload.hostname !== expectedHostname || payload.action !== action) {
+    const requestHostname = new URL(request.url).hostname.toLowerCase();
+    const verifiedHostname = typeof payload.hostname === "string" ? payload.hostname.toLowerCase() : "";
+    const allowedHostnames = expectedHostnames(development, requestHostname);
+    if (
+      verifiedHostname !== requestHostname
+      || !allowedHostnames.has(verifiedHostname)
+      || payload.action !== action
+    ) {
       return { ok: false, code: "captcha_failed" };
     }
     return { ok: true };

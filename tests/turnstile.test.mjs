@@ -7,7 +7,7 @@ async function withTurnstileEnv(callback) {
   const previousSecret = process.env.TURNSTILE_SECRET_KEY;
   const previousHostname = process.env.TURNSTILE_EXPECTED_HOSTNAME;
   process.env.TURNSTILE_SECRET_KEY = "server-only-secret";
-  process.env.TURNSTILE_EXPECTED_HOSTNAME = "whatnow.example";
+  process.env.TURNSTILE_EXPECTED_HOSTNAME = "whatnow.example,whatnow-alt.example";
   try { return await callback(); }
   finally {
     if (previousSecret) process.env.TURNSTILE_SECRET_KEY = previousSecret;
@@ -42,9 +42,18 @@ test("accepts only successful tokens for the exact hostname and action", async (
   assert.match(submittedBody, /response=valid-turnstile-token/);
   assert.match(submittedBody, /remoteip=192\.0\.2\.1/);
 
+  const alternateRequest = new Request("https://whatnow-alt.example/api/analyze");
+  assert.deepEqual(await verifyTurnstileToken({
+    request: alternateRequest,
+    token: "valid-turnstile-token",
+    action: "analyze",
+    fetchImpl: async () => Response.json({ success: true, hostname: "whatnow-alt.example", action: "analyze" }),
+  }), { ok: true });
+
   for (const payload of [
     { success: false, hostname: "whatnow.example", action: "analyze" },
     { success: true, hostname: "attacker.example", action: "analyze" },
+    { success: true, hostname: "whatnow-alt.example", action: "analyze" },
     { success: true, hostname: "whatnow.example", action: "other" },
   ]) {
     const rejected = await verifyTurnstileToken({
