@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { AnalysisResult, DocumentEvent, SupportedLanguage } from "./analysis-schema";
-import { updateCalendar } from "./calendar-client";
+import { CalendarRequestError, updateCalendar } from "./calendar-client";
 import { loadReminderState, updateReminderState } from "./reminder-client";
-import { reminderOffsets, supportedReminderTimeZones, type ReminderOffsetMinutes } from "./reminder-types";
+import { reminderOffsets, reminderQuotaBlocked, supportedReminderTimeZones, type ReminderOffsetMinutes } from "./reminder-types";
 import type { UserProfilePreferences } from "./profile-types";
 
 const copy = {
@@ -16,6 +16,10 @@ const copy = {
 function eventsFrom(result: AnalysisResult): DocumentEvent[] {
   if (result.events?.length) return result.events.filter((event) => event.status !== "not_found").slice(0, 8);
   return result.deadlines.filter((deadline) => deadline.status !== "not_found").slice(0, 8).map((deadline, index) => ({ id: `deadline_${index + 1}`, title: deadline.meaning || deadline.dateText || "Deadline", kind: "deadline", dateText: deadline.dateText, localDate: deadline.normalizedDate, localTime: null, documentTimeZone: null, location: null, status: deadline.status, evidenceIds: deadline.evidenceIds, confidence: deadline.confidence, basis: deadline.basis }));
+}
+
+function limitText(locale: SupportedLanguage) {
+  return locale === "ru" ? "Лимит email-напоминаний достигнут: максимум 3 активных и 10 за 7 дней. Событие можно добавить без письма." : locale === "lv" ? "E-pasta atgādinājumu limits sasniegts: ne vairāk kā 3 aktīvi un 10 septiņās dienās. Notikumu var pievienot bez e-pasta." : "The email reminder limit is reached: up to 3 active and 10 in 7 days. You can still add the event without email.";
 }
 
 export function EventSuggestions({ result, analysisId, locale, preferences }: { result: AnalysisResult; analysisId: string | null; locale: SupportedLanguage; preferences: UserProfilePreferences }) {
@@ -30,6 +34,7 @@ export function EventSuggestions({ result, analysisId, locale, preferences }: { 
   const [added, setAdded] = useState(new Set<string>());
   const [error, setError] = useState<string | null>(null);
   const [remindersAvailable, setRemindersAvailable] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
   const [consented, setConsented] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
 
@@ -37,9 +42,11 @@ export function EventSuggestions({ result, analysisId, locale, preferences }: { 
     let active = true;
     loadReminderState().then((state) => {
       if (!active) return;
-      setRemindersAvailable(state.availability === "available");
+      const blocked = reminderQuotaBlocked(state.quota);
+      setRemindersAvailable(state.availability === "available" && !blocked);
+      setLimitReached(blocked);
       setConsented(Boolean(state.preference.consentAt));
-      if (state.availability !== "available") setOffsets((current) => Object.fromEntries(Object.keys(current).map((key) => [key, "none"])));
+      if (state.availability !== "available" || blocked) setOffsets((current) => Object.fromEntries(Object.keys(current).map((key) => [key, "none"])));
     }).catch(() => { if (active) setRemindersAvailable(false); });
     return () => { active = false; };
   }, []);
@@ -72,9 +79,18 @@ export function EventSuggestions({ result, analysisId, locale, preferences }: { 
         remindBeforeMinutes: reminder,
       });
       setAdded((current) => new Set(current).add(event.id));
-    } catch { setError(t.error); }
+      try {
+        const latest = await loadReminderState();
+        const blocked = reminderQuotaBlocked(latest.quota);
+        setRemindersAvailable(latest.availability === "available" && !blocked);
+        setLimitReached(blocked);
+        if (blocked) setOffsets((current) => Object.fromEntries(Object.keys(current).map((key) => [key, "none"])));
+      } catch {
+        // The event was already saved; a non-critical quota refresh must not report it as failed.
+      }
+    } catch (saveError) { setError(saveError instanceof CalendarRequestError && (saveError.code === "active_reminder_limit" || saveError.code === "weekly_reminder_limit") ? limitText(locale) : t.error); }
     finally { setBusy(null); }
   };
 
-  return <section className="event-suggestions" aria-labelledby="event-suggestions-title"><header><span className="calendar-spark" aria-hidden="true">□</span><div><p className="result-label">{t.eyebrow}</p><h2 id="event-suggestions-title">{t.title}</h2><p>{t.intro}</p></div></header><div className="suggestion-list">{events.map((event) => { const done = added.has(event.id); const isAllDay = allDay[event.id]; const wantsReminder = !isAllDay && offsets[event.id] !== "none"; return <article key={event.id}><div className="suggestion-title"><div><strong>{event.title}</strong><small>{event.dateText || t.verify}</small></div>{done && <span>✓ {t.added}</span>}</div><div className="suggestion-fields"><label><span>{t.date}</span><input type="date" value={dates[event.id]} onChange={(e) => setDates({ ...dates, [event.id]: e.target.value })} /></label><label><span>{t.time}</span><input type="time" disabled={isAllDay} value={times[event.id]} onChange={(e) => setTimes({ ...times, [event.id]: e.target.value })} /></label><label><span>{t.timezone}</span><select value={zones[event.id]} onChange={(e) => setZones({ ...zones, [event.id]: e.target.value })}>{supportedReminderTimeZones.map((zone) => <option key={zone}>{zone}</option>)}</select></label><label><span>{t.reminder}</span><select disabled={isAllDay || !remindersAvailable} value={remindersAvailable ? offsets[event.id] : "none"} onChange={(e) => setOffsets({ ...offsets, [event.id]: e.target.value as "none" | `${ReminderOffsetMinutes}` })}><option value="none">{t.none}</option>{reminderOffsets.map((offset) => <option key={offset} value={offset}>{label(offset)}</option>)}</select></label></div><label className="suggestion-all-day"><input type="checkbox" checked={isAllDay} onChange={(e) => { const value = e.target.checked; setAllDay({ ...allDay, [event.id]: value }); if (value) setOffsets({ ...offsets, [event.id]: "none" }); }} /><span>{t.allDay}</span></label>{wantsReminder && !consented && <label className="reminder-checkbox compact suggestion-consent"><input type="checkbox" checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} /><span>{t.consent}</span></label>}<div className="suggestion-actions"><button type="button" className="reminder-primary" disabled={!analysisId || busy === event.id || done || !dates[event.id] || (!isAllDay && !times[event.id])} onClick={() => void confirm(event)}>{!analysisId ? t.saveFirst : busy === event.id ? t.adding : done ? t.added : t.add}</button><small>{t.verify}</small></div></article>; })}</div>{error && <p className="reminder-error" role="alert">{error}</p>}</section>;
+  return <section className="event-suggestions" aria-labelledby="event-suggestions-title"><header><span className="calendar-spark" aria-hidden="true">□</span><div><p className="result-label">{t.eyebrow}</p><h2 id="event-suggestions-title">{t.title}</h2><p>{t.intro}</p></div></header>{limitReached && <p className="reminder-error" role="status">{limitText(locale)}</p>}<div className="suggestion-list">{events.map((event) => { const done = added.has(event.id); const isAllDay = allDay[event.id]; const wantsReminder = !isAllDay && offsets[event.id] !== "none"; return <article key={event.id}><div className="suggestion-title"><div><strong>{event.title}</strong><small>{event.dateText || t.verify}</small></div>{done && <span>✓ {t.added}</span>}</div><div className="suggestion-fields"><label><span>{t.date}</span><input type="date" value={dates[event.id]} onChange={(e) => setDates({ ...dates, [event.id]: e.target.value })} /></label><label><span>{t.time}</span><input type="time" disabled={isAllDay} value={times[event.id]} onChange={(e) => setTimes({ ...times, [event.id]: e.target.value })} /></label><label><span>{t.timezone}</span><select value={zones[event.id]} onChange={(e) => setZones({ ...zones, [event.id]: e.target.value })}>{supportedReminderTimeZones.map((zone) => <option key={zone}>{zone}</option>)}</select></label><label><span>{t.reminder}</span><select disabled={isAllDay || !remindersAvailable} value={remindersAvailable ? offsets[event.id] : "none"} onChange={(e) => setOffsets({ ...offsets, [event.id]: e.target.value as "none" | `${ReminderOffsetMinutes}` })}><option value="none">{t.none}</option>{reminderOffsets.map((offset) => <option key={offset} value={offset}>{label(offset)}</option>)}</select></label></div><label className="suggestion-all-day"><input type="checkbox" checked={isAllDay} onChange={(e) => { const value = e.target.checked; setAllDay({ ...allDay, [event.id]: value }); if (value) setOffsets({ ...offsets, [event.id]: "none" }); }} /><span>{t.allDay}</span></label>{wantsReminder && !consented && <label className="reminder-checkbox compact suggestion-consent"><input type="checkbox" checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} /><span>{t.consent}</span></label>}<div className="suggestion-actions"><button type="button" className="reminder-primary" disabled={!analysisId || busy === event.id || done || !dates[event.id] || (!isAllDay && !times[event.id])} onClick={() => void confirm(event)}>{!analysisId ? t.saveFirst : busy === event.id ? t.adding : done ? t.added : t.add}</button><small>{t.verify}</small></div></article>; })}</div>{error && <p className="reminder-error" role="alert">{error}</p>}</section>;
 }

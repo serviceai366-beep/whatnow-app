@@ -126,9 +126,10 @@ test("calendar validation accepts bounded user actions and rejects ambiguous eve
 });
 
 test("calendar database design is private, bounded, and keeps reminders linked after history trimming", async () => {
-  const [migration, exactReminderMigration, api, panel, suggestions] = await Promise.all([
+  const [migration, exactReminderMigration, limitMigration, api, panel, suggestions] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260714_calendar_events.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260715_exact_calendar_reminders.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260715_reminder_limits.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/calendar/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/calendar-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/event-suggestions.tsx", import.meta.url), "utf8"),
@@ -148,6 +149,14 @@ test("calendar database design is private, bounded, and keeps reminders linked a
   assert.match(exactReminderMigration, /remind_before_minutes in \(0, 60, 1440, 10080, 43200\)/i);
   assert.match(exactReminderMigration, /create_manual_calendar_event_with_reminder/i);
   assert.match(exactReminderMigration, /remind_before_minutes = 0[\s\S]*interval '15 minutes'/i);
+  assert.match(limitMigration, /alter table public\.reminder_schedule_usage enable row level security/i);
+  assert.match(limitMigration, /pg_advisory_xact_lock/i);
+  assert.match(limitMigration, />= 3[\s\S]*active_reminder_limit/i);
+  assert.match(limitMigration, /interval '7 days'[\s\S]*>= 10[\s\S]*weekly_reminder_limit/i);
+  assert.match(limitMigration, /insert into public\.reminder_schedule_usage/i);
+  assert.match(api, /weekly_reminder_limit/);
+  assert.match(panel, /reminderQuotaBlocked/);
+  assert.match(suggestions, /reminderQuotaBlocked/);
   assert.match(panel, /onClick=\{\(\) => openNew\(key\)\}/);
   assert.match(panel, /offset === 0 \? t\.exact/);
   assert.doesNotMatch(panel, /disabled=\{busy \|\| !draft\.title\.trim\(\)[^}]*consentChecked/);

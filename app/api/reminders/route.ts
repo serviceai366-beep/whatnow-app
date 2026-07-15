@@ -1,6 +1,6 @@
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../../supabase-config.ts";
 import { parseReminderAction } from "../../reminder-validation.ts";
-import type { ReminderAvailability, ReminderState, ScheduledReminder } from "../../reminder-types.ts";
+import { REMINDER_ACTIVE_LIMIT, REMINDER_WEEKLY_LIMIT, type ReminderAvailability, type ReminderQuota, type ReminderState, type ScheduledReminder } from "../../reminder-types.ts";
 import { isSameOriginRequest } from "../../security.ts";
 import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
 
@@ -8,6 +8,10 @@ const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_TIMEZONE = "Europe/Riga";
 
 type SupabaseRow = Record<string, unknown>;
+
+function emptyQuota(): ReminderQuota {
+  return { active: 0, activeLimit: REMINDER_ACTIVE_LIMIT, weeklyUsed: 0, weeklyLimit: REMINDER_WEEKLY_LIMIT, weeklyResetAt: null };
+}
 
 function jsonResponse(body: unknown, status = 200, headers: HeadersInit = {}): Response {
   return Response.json(body, {
@@ -86,26 +90,40 @@ function reminderFromRow(row: SupabaseRow): ScheduledReminder | null {
 async function loadReminderState(userId: string, email: string, token: string): Promise<ReminderState> {
   const availability = availabilityFor(email);
   if (availability !== "available") {
-    return { availability, preference: { consentAt: null, timezone: DEFAULT_TIMEZONE }, reminders: [] };
+    return { availability, preference: { consentAt: null, timezone: DEFAULT_TIMEZONE }, reminders: [], quota: emptyQuota() };
   }
 
   const filter = encodeURIComponent(userId);
-  const [preferenceResponse, remindersResponse] = await Promise.all([
+  const windowStart = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const [preferenceResponse, remindersResponse, usageResponse] = await Promise.all([
     supabaseRest(`reminder_preferences?select=email_consent_at,timezone&user_id=eq.${filter}&limit=1`, token),
     supabaseRest(`email_reminders?select=id,analysis_id,event_key,event_title,event_at,send_at,timezone,remind_before_minutes,source_language,status,created_at&user_id=eq.${filter}&status=in.(scheduled,sending,sent,failed)&order=send_at.asc&limit=30`, token),
+    supabaseRest(`reminder_schedule_usage?select=created_at&user_id=eq.${filter}&created_at=gte.${encodeURIComponent(windowStart)}&order=created_at.asc&limit=${REMINDER_WEEKLY_LIMIT}`, token),
   ]);
-  if (!preferenceResponse.ok || !remindersResponse.ok) throw new Error("storage_unavailable");
+  if (!preferenceResponse.ok || !remindersResponse.ok || !usageResponse.ok) throw new Error("storage_unavailable");
 
   const preferenceRows = await preferenceResponse.json().catch(() => []) as SupabaseRow[];
   const reminderRows = await remindersResponse.json().catch(() => []) as SupabaseRow[];
+  const usageRows = await usageResponse.json().catch(() => []) as SupabaseRow[];
   const preference = preferenceRows[0];
+  const reminders = reminderRows.map(reminderFromRow).filter((item): item is ScheduledReminder => Boolean(item));
+  const oldestUsage = typeof usageRows[0]?.created_at === "string" ? Date.parse(usageRows[0].created_at) : Number.NaN;
   return {
     availability,
     preference: {
       consentAt: typeof preference?.email_consent_at === "string" ? preference.email_consent_at : null,
       timezone: typeof preference?.timezone === "string" ? preference.timezone : DEFAULT_TIMEZONE,
     },
-    reminders: reminderRows.map(reminderFromRow).filter((item): item is ScheduledReminder => Boolean(item)),
+    reminders,
+    quota: {
+      active: reminders.filter((item) => item.status === "scheduled" || item.status === "sending").length,
+      activeLimit: REMINDER_ACTIVE_LIMIT,
+      weeklyUsed: usageRows.length,
+      weeklyLimit: REMINDER_WEEKLY_LIMIT,
+      weeklyResetAt: usageRows.length >= REMINDER_WEEKLY_LIMIT && Number.isFinite(oldestUsage)
+        ? new Date(oldestUsage + 7 * 86_400_000).toISOString()
+        : null,
+    },
   };
 }
 
@@ -169,7 +187,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     if (!rpcResponse.ok) {
       const error = await rpcResponse.json().catch(() => null) as { message?: string } | null;
-      const knownCode = ["consent_required", "reminder_too_late", "active_reminder_limit", "analysis_not_found", "invalid_timezone"]
+      const knownCode = ["consent_required", "reminder_too_late", "active_reminder_limit", "weekly_reminder_limit", "analysis_not_found", "invalid_timezone"]
         .find((code) => error?.message?.includes(code));
       return apiError(knownCode ?? "reminder_rejected", "Не удалось сохранить напоминание. Проверьте дату, время и согласие.", 409);
     }

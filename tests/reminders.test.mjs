@@ -3,6 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { availableReminderOffsets, zonedLocalDateTimeToUtc } from "../app/reminder-time.ts";
 import { parseReminderAction } from "../app/reminder-validation.ts";
+import { reminderQuotaBlocked } from "../app/reminder-types.ts";
+
+test("reminder quota blocks either three active reminders or ten weekly creations", () => {
+  assert.equal(reminderQuotaBlocked({ active: 2, activeLimit: 3, weeklyUsed: 9, weeklyLimit: 10, weeklyResetAt: null }), false);
+  assert.equal(reminderQuotaBlocked({ active: 3, activeLimit: 3, weeklyUsed: 1, weeklyLimit: 10, weeklyResetAt: null }), true);
+  assert.equal(reminderQuotaBlocked({ active: 0, activeLimit: 3, weeklyUsed: 10, weeklyLimit: 10, weeklyResetAt: null }), true);
+});
 
 test("converts Europe/Riga local event times without guessing a fixed UTC offset", () => {
   assert.equal(zonedLocalDateTimeToUtc("2026-07-20", "14:00", "Europe/Riga")?.toISOString(), "2026-07-20T11:00:00.000Z");
@@ -107,6 +114,7 @@ test("reminder API authenticates the account and maps schedule requests to the p
     if (String(url).includes("/rpc/schedule_email_reminder")) return Response.json({ id: "scheduled" });
     if (String(url).includes("reminder_preferences?")) return Response.json([{ email_consent_at: "2026-07-14T10:00:00Z", timezone: "Europe/Riga" }]);
     if (String(url).includes("email_reminders?")) return Response.json([]);
+    if (String(url).includes("reminder_schedule_usage?")) return Response.json([]);
     return new Response(null, { status: 404 });
   };
   try {

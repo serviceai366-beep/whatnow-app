@@ -10,6 +10,12 @@ function localeTag(locale: SupportedLanguage): string {
   return locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-GB";
 }
 
+function quotaText(locale: SupportedLanguage, active: number, weekly: number): string {
+  if (locale === "ru") return `Активные: ${active}/3 · Создано за 7 дней: ${weekly}/10`;
+  if (locale === "lv") return `Aktīvi: ${active}/3 · Izveidoti 7 dienās: ${weekly}/10`;
+  return `Active: ${active}/3 · Created in 7 days: ${weekly}/10`;
+}
+
 export function ReminderProfileSection({ locale }: { locale: SupportedLanguage }) {
   const copy = reminderCopy[locale];
   const [state, setState] = useState<ReminderState | null>(null);
@@ -67,6 +73,7 @@ export function ReminderProfileSection({ locale }: { locale: SupportedLanguage }
   return (
     <section className="profile-section reminder-profile" aria-labelledby="profile-reminder-title">
       <div className="profile-section-heading"><div><h3 id="profile-reminder-title">{copy.profileTitle}</h3><p>{copy.profileIntro}</p></div><span className={consented ? "enabled" : ""}>{consented ? copy.enabled : copy.disabled}</span></div>
+      <p className="calendar-email-state">{quotaText(locale, state.quota.active, state.quota.weeklyUsed)}</p>
       {!consented && <label className="reminder-checkbox compact"><input type="checkbox" checked={consentChecked} onChange={(event) => setConsentChecked(event.target.checked)} /><span>{copy.consentCheckbox}</span></label>}
       <label className="reminder-field"><span>{copy.timezone}</span><select value={timezone} onChange={(event) => setTimezone(event.target.value)}>{supportedReminderTimeZones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}</select></label>
       <div className="reminder-profile-actions">

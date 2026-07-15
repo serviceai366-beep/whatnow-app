@@ -1,7 +1,7 @@
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../../supabase-config.ts";
 import { parseCalendarAction, parseCalendarRange } from "../../calendar-validation.ts";
 import type { CalendarEvent, CalendarEventReminder, CalendarState } from "../../calendar-types.ts";
-import type { ReminderAvailability } from "../../reminder-types.ts";
+import { REMINDER_ACTIVE_LIMIT, REMINDER_WEEKLY_LIMIT, type ReminderAvailability } from "../../reminder-types.ts";
 import { isSameOriginRequest } from "../../security.ts";
 import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
 
@@ -108,21 +108,26 @@ async function loadState({ userId, email, token, from, to }: {
   userId: string; email: string; token: string; from: string; to: string;
 }): Promise<CalendarState> {
   const owner = encodeURIComponent(userId);
-  const [eventResponse, reminderResponse, preferenceResponse] = await Promise.all([
+  const weeklyStart = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const [eventResponse, reminderResponse, preferenceResponse, usageResponse] = await Promise.all([
     supabase(`calendar_events?select=id,origin,source_analysis_id,source_event_key,title,notes,location,event_local_date,event_local_time,event_at,timezone,is_all_day,source_language,created_at,updated_at&user_id=eq.${owner}&status=eq.active&deleted_at=is.null&event_local_date=gte.${from}&event_local_date=lte.${to}&order=event_local_date.asc,event_local_time.asc.nullsfirst&limit=366`, token),
     supabase(`email_reminders?select=id,calendar_event_id,send_at,remind_before_minutes,status&user_id=eq.${owner}&calendar_event_id=not.is.null&status=in.(scheduled,sending,sent,failed)&limit=120`, token),
     supabase(`reminder_preferences?select=email_consent_at,timezone&user_id=eq.${owner}&limit=1`, token),
+    supabase(`reminder_schedule_usage?select=created_at&user_id=eq.${owner}&created_at=gte.${encodeURIComponent(weeklyStart)}&order=created_at.asc&limit=${REMINDER_WEEKLY_LIMIT}`, token),
   ]);
-  if (!eventResponse.ok || !reminderResponse.ok || !preferenceResponse.ok) throw new Error("calendar_storage_unavailable");
+  if (!eventResponse.ok || !reminderResponse.ok || !preferenceResponse.ok || !usageResponse.ok) throw new Error("calendar_storage_unavailable");
   const eventRows = await eventResponse.json().catch(() => []) as Row[];
   const reminderRows = await reminderResponse.json().catch(() => []) as Row[];
   const preferenceRows = await preferenceResponse.json().catch(() => []) as Row[];
+  const usageRows = await usageResponse.json().catch(() => []) as Row[];
   const reminderMap = new Map<string, CalendarEventReminder>();
   for (const row of reminderRows) {
     const parsed = reminderFromRow(row);
     if (parsed && typeof row.calendar_event_id === "string") reminderMap.set(row.calendar_event_id, parsed);
   }
   const preference = preferenceRows[0];
+  const activeReminderCount = reminderRows.filter((row) => row.status === "scheduled" || row.status === "sending").length;
+  const oldestUsage = typeof usageRows[0]?.created_at === "string" ? Date.parse(usageRows[0].created_at) : Number.NaN;
   return {
     availability: availabilityFor(email),
     preference: {
@@ -131,6 +136,15 @@ async function loadState({ userId, email, token, from, to }: {
     },
     events: eventRows.map((row) => eventFromRow(row, reminderMap)).filter((item): item is CalendarEvent => Boolean(item)),
     eventLimit: 100,
+    reminderQuota: {
+      active: activeReminderCount,
+      activeLimit: REMINDER_ACTIVE_LIMIT,
+      weeklyUsed: usageRows.length,
+      weeklyLimit: REMINDER_WEEKLY_LIMIT,
+      weeklyResetAt: usageRows.length >= REMINDER_WEEKLY_LIMIT && Number.isFinite(oldestUsage)
+        ? new Date(oldestUsage + 7 * 86_400_000).toISOString()
+        : null,
+    },
   };
 }
 
@@ -187,7 +201,7 @@ export async function POST(request: Request): Promise<Response> {
     const response = await supabase(`rpc/${rpcName}`, auth.token, { method: "POST", body: JSON.stringify(body), headers: { Prefer: "return=representation" } });
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { message?: string } | null;
-      const known = ["analysis_not_found", "analysis_event_not_found", "invalid_local_time", "reminder_too_late", "consent_required", "active_event_limit", "active_reminder_limit", "event_conflict", "calendar_event_not_found", "reminder_sending"]
+      const known = ["analysis_not_found", "analysis_event_not_found", "invalid_local_time", "reminder_too_late", "consent_required", "active_event_limit", "active_reminder_limit", "weekly_reminder_limit", "event_conflict", "calendar_event_not_found", "reminder_sending"]
         .find((code) => payload?.message?.includes(code));
       return error(known ?? "calendar_rejected", "The calendar change could not be saved.", known === "event_conflict" ? 409 : 400);
     }

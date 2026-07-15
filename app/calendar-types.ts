@@ -3,6 +3,7 @@ import type {
   CalendarReminderOffsetMinutes,
   ReminderAvailability,
   ReminderPreference,
+  ReminderQuota,
 } from "./reminder-types";
 
 export const CALENDAR_EVENT_LIMIT = 100;
@@ -40,6 +41,7 @@ export type CalendarState = {
   preference: ReminderPreference;
   events: CalendarEvent[];
   eventLimit: number;
+  reminderQuota: ReminderQuota;
 };
 
 export type CalendarEventFields = {

@@ -26,6 +26,21 @@ export type ReminderPreference = {
   timezone: string;
 };
 
+export const REMINDER_ACTIVE_LIMIT = 3;
+export const REMINDER_WEEKLY_LIMIT = 10;
+
+export type ReminderQuota = {
+  active: number;
+  activeLimit: typeof REMINDER_ACTIVE_LIMIT;
+  weeklyUsed: number;
+  weeklyLimit: typeof REMINDER_WEEKLY_LIMIT;
+  weeklyResetAt: string | null;
+};
+
+export function reminderQuotaBlocked(quota: ReminderQuota): boolean {
+  return quota.active >= quota.activeLimit || quota.weeklyUsed >= quota.weeklyLimit;
+}
+
 export type ScheduledReminder = {
   id: string;
   analysisId: string | null;
@@ -44,6 +59,7 @@ export type ReminderState = {
   availability: ReminderAvailability;
   preference: ReminderPreference;
   reminders: ScheduledReminder[];
+  quota: ReminderQuota;
 };
 
 export function isReminderOffset(value: unknown): value is ReminderOffsetMinutes {
