@@ -41,9 +41,10 @@ test("server-renders the WhatNow prototype", async () => {
 });
 
 test("removes the disposable starter preview", async () => {
-  const [page, layout, packageJson] = await Promise.all([
+  const [page, layout, accountWidget, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/account-widget.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
@@ -55,6 +56,9 @@ test("removes the disposable starter preview", async () => {
   assert.match(page, /t\.copyReply/);
   assert.match(page, /t\.analyzeAnother/);
   assert.match(layout, /lang="en"/);
+  assert.match(page, /src="\/whatnow-logo\.jpg"/);
+  assert.match(accountWidget, /src="\/whatnow-logo\.jpg"/);
+  assert.match(layout, /whatnow-logo\.jpg/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview", templateRoot)));
 });

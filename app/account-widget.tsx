@@ -239,7 +239,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
               </>
             ) : (
               <>
-                <span className="auth-mark" aria-hidden="true">W</span>
+                <img className="auth-mark" src="/whatnow-logo.jpg" alt="" />
                 <h2 id="account-dialog-title">{t.title}</h2>
                 <p className="auth-intro">{t.intro}</p>
                 <button className="google-sign-in" type="button" disabled={googleLoading} onClick={async () => {

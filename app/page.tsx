@@ -441,7 +441,7 @@ export default function Home() {
     <main>
       <header className="site-header">
         <a className="brand" href="#top" aria-label={t.homeAria}>
-          <span className="brand-mark" aria-hidden="true">W</span>
+          <img className="brand-mark" src="/whatnow-logo.jpg" alt="" />
           <span>WhatNow?</span>
         </a>
         <div className="header-actions">
@@ -670,7 +670,7 @@ export default function Home() {
       </section>
 
       <footer>
-        <a className="brand footer-brand" href="#top"><span className="brand-mark" aria-hidden="true">W</span><span>WhatNow?</span></a>
+        <a className="brand footer-brand" href="#top"><img className="brand-mark" src="/whatnow-logo.jpg" alt="" /><span>WhatNow?</span></a>
         <p>{t.footerNotice}</p>
       </footer>
     </main>
