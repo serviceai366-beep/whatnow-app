@@ -154,7 +154,16 @@ Deno.serve(async (request) => {
     const email = userData.user?.email?.trim().toLowerCase() ?? "";
     const confirmed = Boolean(userData.user?.email_confirmed_at);
     const consented = typeof preference?.email_consent_at === "string";
-    if (userError || preferenceError || !consented || !email || !confirmed || (mode === "pilot" && email !== pilotRecipient)) {
+    if (userError || preferenceError) {
+      await supabase.rpc("mark_email_reminder_failed", {
+        p_reminder_id: reminder.id,
+        p_error_code: preferenceError ? "preference_lookup_failed" : "recipient_lookup_failed",
+        p_retryable: true,
+      });
+      failed += 1;
+      continue;
+    }
+    if (!consented || !email || !confirmed || (mode === "pilot" && email !== pilotRecipient)) {
       await supabase.rpc("mark_email_reminder_failed", {
         p_reminder_id: reminder.id,
         p_error_code: !consented ? "consent_revoked"

@@ -67,7 +67,10 @@ test("database design keeps reminders private, bounded, and idempotent", async (
 });
 
 test("dispatcher restricts pilot delivery and prevents duplicate email sends", async () => {
-  const dispatcher = await readFile(new URL("../supabase/functions/dispatch-reminders/index.ts", import.meta.url), "utf8");
+  const [dispatcher, permissionFix] = await Promise.all([
+    readFile(new URL("../supabase/functions/dispatch-reminders/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260715_dispatcher_permission_fix.sql", import.meta.url), "utf8"),
+  ]);
   assert.match(dispatcher, /REMINDER_TEST_RECIPIENT/);
   assert.match(dispatcher, /mode === "pilot" && email !== pilotRecipient/);
   assert.match(dispatcher, /Idempotency-Key/);
@@ -77,6 +80,11 @@ test("dispatcher restricts pilot delivery and prevents duplicate email sends", a
   assert.match(dispatcher, /email_confirmed_at/);
   assert.match(dispatcher, /from\("reminder_preferences"\)/);
   assert.match(dispatcher, /consent_revoked/);
+  assert.match(dispatcher, /preference_lookup_failed/);
+  assert.match(dispatcher, /recipient_lookup_failed/);
+  assert.match(dispatcher, /preferenceError \? "preference_lookup_failed"/);
+  assert.match(permissionFix, /grant select on table public\.reminder_preferences to service_role/i);
+  assert.doesNotMatch(permissionFix, /grant (?:insert|update|delete|all)/i);
   assert.match(dispatcher, /source_language/);
   assert.doesNotMatch(dispatcher, /console\.log\(|SUPABASE_SERVICE_ROLE_KEY.*Response/);
 });
