@@ -61,7 +61,7 @@ function reminderFromRow(row: Row): CalendarEventReminder | null {
   const offset = Number(row.remind_before_minutes);
   if (
     typeof row.id !== "string" || typeof row.calendar_event_id !== "string"
-    || typeof row.send_at !== "string" || ![60, 1_440, 10_080, 43_200].includes(offset)
+    || typeof row.send_at !== "string" || ![0, 60, 1_440, 10_080, 43_200].includes(offset)
     || (row.status !== "scheduled" && row.status !== "sending" && row.status !== "sent" && row.status !== "failed")
   ) return null;
   return {
@@ -170,10 +170,10 @@ export async function POST(request: Request): Promise<Response> {
     rpcName = "confirm_analysis_calendar_event";
     body = { p_analysis_id: action.analysisId, p_event_key: action.eventKey, p_event_title: action.eventTitle, p_event_local_date: action.localDate, p_event_local_time: action.localTime, p_timezone: action.timezone, p_is_all_day: action.isAllDay, p_location: action.location, p_notes: action.notes, p_remind_before_minutes: reminder };
   } else if (action.action === "create_manual") {
-    rpcName = "create_manual_calendar_event";
+    rpcName = "create_manual_calendar_event_with_reminder";
     body = { p_request_id: action.requestId, p_event_title: action.eventTitle, p_event_local_date: action.localDate, p_event_local_time: action.localTime, p_timezone: action.timezone, p_is_all_day: action.isAllDay, p_location: action.location, p_notes: action.notes, p_source_language: action.sourceLanguage, p_remind_before_minutes: reminder };
   } else if (action.action === "update") {
-    rpcName = "update_calendar_event";
+    rpcName = "update_calendar_event_with_reminder";
     body = { p_event_id: action.eventId, p_expected_updated_at: action.expectedUpdatedAt, p_event_title: action.eventTitle, p_event_local_date: action.localDate, p_event_local_time: action.localTime, p_timezone: action.timezone, p_is_all_day: action.isAllDay, p_location: action.location, p_notes: action.notes, p_remind_before_minutes: reminder };
   } else if (action.action === "delete") {
     rpcName = "delete_calendar_event";

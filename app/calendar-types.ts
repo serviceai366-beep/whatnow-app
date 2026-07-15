@@ -1,7 +1,7 @@
 import type { SupportedLanguage } from "./analysis-schema";
 import type {
+  CalendarReminderOffsetMinutes,
   ReminderAvailability,
-  ReminderOffsetMinutes,
   ReminderPreference,
 } from "./reminder-types";
 
@@ -11,7 +11,7 @@ export type CalendarEventOrigin = "analysis" | "manual";
 
 export type CalendarEventReminder = {
   id: string;
-  remindBeforeMinutes: ReminderOffsetMinutes;
+  remindBeforeMinutes: CalendarReminderOffsetMinutes;
   sendAt: string;
   status: "scheduled" | "sending" | "sent" | "failed";
 };
@@ -50,7 +50,7 @@ export type CalendarEventFields = {
   isAllDay: boolean;
   location: string | null;
   notes: string | null;
-  remindBeforeMinutes: ReminderOffsetMinutes | null;
+  remindBeforeMinutes: CalendarReminderOffsetMinutes | null;
 };
 
 export type ConfirmAnalysisCalendarAction = CalendarEventFields & {
@@ -79,7 +79,7 @@ export type DeleteCalendarAction = {
 export type SetCalendarReminderAction = {
   action: "set_reminder";
   eventId: string;
-  remindBeforeMinutes: ReminderOffsetMinutes | null;
+  remindBeforeMinutes: CalendarReminderOffsetMinutes | null;
 };
 
 export type CalendarAction =
@@ -88,4 +88,3 @@ export type CalendarAction =
   | UpdateCalendarAction
   | DeleteCalendarAction
   | SetCalendarReminderAction;
-

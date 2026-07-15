@@ -116,6 +116,7 @@ test("calendar validation accepts bounded user actions and rejects ambiguous eve
     remindBeforeMinutes: 1_440,
   };
   assert.deepEqual(parseCalendarAction(valid), valid);
+  assert.deepEqual(parseCalendarAction({ ...valid, remindBeforeMinutes: 0 }), { ...valid, remindBeforeMinutes: 0 });
   assert.equal(parseCalendarAction({ ...valid, eventTitle: "" }), null);
   assert.equal(parseCalendarAction({ ...valid, timezone: "GMT+3" }), null);
   assert.equal(parseCalendarAction({ ...valid, isAllDay: true, localTime: null }), null);
@@ -125,9 +126,12 @@ test("calendar validation accepts bounded user actions and rejects ambiguous eve
 });
 
 test("calendar database design is private, bounded, and keeps reminders linked after history trimming", async () => {
-  const [migration, api] = await Promise.all([
+  const [migration, exactReminderMigration, api, panel, suggestions] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260714_calendar_events.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260715_exact_calendar_reminders.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/calendar/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/calendar-panel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/event-suggestions.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(migration, /alter table public\.calendar_events enable row level security/i);
   assert.match(migration, /auth\.uid\(\) = user_id/i);
@@ -139,6 +143,13 @@ test("calendar database design is private, bounded, and keeps reminders linked a
   assert.match(api, /verifySupabaseRequest\(request\)/);
   assert.match(api, /isSameOriginRequest\(request\)/);
   assert.match(api, /confirm_analysis_calendar_event/);
-  assert.match(api, /create_manual_calendar_event/);
+  assert.match(api, /create_manual_calendar_event_with_reminder/);
   assert.doesNotMatch(api, /service_role/i);
+  assert.match(exactReminderMigration, /remind_before_minutes in \(0, 60, 1440, 10080, 43200\)/i);
+  assert.match(exactReminderMigration, /create_manual_calendar_event_with_reminder/i);
+  assert.match(exactReminderMigration, /remind_before_minutes = 0[\s\S]*interval '15 minutes'/i);
+  assert.match(panel, /onClick=\{\(\) => openNew\(key\)\}/);
+  assert.match(panel, /offset === 0 \? t\.exact/);
+  assert.doesNotMatch(panel, /disabled=\{busy \|\| !draft\.title\.trim\(\)[^}]*consentChecked/);
+  assert.doesNotMatch(suggestions, /disabled=\{[^}]*consentChecked/);
 });

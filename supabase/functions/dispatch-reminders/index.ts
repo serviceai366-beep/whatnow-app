@@ -8,6 +8,7 @@ type ReminderRow = {
   timezone: string;
   remind_before_minutes: number;
   source_language: "ru" | "lv" | "en";
+  event_key: string;
 };
 
 const MAX_BATCH = 20;
@@ -44,9 +45,9 @@ function escapeHtml(value: string): string {
 
 function offsetText(minutes: number, language: ReminderRow["source_language"]): string {
   const labels = {
-    ru: { 60: "за 1 час", 1440: "за 24 часа", 10080: "за 1 неделю", 43200: "за 30 дней" },
-    lv: { 60: "1 stundu iepriekš", 1440: "24 stundas iepriekš", 10080: "1 nedēļu iepriekš", 43200: "30 dienas iepriekš" },
-    en: { 60: "1 hour before", 1440: "24 hours before", 10080: "1 week before", 43200: "30 days before" },
+    ru: { 0: "в выбранное время", 60: "за 1 час", 1440: "за 24 часа", 10080: "за 1 неделю", 43200: "за 30 дней" },
+    lv: { 0: "izvēlētajā laikā", 60: "1 stundu iepriekš", 1440: "24 stundas iepriekš", 10080: "1 nedēļu iepriekš", 43200: "30 dienas iepriekš" },
+    en: { 0: "at the selected time", 60: "1 hour before", 1440: "24 hours before", 10080: "1 week before", 43200: "30 days before" },
   } as const;
   return labels[language][minutes as keyof (typeof labels)[typeof language]] ?? String(minutes);
 }
@@ -60,24 +61,25 @@ function emailContent(reminder: ReminderRow) {
   }).format(new Date(reminder.event_at));
   const title = reminder.event_title;
   const offset = offsetText(reminder.remind_before_minutes, reminder.source_language);
+  const manual = reminder.event_key.startsWith("calendar_");
   const copy = reminder.source_language === "ru" ? {
     subject: `Напоминание: ${title}`,
     heading: "Скоро важное событие",
     when: "Дата и время",
     advance: "Когда отправлено",
-    note: "Это автоматическое напоминание WhatNow? по сохранённому разбору. Перед действием проверьте дату и требования в исходном документе.",
+    note: manual ? "Это автоматическое напоминание WhatNow? из вашего календаря." : "Это автоматическое напоминание WhatNow? по сохранённому разбору. Перед действием проверьте дату и требования в исходном документе.",
   } : reminder.source_language === "lv" ? {
     subject: `Atgādinājums: ${title}`,
     heading: "Drīzumā svarīgs notikums",
     when: "Datums un laiks",
     advance: "Atgādinājuma laiks",
-    note: "Šis ir automātisks WhatNow? atgādinājums no saglabātās analīzes. Pirms rīcības pārbaudiet datumu un prasības sākotnējā dokumentā.",
+    note: manual ? "Šis ir automātisks WhatNow? atgādinājums no jūsu kalendāra." : "Šis ir automātisks WhatNow? atgādinājums no saglabātās analīzes. Pirms rīcības pārbaudiet datumu un prasības sākotnējā dokumentā.",
   } : {
     subject: `Reminder: ${title}`,
     heading: "An important event is coming up",
     when: "Date and time",
     advance: "Reminder timing",
-    note: "This is an automatic WhatNow? reminder based on a saved analysis. Check the date and requirements against the original document before acting.",
+    note: manual ? "This is an automatic WhatNow? reminder from your calendar." : "This is an automatic WhatNow? reminder based on a saved analysis. Check the date and requirements against the original document before acting.",
   };
   const safeTitle = escapeHtml(title);
   const safeTime = escapeHtml(eventTime);

@@ -60,10 +60,10 @@ async function supabaseRest(path: string, token: string, init: RequestInit = {})
 function reminderFromRow(row: SupabaseRow): ScheduledReminder | null {
   const offset = Number(row.remind_before_minutes);
   if (
-    typeof row.id !== "string" || typeof row.analysis_id !== "string"
+    typeof row.id !== "string" || (row.analysis_id !== null && typeof row.analysis_id !== "string")
     || typeof row.event_key !== "string" || typeof row.event_title !== "string"
     || typeof row.event_at !== "string" || typeof row.send_at !== "string"
-    || typeof row.timezone !== "string" || ![60, 1_440, 10_080, 43_200].includes(offset)
+    || typeof row.timezone !== "string" || ![0, 60, 1_440, 10_080, 43_200].includes(offset)
     || (row.source_language !== "ru" && row.source_language !== "lv" && row.source_language !== "en")
     || (row.status !== "scheduled" && row.status !== "sending" && row.status !== "sent" && row.status !== "cancelled" && row.status !== "failed")
     || typeof row.created_at !== "string"

@@ -64,6 +64,8 @@ test("dispatcher restricts pilot delivery and prevents duplicate email sends", a
   assert.match(dispatcher, /REMINDER_TEST_RECIPIENT/);
   assert.match(dispatcher, /mode === "pilot" && email !== pilotRecipient/);
   assert.match(dispatcher, /Idempotency-Key/);
+  assert.match(dispatcher, /0: "at the selected time"/);
+  assert.match(dispatcher, /event_key\.startsWith\("calendar_"\)/);
   assert.match(dispatcher, /whatnow-reminder\/\$\{reminder\.id\}/);
   assert.match(dispatcher, /email_confirmed_at/);
   assert.match(dispatcher, /from\("reminder_preferences"\)/);

@@ -2,9 +2,9 @@ import { supportedLanguages, type SupportedLanguage } from "./analysis-schema.ts
 import type { CalendarAction, CalendarEventFields } from "./calendar-types.ts";
 import { isValidLocalDate, isValidLocalTime } from "./reminder-time.ts";
 import {
-  isReminderOffset,
+  isCalendarReminderOffset,
   isSupportedReminderTimeZone,
-  type ReminderOffsetMinutes,
+  type CalendarReminderOffsetMinutes,
 } from "./reminder-types.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -33,7 +33,7 @@ function parseFields(value: Record<string, unknown>): CalendarEventFields | null
   const localTime = value.localTime === null || value.localTime === "" ? null : value.localTime;
   const reminder = value.remindBeforeMinutes === null
     ? null
-    : isReminderOffset(value.remindBeforeMinutes)
+    : isCalendarReminderOffset(value.remindBeforeMinutes)
       ? value.remindBeforeMinutes
       : undefined;
 
@@ -55,7 +55,7 @@ function parseFields(value: Record<string, unknown>): CalendarEventFields | null
     isAllDay,
     location,
     notes,
-    remindBeforeMinutes: reminder as ReminderOffsetMinutes | null,
+    remindBeforeMinutes: reminder as CalendarReminderOffsetMinutes | null,
   };
 }
 
@@ -69,7 +69,7 @@ export function parseCalendarAction(value: unknown): CalendarAction | null {
   if (value.action === "set_reminder") {
     const reminder = value.remindBeforeMinutes === null
       ? null
-      : isReminderOffset(value.remindBeforeMinutes)
+      : isCalendarReminderOffset(value.remindBeforeMinutes)
         ? value.remindBeforeMinutes
         : undefined;
     return isCalendarUuid(value.eventId) && reminder !== undefined
@@ -128,4 +128,3 @@ export function parseCalendarRange(from: string | null, to: string | null): { fr
   const days = Math.round((toTime - fromTime) / 86_400_000);
   return days >= 0 && days <= 366 ? { from, to } : null;
 }
-
