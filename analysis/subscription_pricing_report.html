@@ -34,14 +34,14 @@
 
   <section class="decision">
     <h2>Executive Summary</h2>
-    <p><strong>Recommended launch price:</strong> <span class="price">€19.99/month</span> including an assumed 21% Latvian VAT.</p>
+    <p><strong>Approved draft launch price:</strong> <span class="price">$9.99/month</span>, with tax treatment confirmed before checkout is enabled.</p>
     <p><strong>Do not sell literal unlimited usage.</strong> A fixed price cannot guarantee profit when one account can submit an unbounded number of large PDFs. Position the plan as high-use personal access with a clear fair-use policy, document ceilings, account-level abuse controls, and a global budget circuit breaker.</p>
     <p><strong>Prepare before charging.</strong> Measure real input, cached-input, and output tokens for at least 100 successful analyses or 30 days, then confirm the price and safety thresholds from observed usage.</p>
   </section>
 
   <section>
-    <h2>What €19.99 leaves for service costs</h2>
-    <p>Using a 21% VAT planning assumption and Stripe's standard EEA card fee of 1.5% + €0.25, approximately <strong>€15.97</strong> remains before AI, email, database, hosting, support, refunds, and other business costs.</p>
+    <h2>What $9.99 leaves for service costs</h2>
+    <p>At the 17 July 2026 ECB reference rate, $9.99 is approximately €8.71. Using a 21% VAT planning assumption, Stripe's standard EEA card fee of 1.5% + €0.25, and a conservative additional 2% currency-conversion assumption, approximately <strong>€6.65</strong> remains before AI, email, database, hosting, support, refunds, and other business costs.</p>
     <table>
       <thead><tr><th>Document scenario</th><th>Input tokens</th><th>Output tokens</th><th>Estimated AI cost</th></tr></thead>
       <tbody>
@@ -58,8 +58,8 @@
     <h2>Recommended launch controls</h2>
     <ol>
       <li>Keep the current Free plan: 3 analyses per rolling 24 hours and 10 per rolling 7 days.</li>
-      <li>Draft Pro as high-use personal access at €19.99/month; do not enable checkout yet.</li>
-      <li>Use a transparent safety policy. The initial planning thresholds are 30 analyses per rolling 24 hours and 300 per rolling 30 days, subject to real-cost review.</li>
+      <li>Draft Pro as high-use personal access at $9.99/month; do not enable checkout yet.</li>
+      <li>Use a transparent safety policy. The approved draft thresholds are 15 analyses per rolling 24 hours and 150 per rolling 30 days, subject to real-cost review.</li>
       <li>Keep size and token controls for large documents. A 10 MB file-size ceiling alone does not bound PDF page count or model cost.</li>
       <li>Keep authentication, Turnstile, per-account controls, and the service-wide budget stop.</li>
       <li>Store only token counts, estimated cost, model, document class, time, and a hashed account key in cost telemetry—never document text.</li>
@@ -69,7 +69,7 @@
   <section class="caveat">
     <h2>Further decisions before payments</h2>
     <ul>
-      <li>Approve €19.99/month and whether an annual €199.90 option should exist.</li>
+      <li>Confirm whether the annual $99.90 option should launch together with the monthly plan.</li>
       <li>Approve the public fair-use wording and exact safety thresholds.</li>
       <li>Confirm tax/business readiness, cancellation and refund rules, and the legal seller identity.</li>
       <li>Choose Stripe Checkout + Billing only after these decisions; payment code is intentionally absent.</li>

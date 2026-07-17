@@ -33,7 +33,11 @@ test("cost estimation clamps malformed usage instead of producing negative spend
 });
 
 test("subscription pricing remains a non-purchasable draft", () => {
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.monthlyGrossCents, 1_999);
+  assert.equal(SUBSCRIPTION_PRICING_DRAFT.currency, "USD");
+  assert.equal(SUBSCRIPTION_PRICING_DRAFT.monthlyGrossCents, 999);
+  assert.equal(SUBSCRIPTION_PRICING_DRAFT.annualGrossCents, 9_990);
+  assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling24HourSafetyThreshold, 15);
+  assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling30DaySafetyThreshold, 150);
   assert.equal(SUBSCRIPTION_PRICING_DRAFT.status, "draft_not_for_sale");
   assert.equal(SUBSCRIPTION_PRICING_DRAFT.checkoutEnabled, false);
   assert.deepEqual(FREE_PLAN_ENTITLEMENTS, {
