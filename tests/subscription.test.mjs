@@ -49,8 +49,8 @@ test("subscription endpoint reports Free and cannot charge without test configur
     assert.equal(body.subscription.planCode, "free");
     assert.equal(body.subscription.checkoutAvailable, false);
     assert.equal(body.pricing.monthlyGrossCents, 999);
-    assert.equal(body.pricing.rolling24HourSafetyThreshold, 15);
-    assert.equal(body.pricing.rolling30DaySafetyThreshold, 150);
+    assert.equal(body.pricing.rolling24HourSafetyThreshold, 30);
+    assert.equal(body.pricing.rolling30DaySafetyThreshold, 300);
 
     const checkout = await POST(request("POST"));
     assert.equal(checkout.status, 503);

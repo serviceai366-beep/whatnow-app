@@ -11,8 +11,8 @@ export const SUBSCRIPTION_PRICING_DRAFT = Object.freeze({
   positioning: "High-use personal access",
   checkoutEnabled: false,
   fairUseDraft: Object.freeze({
-    rolling24HourSafetyThreshold: 15,
-    rolling30DaySafetyThreshold: 150,
+    rolling24HourSafetyThreshold: 30,
+    rolling30DaySafetyThreshold: 300,
     largeDocumentReviewRequired: true,
   }),
 });
