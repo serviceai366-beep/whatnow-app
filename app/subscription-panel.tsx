@@ -14,22 +14,24 @@ const copy = {
 export function SubscriptionPanel({ locale }: { locale: ProfileLanguage }) {
   const t = copy[locale];
   const [payload, setPayload] = useState<SubscriptionPublicPayload | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    loadSubscription().then((value) => { if (active) setPayload(value); }).catch(() => { if (active) setError(true); });
+    loadSubscription().then((value) => { if (active) setPayload(value); }).catch((cause: unknown) => {
+      if (active) setError(cause instanceof Error && "code" in cause ? String(cause.code) : "subscription_error");
+    });
     return () => { active = false; };
   }, []);
   const checkout = async () => {
-    setBusy(true); setError(false);
+    setBusy(true); setError(null);
     try { window.location.assign(await startTestCheckout()); }
-    catch { setError(true); setBusy(false); }
+    catch (cause: unknown) { setError(cause instanceof Error && "code" in cause ? String(cause.code) : "checkout_error"); setBusy(false); }
   };
   const manage = async () => {
-    setBusy(true); setError(false);
+    setBusy(true); setError(null);
     try { window.location.assign(await openTestSubscriptionPortal()); }
-    catch { setError(true); setBusy(false); }
+    catch (cause: unknown) { setError(cause instanceof Error && "code" in cause ? String(cause.code) : "portal_error"); setBusy(false); }
   };
   if (!payload && !error) return <p className="panel-state">{t.loading}</p>;
   const active = payload?.subscription.planCode === "pro" && payload.subscription.state === "active";
@@ -39,6 +41,6 @@ export function SubscriptionPanel({ locale }: { locale: ProfileLanguage }) {
       <article className={`subscription-card${active ? "" : " current"}`}><span>{active ? t.free : t.current}</span><h4>{t.free}</h4><p>{t.freeText}</p></article>
       <article className={`subscription-card pro${active ? " current" : ""}`}><span>{active ? t.current : payload?.subscription.checkoutAvailable ? "TEST" : t.coming}</span><h4>{t.pro}</h4><p className="subscription-price"><strong>{t.price}</strong> {t.month}</p><ul><li>{t.daily}</li><li>{t.monthly}</li><li>{t.fair}</li></ul>{active ? <><p className="subscription-active">✓ {t.active}</p><button type="button" disabled={!payload?.subscription.managementAvailable || busy} onClick={() => void manage()}>{busy ? t.redirecting : t.manage}</button></> : <button type="button" disabled={!payload?.subscription.checkoutAvailable || busy} onClick={() => void checkout()}>{busy ? t.redirecting : payload?.subscription.checkoutAvailable ? t.testReady : t.coming}</button>}</article>
     </div>
-    <p className={error ? "hub-error" : "subscription-safety"} role={error ? "alert" : "status"}>{error ? t.error : payload?.subscription.checkoutAvailable ? t.testNotice : t.unavailable}</p>
+    <p className={error ? "hub-error" : "subscription-safety"} role={error ? "alert" : "status"}>{error ? <>{t.error}<span className="sr-only"> Error code: {error}</span></> : payload?.subscription.checkoutAvailable ? t.testNotice : t.unavailable}</p>
   </section>;
 }
