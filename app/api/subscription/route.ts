@@ -97,7 +97,11 @@ export async function POST(request: Request): Promise<Response> {
     try { return JSON.parse(rawBody) as { action?: unknown }; }
     catch { return null; }
   })();
-  const action = body?.action === "portal" ? "portal" : body?.action === undefined ? "checkout" : null;
+  const action = body?.action === "portal"
+    ? "portal"
+    : body?.action === "checkout" || body?.action === undefined
+      ? "checkout"
+      : null;
   if (!action) return error("invalid_request", "Unknown subscription action.", 400);
   const configuration = stripeTestConfiguration();
   if (!configuration) {

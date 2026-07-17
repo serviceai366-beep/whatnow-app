@@ -6,11 +6,11 @@ import { checkoutForm, privateSubscriptionReference, stripeTestConfiguration } f
 
 const token = "test.subscription-user.signature";
 
-function request(method = "GET", headers = {}) {
+function request(method = "GET", headers = {}, body = "{}") {
   return new Request("https://whatnow-app.com/api/subscription", {
     method,
     headers: { authorization: `Bearer ${token}`, ...(method === "POST" ? { "content-type": "application/json" } : {}), ...headers },
-    body: method === "POST" ? "{}" : undefined,
+    body: method === "POST" ? body : undefined,
   });
 }
 
@@ -53,7 +53,7 @@ test("subscription endpoint reports Free and cannot charge without test configur
     assert.equal(body.pricing.rolling24HourSafetyThreshold, 30);
     assert.equal(body.pricing.rolling30DaySafetyThreshold, 300);
 
-    const checkout = await POST(request("POST"));
+    const checkout = await POST(request("POST", {}, JSON.stringify({ action: "checkout" })));
     assert.equal(checkout.status, 503);
     assert.equal((await checkout.json()).error.code, "checkout_unavailable");
   } finally {
