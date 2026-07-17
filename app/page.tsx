@@ -293,6 +293,11 @@ export default function Home() {
       setAuthOpen(true);
       return;
     }
+    if (account.requiresLegalAcceptance) {
+      setAnalysisError(t.errorAuthenticationRequired);
+      setAuthOpen(true);
+      return;
+    }
     if (inputMode === "file" && !selectedDocument) {
       setFileError(t.fileMissing);
       return;
@@ -671,7 +676,7 @@ export default function Home() {
 
       <footer>
         <a className="brand footer-brand" href="#top"><img className="brand-mark" src="/whatnow-logo.jpg" alt="" /><span>WhatNow?</span></a>
-        <p>{t.footerNotice}</p>
+        <div className="footer-copy"><p>{t.footerNotice}</p><nav aria-label="Legal"><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a></nav></div>
       </footer>
     </main>
   );

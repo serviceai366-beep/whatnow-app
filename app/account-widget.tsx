@@ -5,12 +5,14 @@ import type { FormEvent } from "react";
 import type { SupportedLanguage } from "./analysis-schema";
 import {
   isSupabaseConfigured,
+  acceptCurrentLegalTerms,
   getAccessToken,
   loadAccount,
   sendEmailSignInLink,
   signOutAccount,
   startGoogleSignIn,
   type SupabaseAccount,
+  type AccountAccessMode,
 } from "./supabase-auth";
 import { TurnstileWidget } from "./turnstile";
 import type { QuotaSnapshot, WindowQuota } from "./quota-types";
@@ -21,6 +23,7 @@ export type ColorTheme = "light" | "dark";
 const copy = {
   ru: {
     signIn: "Войти", signOut: "Выйти", title: "Войти в WhatNow?", profile: "Профиль",
+    createAccount: "Создать аккаунт", createTitle: "Создайте аккаунт WhatNow?", signInTab: "Вход", createTab: "Регистрация",
     intro: "Один аккаунт для защищённых лимитов, истории и входа с разных устройств.", history: "Открыть историю разборов",
     google: "Продолжить через Google", googleLoading: "Открываем Google…", divider: "или по email", email: "Email",
     emailPlaceholder: "name@example.com", emailAction: "Получить ссылку для входа", sending: "Отправляем…",
@@ -35,9 +38,15 @@ const copy = {
     accountActions: "Управление аккаунтом",
     captchaWaiting: "Проверка защиты от ботов выполняется автоматически.",
     captchaReady: "Защита подтверждена.", captchaError: "Не удалось выполнить защитную проверку. Обновите её и попробуйте снова.",
+    legalAgree: "Я принимаю Условия использования и подтверждаю, что прочитал(а) Политику конфиденциальности.",
+    terms: "Условия использования", privacyPolicy: "Политика конфиденциальности", legalRequired: "Для создания аккаунта сначала подтвердите условия.",
+    createEmailAction: "Создать аккаунт по email", createSent: "Проверьте почту — одноразовая ссылка подтвердит email и завершит создание аккаунта.",
+    finishLegalTitle: "Завершите создание аккаунта", finishLegalText: "Чтобы пользоваться WhatNow?, подтвердите действующие условия и политику конфиденциальности.",
+    acceptAndContinue: "Принять и продолжить", accepting: "Сохраняем…",
   },
   lv: {
     signIn: "Pierakstīties", signOut: "Iziet", title: "Pierakstīties WhatNow?", profile: "Profils",
+    createAccount: "Izveidot kontu", createTitle: "Izveidojiet WhatNow? kontu", signInTab: "Pierakstīties", createTab: "Reģistrēties",
     intro: "Viens konts drošiem limitiem, vēsturei un darbam dažādās ierīcēs.", history: "Atvērt analīžu vēsturi",
     google: "Turpināt ar Google", googleLoading: "Atveram Google…", divider: "vai ar e-pastu", email: "E-pasts",
     emailPlaceholder: "vards@piemers.lv", emailAction: "Saņemt pierakstīšanās saiti", sending: "Nosūtām…",
@@ -52,9 +61,15 @@ const copy = {
     accountActions: "Konta pārvaldība",
     captchaWaiting: "Aizsardzības pārbaude pret robotiem notiek automātiski.",
     captchaReady: "Aizsardzība apstiprināta.", captchaError: "Neizdevās veikt aizsardzības pārbaudi. Atjaunojiet to un mēģiniet vēlreiz.",
+    legalAgree: "Es piekrītu Lietošanas noteikumiem un apliecinu, ka esmu izlasījis Privātuma politiku.",
+    terms: "Lietošanas noteikumi", privacyPolicy: "Privātuma politika", legalRequired: "Lai izveidotu kontu, vispirms apstipriniet noteikumus.",
+    createEmailAction: "Izveidot kontu ar e-pastu", createSent: "Pārbaudiet e-pastu — vienreizējā saite apstiprinās adresi un pabeigs konta izveidi.",
+    finishLegalTitle: "Pabeidziet konta izveidi", finishLegalText: "Lai izmantotu WhatNow?, apstipriniet spēkā esošos noteikumus un privātuma politiku.",
+    acceptAndContinue: "Piekrītu un turpinu", accepting: "Saglabājam…",
   },
   en: {
     signIn: "Sign in", signOut: "Sign out", title: "Sign in to WhatNow?", profile: "Profile",
+    createAccount: "Create account", createTitle: "Create your WhatNow? account", signInTab: "Sign in", createTab: "Create account",
     intro: "One account for protected limits, history, and access across devices.", history: "Open analysis history",
     google: "Continue with Google", googleLoading: "Opening Google…", divider: "or use email", email: "Email",
     emailPlaceholder: "name@example.com", emailAction: "Email me a sign-in link", sending: "Sending…",
@@ -69,6 +84,11 @@ const copy = {
     accountActions: "Account management",
     captchaWaiting: "The bot-protection check runs automatically.",
     captchaReady: "Protection verified.", captchaError: "The protection check could not be completed. Refresh it and try again.",
+    legalAgree: "I agree to the Terms of Service and acknowledge that I have read the Privacy Policy.",
+    terms: "Terms of Service", privacyPolicy: "Privacy Policy", legalRequired: "Accept the terms before creating an account.",
+    createEmailAction: "Create account with email", createSent: "Check your inbox — the one-time link will verify your email and finish creating the account.",
+    finishLegalTitle: "Finish creating your account", finishLegalText: "To use WhatNow?, accept the current Terms of Service and acknowledge the Privacy Policy.",
+    acceptAndContinue: "Accept and continue", accepting: "Saving…",
   },
 } as const;
 
@@ -114,6 +134,9 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   const [emailCaptchaToken, setEmailCaptchaToken] = useState<string | null>(null);
   const [emailCaptchaResetKey, setEmailCaptchaResetKey] = useState(0);
   const [emailCaptchaError, setEmailCaptchaError] = useState(false);
+  const [authMode, setAuthMode] = useState<AccountAccessMode>("sign-in");
+  const [legalAccepted, setLegalAccepted] = useState(false);
+  const [acceptingLegal, setAcceptingLegal] = useState(false);
   const [quota, setQuota] = useState<QuotaSnapshot | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [quotaError, setQuotaError] = useState(false);
@@ -125,6 +148,10 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
     }).finally(() => { if (active) setLoaded(true); });
     return () => { active = false; };
   }, [onAccountChange]);
+
+  useEffect(() => {
+    if (account?.requiresLegalAcceptance) onOpenChange(true);
+  }, [account?.requiresLegalAcceptance, onOpenChange]);
 
   useEffect(() => {
     let active = true;
@@ -166,12 +193,19 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
 
   const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (authMode === "create-account" && !legalAccepted) {
+      setError(t.legalRequired);
+      return;
+    }
     if (!emailCaptchaToken) {
       setEmailCaptchaError(true);
       return;
     }
     setError(null); setMessage(null); setSending(true);
-    try { await sendEmailSignInLink(email.trim(), emailCaptchaToken); setMessage(t.sent); }
+    try {
+      await sendEmailSignInLink(email.trim(), emailCaptchaToken, authMode, legalAccepted);
+      setMessage(authMode === "create-account" ? t.createSent : t.sent);
+    }
     catch { setError(t.error); }
     finally {
       setSending(false);
@@ -200,7 +234,27 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
         }}>
           <section className={`auth-dialog${account ? " profile-dialog" : ""}`} role="dialog" aria-modal="true" aria-labelledby="account-dialog-title">
             <button className="auth-close" type="button" aria-label={t.close} onClick={() => onOpenChange(false)}>×</button>
-            {account ? (
+            {account?.requiresLegalAcceptance ? (
+              <>
+                <img className="auth-mark" src="/whatnow-logo.jpg" alt="" />
+                <h2 id="account-dialog-title">{t.finishLegalTitle}</h2>
+                <p className="auth-intro">{t.finishLegalText}</p>
+                <label className="legal-consent">
+                  <input type="checkbox" checked={legalAccepted} onChange={(event) => setLegalAccepted(event.target.checked)} />
+                  <span>{t.legalAgree}</span>
+                </label>
+                <p className="legal-links"><a href="/terms" target="_blank">{t.terms}</a><span>·</span><a href="/privacy" target="_blank">{t.privacyPolicy}</a></p>
+                <button className="legal-accept-button" type="button" disabled={!legalAccepted || acceptingLegal} onClick={async () => {
+                  setAcceptingLegal(true); setError(null);
+                  try {
+                    const updated = await acceptCurrentLegalTerms();
+                    setAccount(updated); onAccountChange?.(updated); setLegalAccepted(false); onOpenChange(false);
+                  } catch { setError(t.error); }
+                  finally { setAcceptingLegal(false); }
+                }}>{acceptingLegal ? t.accepting : t.acceptAndContinue}</button>
+                {error && <p className="auth-error" role="alert">{error}</p>}
+              </>
+            ) : account ? (
               <>
                 <Avatar account={account} large />
                 <h2 id="account-dialog-title">{t.profile}</h2>
@@ -240,13 +294,25 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
             ) : (
               <>
                 <img className="auth-mark" src="/whatnow-logo.jpg" alt="" />
-                <h2 id="account-dialog-title">{t.title}</h2>
+                <div className="auth-mode-switch" role="tablist" aria-label={t.title}>
+                  <button type="button" role="tab" aria-selected={authMode === "sign-in"} className={authMode === "sign-in" ? "active" : ""} onClick={() => { setAuthMode("sign-in"); setLegalAccepted(false); setError(null); setMessage(null); }}>{t.signInTab}</button>
+                  <button type="button" role="tab" aria-selected={authMode === "create-account"} className={authMode === "create-account" ? "active" : ""} onClick={() => { setAuthMode("create-account"); setError(null); setMessage(null); }}>{t.createTab}</button>
+                </div>
+                <h2 id="account-dialog-title">{authMode === "create-account" ? t.createTitle : t.title}</h2>
                 <p className="auth-intro">{t.intro}</p>
-                <button className="google-sign-in" type="button" disabled={googleLoading} onClick={async () => {
+                {authMode === "create-account" && <>
+                  <label className="legal-consent">
+                    <input type="checkbox" checked={legalAccepted} onChange={(event) => { setLegalAccepted(event.target.checked); if (event.target.checked) setError(null); }} />
+                    <span>{t.legalAgree}</span>
+                  </label>
+                  <p className="legal-links"><a href="/terms" target="_blank">{t.terms}</a><span>·</span><a href="/privacy" target="_blank">{t.privacyPolicy}</a></p>
+                </>}
+                <button className="google-sign-in" type="button" disabled={googleLoading || (authMode === "create-account" && !legalAccepted)} onClick={async () => {
                   setError(null);
+                  if (authMode === "create-account" && !legalAccepted) return setError(t.legalRequired);
                   if (!isSupabaseConfigured()) return setError(t.unavailable);
                   setGoogleLoading(true);
-                  try { await startGoogleSignIn(); } catch { setError(t.error); setGoogleLoading(false); }
+                  try { await startGoogleSignIn(authMode, legalAccepted); } catch { setError(t.error); setGoogleLoading(false); }
                 }}><span aria-hidden="true">G</span>{googleLoading ? t.googleLoading : t.google}</button>
                 <div className="auth-divider"><span>{t.divider}</span></div>
                 <form className="email-sign-in" onSubmit={submitEmail}>
@@ -259,7 +325,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                       onError={() => setEmailCaptchaError(true)} />
                     <small>{emailCaptchaError ? t.captchaError : emailCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
                   </div>
-                  <button type="submit" disabled={sending || !email.trim() || !emailCaptchaToken}>{sending ? t.sending : t.emailAction}</button>
+                  <button type="submit" disabled={sending || !email.trim() || !emailCaptchaToken || (authMode === "create-account" && !legalAccepted)}>{sending ? t.sending : authMode === "create-account" ? t.createEmailAction : t.emailAction}</button>
                 </form>
                 {message && <p className="auth-message" role="status">{message}</p>}
                 {error && <p className="auth-error" role="alert">{error}</p>}
