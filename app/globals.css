@@ -677,6 +677,23 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 .suggestion-actions { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
 .suggestion-actions small { color: var(--muted); }
 
+.subscription-panel > header h3 { margin: 0; font-size: 24px; }
+.subscription-panel > header p { margin: 4px 0 0; color: var(--muted); }
+.subscription-grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 16px; margin-top: 20px; }
+.subscription-card { position: relative; min-height: 260px; padding: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
+.subscription-card > span { display: inline-flex; padding: 5px 9px; border-radius: 999px; color: var(--accent-dark); background: var(--accent-soft); font-size: 11px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.subscription-card h4 { margin: 18px 0 7px; font-size: 25px; }
+.subscription-card p { color: var(--muted); }
+.subscription-card.pro { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: linear-gradient(145deg, var(--surface) 30%, var(--accent-soft)); }
+.subscription-card.pro::after { position: absolute; width: 190px; height: 190px; right: -95px; top: -95px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, transparent); content: ""; }
+.subscription-price strong { color: var(--foreground); font-size: 38px; line-height: 1; }
+.subscription-card ul { display: grid; gap: 8px; margin: 18px 0; padding: 0; list-style: none; }
+.subscription-card li { position: relative; padding-left: 23px; }
+.subscription-card li::before { position: absolute; left: 0; color: var(--accent-dark); font-weight: 900; content: "✓"; }
+.subscription-card button { width: 100%; min-height: 44px; border: 0; border-radius: 12px; color: white; background: var(--accent); font-weight: 850; }
+.subscription-card button:disabled { cursor: not-allowed; color: var(--muted); background: var(--border); }
+.subscription-safety { margin: 15px 0 0; padding: 12px 14px; border-radius: 12px; color: var(--accent-dark); background: var(--accent-soft); font-size: 13px; }
+
 @media (max-width: 900px) {
   .calendar-layout { grid-template-columns: 1fr; }
   .calendar-month { border-right: 0; border-bottom: 1px solid var(--border); }
@@ -696,6 +713,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .file-quota { grid-template-columns: 1fr; }
   .file-list li { grid-template-columns: 46px minmax(0, 1fr); }
   .file-list li > div:last-child { grid-column: 1 / -1; justify-content: start; }
+  .subscription-grid { grid-template-columns: 1fr; }
   .calendar-toolbar { top: 101px; padding: 10px 14px; flex-wrap: wrap; }
   .calendar-toolbar strong { min-width: 140px; }
   .calendar-toolbar .primary-mini { margin-left: 0; }
