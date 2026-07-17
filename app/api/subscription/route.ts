@@ -67,7 +67,7 @@ function authenticationError(auth: Exclude<Awaited<ReturnType<typeof verifySupab
 export async function GET(request: Request): Promise<Response> {
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return authenticationError(auth);
-  const checkoutConfigured = Boolean(stripeTestConfiguration());
+  const checkoutConfigured = SUBSCRIPTION_PRICING_DRAFT.checkoutEnabled && Boolean(stripeTestConfiguration());
   const store = await getSubscriptionStore();
   const stored = store ? await store.readForUser(auth.user.id) : null;
   const subscription = stored ? {
@@ -103,6 +103,9 @@ export async function POST(request: Request): Promise<Response> {
       ? "checkout"
       : null;
   if (!action) return error("invalid_request", "Unknown subscription action.", 400);
+  if (!SUBSCRIPTION_PRICING_DRAFT.checkoutEnabled) {
+    return error("checkout_unavailable", "Subscriptions are coming soon and checkout is not open.", 503);
+  }
   const configuration = stripeTestConfiguration();
   if (!configuration) {
     return error("checkout_unavailable", "Test checkout is not configured and no payment can be taken.", 503);

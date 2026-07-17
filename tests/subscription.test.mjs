@@ -63,6 +63,32 @@ test("subscription endpoint reports Free and cannot charge without test configur
   }
 });
 
+test("coming-soon gate blocks checkout even when Stripe test configuration exists", async () => {
+  const previousFetch = globalThis.fetch;
+  const previousEnvironment = {
+    enabled: process.env.STRIPE_TEST_CHECKOUT_ENABLED,
+    secret: process.env.STRIPE_SECRET_KEY,
+    price: process.env.STRIPE_PRO_PRICE_ID,
+  };
+  process.env.STRIPE_TEST_CHECKOUT_ENABLED = "true";
+  process.env.STRIPE_SECRET_KEY = "sk_test_configured_but_closed";
+  process.env.STRIPE_PRO_PRICE_ID = "price_configured_but_closed";
+  globalThis.fetch = async (url) => String(url).includes("/auth/v1/user") ? authResponse() : (() => { throw new Error("Stripe must not be called while subscriptions are coming soon"); })();
+  try {
+    const checkout = await POST(request("POST", {}, JSON.stringify({ action: "checkout" })));
+    assert.equal(checkout.status, 503);
+    assert.equal((await checkout.json()).error.code, "checkout_unavailable");
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousEnvironment.enabled === undefined) delete process.env.STRIPE_TEST_CHECKOUT_ENABLED;
+    else process.env.STRIPE_TEST_CHECKOUT_ENABLED = previousEnvironment.enabled;
+    if (previousEnvironment.secret === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = previousEnvironment.secret;
+    if (previousEnvironment.price === undefined) delete process.env.STRIPE_PRO_PRICE_ID;
+    else process.env.STRIPE_PRO_PRICE_ID = previousEnvironment.price;
+  }
+});
+
 test("subscription endpoint rejects cross-site checkout before authentication", async () => {
   const response = await POST(request("POST", { origin: "https://attacker.example", "sec-fetch-site": "cross-site" }));
   assert.equal(response.status, 403);
@@ -77,6 +103,7 @@ test("plan UI is localized and explicitly labels the non-chargeable test state",
   ]);
   for (const phrase of ["Payments are not open yet", "Списание с карты невозможно", "No kartes neko nevar iekasēt"]) assert.match(panel, new RegExp(phrase));
   assert.match(panel, /\$9\.99/);
+  assert.match(panel, /const subscriptionsOpen = Boolean\(payload\?\.subscription\.checkoutAvailable \|\| payload\?\.subscription\.managementAvailable\)/);
   assert.match(hub, /<SubscriptionPanel locale=\{locale\}/);
   assert.match(env, /STRIPE_TEST_CHECKOUT_ENABLED=false/);
   assert.doesNotMatch(panel, /sk_test_|sk_live_/);

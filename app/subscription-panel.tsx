@@ -34,7 +34,8 @@ export function SubscriptionPanel({ locale }: { locale: ProfileLanguage }) {
     catch (cause: unknown) { setError(cause instanceof Error && "code" in cause ? `${String(cause.code)}: ${cause.message}` : "portal_error"); setBusy(false); }
   };
   if (!payload && !error) return <p className="panel-state">{t.loading}</p>;
-  const active = payload?.subscription.planCode === "pro" && payload.subscription.state === "active";
+  const subscriptionsOpen = Boolean(payload?.subscription.checkoutAvailable || payload?.subscription.managementAvailable);
+  const active = subscriptionsOpen && payload?.subscription.planCode === "pro" && payload.subscription.state === "active";
   return <section className="subscription-panel" aria-labelledby="subscription-title">
     <header><h3 id="subscription-title">{t.title}</h3><p>{t.intro}</p></header>
     <div className="subscription-grid">
