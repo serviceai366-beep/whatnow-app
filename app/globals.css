@@ -692,6 +692,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 .subscription-card li::before { position: absolute; left: 0; color: var(--accent-dark); font-weight: 900; content: "✓"; }
 .subscription-card button { width: 100%; min-height: 44px; border: 0; border-radius: 12px; color: white; background: var(--accent); font-weight: 850; }
 .subscription-card button:disabled { cursor: not-allowed; color: var(--muted); background: var(--border); }
+.subscription-active { margin-top: 18px; padding: 11px 13px; border-radius: 11px; color: var(--accent-dark) !important; background: var(--accent-soft); font-weight: 800; }
 .subscription-safety { margin: 15px 0 0; padding: 12px 14px; border-radius: 12px; color: var(--accent-dark); background: var(--accent-soft); font-size: 13px; }
 
 @media (max-width: 900px) {

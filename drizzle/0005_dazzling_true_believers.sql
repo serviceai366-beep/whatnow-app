@@ -1,0 +1,1 @@
+ALTER TABLE `user_subscriptions` ADD `last_stripe_event_created` integer DEFAULT 0 NOT NULL;

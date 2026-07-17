@@ -1,6 +1,7 @@
 import type { VerifiedSupabaseUser } from "./supabase-server-auth.ts";
 
 const STRIPE_CHECKOUT_URL = "https://api.stripe.com/v1/checkout/sessions";
+const STRIPE_PORTAL_URL = "https://api.stripe.com/v1/billing_portal/sessions";
 const STRIPE_REQUEST_TIMEOUT_MS = 10_000;
 
 type StripeEnvironment = Record<string, string | undefined>;
@@ -64,6 +65,49 @@ function isStripeCheckoutUrl(value: unknown): value is string {
   }
 }
 
+function isStripePortalUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "billing.stripe.com";
+  } catch {
+    return false;
+  }
+}
+
+async function stripeFormRequest({
+  endpoint,
+  secretKey,
+  form,
+  validUrl,
+  fetchImpl,
+}: {
+  endpoint: string;
+  secretKey: string;
+  form: URLSearchParams;
+  validUrl: (value: unknown) => value is string;
+  fetchImpl: typeof fetch;
+}): Promise<StripeCheckoutResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), STRIPE_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetchImpl(endpoint, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: form,
+      signal: controller.signal,
+    });
+    if (!response.ok) return { ok: false, code: "stripe_error" };
+    const payload = await response.json().catch(() => null) as { url?: unknown } | null;
+    if (!validUrl(payload?.url)) return { ok: false, code: "invalid_response" };
+    return { ok: true, url: payload.url };
+  } catch (error) {
+    return { ok: false, code: error instanceof Error && error.name === "AbortError" ? "timeout" : "stripe_error" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function createStripeTestCheckout({
   request,
   user,
@@ -75,30 +119,35 @@ export async function createStripeTestCheckout({
   configuration: StripeTestConfiguration;
   fetchImpl?: typeof fetch;
 }): Promise<StripeCheckoutResult> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), STRIPE_REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetchImpl(STRIPE_CHECKOUT_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${configuration.secretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: checkoutForm({
+  return stripeFormRequest({
+    endpoint: STRIPE_CHECKOUT_URL,
+    secretKey: configuration.secretKey,
+    form: checkoutForm({
         priceId: configuration.priceId,
         user,
         userReference: await privateSubscriptionReference(user.id),
         origin: new URL(request.url).origin,
       }),
-      signal: controller.signal,
-    });
-    if (!response.ok) return { ok: false, code: "stripe_error" };
-    const payload = await response.json().catch(() => null) as { url?: unknown } | null;
-    if (!isStripeCheckoutUrl(payload?.url)) return { ok: false, code: "invalid_response" };
-    return { ok: true, url: payload.url };
-  } catch (error) {
-    return { ok: false, code: error instanceof Error && error.name === "AbortError" ? "timeout" : "stripe_error" };
-  } finally {
-    clearTimeout(timeout);
-  }
+    validUrl: isStripeCheckoutUrl,
+    fetchImpl,
+  });
+}
+
+export async function createStripeTestPortal({
+  request,
+  customerId,
+  configuration,
+  fetchImpl = fetch,
+}: {
+  request: Request;
+  customerId: string;
+  configuration: StripeTestConfiguration;
+  fetchImpl?: typeof fetch;
+}): Promise<StripeCheckoutResult> {
+  if (!/^cus_[A-Za-z0-9]+$/.test(customerId)) return { ok: false, code: "invalid_response" };
+  const form = new URLSearchParams({
+    customer: customerId,
+    return_url: `${new URL(request.url).origin}/?subscription=managed`,
+  });
+  return stripeFormRequest({ endpoint: STRIPE_PORTAL_URL, secretKey: configuration.secretKey, form, validUrl: isStripePortalUrl, fetchImpl });
 }

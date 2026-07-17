@@ -48,6 +48,7 @@ test("subscription endpoint reports Free and cannot charge without test configur
     const body = await snapshot.json();
     assert.equal(body.subscription.planCode, "free");
     assert.equal(body.subscription.checkoutAvailable, false);
+    assert.equal(body.subscription.managementAvailable, false);
     assert.equal(body.pricing.monthlyGrossCents, 999);
     assert.equal(body.pricing.rolling24HourSafetyThreshold, 30);
     assert.equal(body.pricing.rolling30DaySafetyThreshold, 300);

@@ -37,11 +37,26 @@ export async function startTestCheckout(): Promise<string> {
     cache: "no-store",
     credentials: "same-origin",
     headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({ action: "checkout" }),
   });
   const payload = await response.json().catch(() => null) as ({ checkoutUrl?: unknown } & ApiErrorPayload) | null;
   if (!response.ok || typeof payload?.checkoutUrl !== "string") {
     throw new SubscriptionRequestError(payload?.error?.code ?? "checkout_error", payload?.error?.message ?? "Checkout could not be started");
   }
   return payload.checkoutUrl;
+}
+
+export async function openTestSubscriptionPortal(): Promise<string> {
+  const response = await fetch("/api/subscription", {
+    method: "POST",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "portal" }),
+  });
+  const payload = await response.json().catch(() => null) as ({ portalUrl?: unknown } & ApiErrorPayload) | null;
+  if (!response.ok || typeof payload?.portalUrl !== "string") {
+    throw new SubscriptionRequestError(payload?.error?.code ?? "portal_error", payload?.error?.message ?? "Subscription management could not be opened");
+  }
+  return payload.portalUrl;
 }

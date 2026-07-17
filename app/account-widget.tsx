@@ -32,7 +32,7 @@ const copy = {
     close: "Закрыть окно", unavailable: "Вход временно не настроен. Попробуйте позже.",
     error: "Не удалось начать вход. Попробуйте ещё раз.", secure: "Email подтверждён",
     securityText: "Сессия проверяется Supabase перед каждым анализом.", appearance: "Оформление",
-    light: "Светлая", dark: "Тёмная", quota: "Ваши лимиты", dailyQuota: "За 24 часа", weeklyQuota: "За 7 дней",
+    light: "Светлая", dark: "Тёмная", quota: "Ваши лимиты", dailyQuota: "За 24 часа", weeklyQuota: "За 7 дней", monthlyQuota: "За 30 дней",
     quotaLoading: "Считаем доступные анализы…", quotaUnavailable: "Не удалось обновить остаток. Ограничения продолжают действовать на сервере.",
     quotaRemaining: "Осталось {remaining} из {limit}", quotaReset: "Обновится {time}",
     accountActions: "Управление аккаунтом",
@@ -55,7 +55,7 @@ const copy = {
     close: "Aizvērt logu", unavailable: "Pierakstīšanās pašlaik nav iestatīta. Mēģiniet vēlāk.",
     error: "Neizdevās sākt pierakstīšanos. Mēģiniet vēlreiz.", secure: "E-pasts apstiprināts",
     securityText: "Supabase pārbauda sesiju pirms katras analīzes.", appearance: "Izskats",
-    light: "Gaišs", dark: "Tumšs", quota: "Jūsu limiti", dailyQuota: "24 stundās", weeklyQuota: "7 dienās",
+    light: "Gaišs", dark: "Tumšs", quota: "Jūsu limiti", dailyQuota: "24 stundās", weeklyQuota: "7 dienās", monthlyQuota: "30 dienās",
     quotaLoading: "Aprēķinām pieejamās analīzes…", quotaUnavailable: "Neizdevās atjaunināt atlikumu. Limiti joprojām darbojas serverī.",
     quotaRemaining: "Atlikušas {remaining} no {limit}", quotaReset: "Atjaunosies {time}",
     accountActions: "Konta pārvaldība",
@@ -78,7 +78,7 @@ const copy = {
     close: "Close window", unavailable: "Sign-in is not configured right now. Try again later.",
     error: "We could not start sign-in. Please try again.", secure: "Email verified",
     securityText: "Supabase verifies the session before every analysis.", appearance: "Appearance",
-    light: "Light", dark: "Dark", quota: "Your limits", dailyQuota: "Per 24 hours", weeklyQuota: "Per 7 days",
+    light: "Light", dark: "Dark", quota: "Your limits", dailyQuota: "Per 24 hours", weeklyQuota: "Per 7 days", monthlyQuota: "Per 30 days",
     quotaLoading: "Checking available analyses…", quotaUnavailable: "The remaining allowance could not be refreshed. Server limits are still enforced.",
     quotaRemaining: "{remaining} of {limit} remaining", quotaReset: "Refreshes {time}",
     accountActions: "Account management",
@@ -271,7 +271,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   <h3 id="quota-title">{t.quota}</h3>
                   {quotaLoading && !quota ? <p role="status">{t.quotaLoading}</p> : quotaError && !quota ? <p className="quota-error">{t.quotaUnavailable}</p> : quota ? (
                     <div className="quota-grid">
-                      {([[t.dailyQuota, quota.daily], [t.weeklyQuota, quota.weekly]] as const).map(([label, item]) => (
+                      {([[t.dailyQuota, quota.daily], [quota.secondaryWindowDays === 30 ? t.monthlyQuota : t.weeklyQuota, quota.weekly]] as const).map(([label, item]) => (
                         <div className="quota-row" key={label}>
                           <span><strong>{label}</strong><small>{quotaText(t.quotaRemaining, item)}</small></span>
                           <b aria-label={quotaText(t.quotaRemaining, item)}>{item.remaining}/{item.limit}</b>

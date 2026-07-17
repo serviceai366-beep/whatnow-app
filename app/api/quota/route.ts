@@ -1,6 +1,7 @@
 import { isSameOriginRequest } from "../../security.ts";
 import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
 import { readAnalysisQuota } from "../../usage-control.ts";
+import { activePlanForUser } from "../../subscription-store.ts";
 
 function response(body: unknown, status = 200): Response {
   return Response.json(body, {
@@ -23,7 +24,8 @@ export async function GET(request: Request): Promise<Response> {
   if (!auth.ok) return response({ error: { code: auth.code } }, auth.status);
 
   try {
-    const quota = await readAnalysisQuota({ userKey: auth.user.id });
+    const planCode = await activePlanForUser(auth.user.id);
+    const quota = await readAnalysisQuota({ userKey: auth.user.id, planCode });
     if (quota.backend === "unavailable") {
       return response({ error: { code: "usage_control_unavailable" } }, 503);
     }

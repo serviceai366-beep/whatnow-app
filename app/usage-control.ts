@@ -1,5 +1,6 @@
 import type { RateLimitResult } from "./security.ts";
 import type { QuotaSnapshot, WindowQuota } from "./quota-types.ts";
+import { FREE_PLAN_ENTITLEMENTS, SUBSCRIPTION_PRICING_DRAFT, type SubscriptionPlanCode } from "./subscription-plans.ts";
 
 export type { QuotaSnapshot, WindowQuota } from "./quota-types.ts";
 
@@ -9,21 +10,28 @@ export const GLOBAL_24H_ANALYSIS_LIMIT = 30;
 export const GLOBAL_24H_COST_UNIT_LIMIT = 60;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const WEEK_MS = 7 * DAY_MS;
+const FREE_WINDOW_MS = 7 * DAY_MS;
+const PRO_WINDOW_MS = 30 * DAY_MS;
+const RETENTION_MS = PRO_WINDOW_MS;
 
 export type AnalysisCostKind = "text" | "image" | "pdf" | "document";
-export type QuotaScope = "user_24h" | "user_7d" | "global_24h" | "global_cost_24h" | "unavailable";
+export type QuotaScope = "user_24h" | "user_window" | "global_24h" | "global_cost_24h" | "unavailable";
 
 export type QuotaDecision = RateLimitResult & {
   backend: "durable" | "memory" | "unavailable";
   scope: QuotaScope | null;
   daily: WindowQuota;
   weekly: WindowQuota;
+  planCode: SubscriptionPlanCode;
+  secondaryWindowDays: 7 | 30;
 };
 
 type QuotaLimits = {
+  planCode: SubscriptionPlanCode;
   daily: number;
   weekly: number;
+  userWindowMs: number;
+  secondaryWindowDays: 7 | 30;
   global: number;
   globalCost: number;
 };
@@ -80,7 +88,7 @@ function decisionFromStats(
   inserted: boolean,
 ): QuotaDecision {
   const daily = windowQuota(stats.dailyCount, stats.dailyOldest, limits.daily, DAY_MS, now);
-  const weekly = windowQuota(stats.weeklyCount, stats.weeklyOldest, limits.weekly, WEEK_MS, now);
+  const weekly = windowQuota(stats.weeklyCount, stats.weeklyOldest, limits.weekly, limits.userWindowMs, now);
   let scope: QuotaScope | null = null;
   let effective: WindowQuota = daily;
   if (!inserted) {
@@ -91,7 +99,7 @@ function decisionFromStats(
         scope = "user_24h";
         effective = daily;
       } else {
-        scope = "user_7d";
+        scope = "user_window";
         effective = weekly;
       }
     }
@@ -113,6 +121,8 @@ function decisionFromStats(
     resetAt: effective.resetAt,
     daily,
     weekly,
+    planCode: limits.planCode,
+    secondaryWindowDays: limits.secondaryWindowDays,
   };
 }
 
@@ -125,14 +135,16 @@ function snapshotFromStats(
   return {
     backend,
     checkedAt: now,
+    planCode: limits.planCode,
+    secondaryWindowDays: limits.secondaryWindowDays,
     daily: windowQuota(stats.dailyCount, stats.dailyOldest, limits.daily, DAY_MS, now),
-    weekly: windowQuota(stats.weeklyCount, stats.weeklyOldest, limits.weekly, WEEK_MS, now),
+    weekly: windowQuota(stats.weeklyCount, stats.weeklyOldest, limits.weekly, limits.userWindowMs, now),
   };
 }
 
-function statsFromEvents(events: UsageEvent[], userKey: string, now: number): UsageStats {
+function statsFromEvents(events: UsageEvent[], userKey: string, now: number, limits: QuotaLimits): UsageStats {
   const dailyStart = now - DAY_MS;
-  const weeklyStart = now - WEEK_MS;
+  const weeklyStart = now - limits.userWindowMs;
   const dailyEvents = events.filter((event) => event.userKey === userKey && event.createdAt > dailyStart);
   const weeklyEvents = events.filter((event) => event.userKey === userKey && event.createdAt > weeklyStart);
   const globalEvents = events.filter((event) => event.createdAt > dailyStart);
@@ -154,21 +166,21 @@ function createMemoryQuotaStore(): QuotaStore {
   return {
     backend: "memory",
     async consume({ userKey, costUnits, now, limits }) {
-      events = events.filter((event) => event.createdAt > now - WEEK_MS);
-      let stats = statsFromEvents(events, userKey, now);
+      events = events.filter((event) => event.createdAt > now - RETENTION_MS);
+      let stats = statsFromEvents(events, userKey, now, limits);
       const inserted = stats.dailyCount < limits.daily
         && stats.weeklyCount < limits.weekly
         && stats.globalCount < limits.global
         && stats.globalCost + costUnits <= limits.globalCost;
       if (inserted) {
         events.push({ id: crypto.randomUUID(), userKey, costUnits, createdAt: now });
-        stats = statsFromEvents(events, userKey, now);
+        stats = statsFromEvents(events, userKey, now, limits);
       }
       return decisionFromStats(stats, limits, now, "memory", inserted);
     },
     async read({ userKey, now, limits }) {
-      events = events.filter((event) => event.createdAt > now - WEEK_MS);
-      return snapshotFromStats(statsFromEvents(events, userKey, now), limits, now, "memory");
+      events = events.filter((event) => event.createdAt > now - RETENTION_MS);
+      return snapshotFromStats(statsFromEvents(events, userKey, now, limits), limits, now, "memory");
     },
   };
 }
@@ -225,14 +237,14 @@ function createDurableStore(db: D1DatabaseLike): QuotaStore {
         db.prepare("CREATE INDEX IF NOT EXISTS analysis_usage_events_user_time_idx ON analysis_usage_events (user_key, consumed_at)"),
         db.prepare("CREATE INDEX IF NOT EXISTS analysis_usage_events_time_idx ON analysis_usage_events (consumed_at)"),
       ]);
-      await db.prepare("DELETE FROM analysis_usage_events WHERE consumed_at <= ?").bind(Date.now() - WEEK_MS).run();
+      await db.prepare("DELETE FROM analysis_usage_events WHERE consumed_at <= ?").bind(Date.now() - RETENTION_MS).run();
     })();
     return initialized;
   };
 
-  const readStats = async (userKey: string, now: number): Promise<UsageStats> => {
+  const readStats = async (userKey: string, now: number, limits: QuotaLimits): Promise<UsageStats> => {
     const dayStart = now - DAY_MS;
-    const weekStart = now - WEEK_MS;
+    const weekStart = now - limits.userWindowMs;
     const row = await db.prepare(READ_STATS_SQL).bind(
       userKey, dayStart, userKey, dayStart,
       userKey, weekStart, userKey, weekStart,
@@ -255,7 +267,7 @@ function createDurableStore(db: D1DatabaseLike): QuotaStore {
     async consume({ userKey, costUnits, now, limits }) {
       await initialize();
       const dayStart = now - DAY_MS;
-      const weekStart = now - WEEK_MS;
+      const weekStart = now - limits.userWindowMs;
       const inserted = await db.prepare(INSERT_EVENT_SQL).bind(
         crypto.randomUUID(), userKey, now, costUnits,
         userKey, dayStart, limits.daily,
@@ -264,12 +276,12 @@ function createDurableStore(db: D1DatabaseLike): QuotaStore {
         dayStart, costUnits, limits.globalCost,
       ).first<{ id: string }>();
 
-      const stats = await readStats(userKey, now);
+      const stats = await readStats(userKey, now, limits);
       return decisionFromStats(stats, limits, now, "durable", Boolean(inserted));
     },
     async read({ userKey, now, limits }) {
       await initialize();
-      return snapshotFromStats(await readStats(userKey, now), limits, now, "durable");
+      return snapshotFromStats(await readStats(userKey, now, limits), limits, now, "durable");
     },
   };
 }
@@ -294,18 +306,26 @@ function cappedSetting(name: string, safeMaximum: number): number {
   return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, safeMaximum) : safeMaximum;
 }
 
-function configuredLimits(): QuotaLimits {
+function configuredLimits(planCode: SubscriptionPlanCode): QuotaLimits {
+  const pro = planCode === "pro";
   return {
-    daily: cappedSetting("WHATNOW_USER_24H_LIMIT", USER_24H_ANALYSIS_LIMIT),
-    weekly: cappedSetting("WHATNOW_USER_7D_LIMIT", USER_7D_ANALYSIS_LIMIT),
+    planCode,
+    daily: pro
+      ? cappedSetting("WHATNOW_PRO_24H_LIMIT", SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling24HourSafetyThreshold)
+      : cappedSetting("WHATNOW_USER_24H_LIMIT", FREE_PLAN_ENTITLEMENTS.rolling24HourAnalyses),
+    weekly: pro
+      ? cappedSetting("WHATNOW_PRO_30D_LIMIT", SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling30DaySafetyThreshold)
+      : cappedSetting("WHATNOW_USER_7D_LIMIT", FREE_PLAN_ENTITLEMENTS.rolling7DayAnalyses),
+    userWindowMs: pro ? PRO_WINDOW_MS : FREE_WINDOW_MS,
+    secondaryWindowDays: pro ? 30 : 7,
     global: cappedSetting("WHATNOW_GLOBAL_24H_LIMIT", GLOBAL_24H_ANALYSIS_LIMIT),
     globalCost: cappedSetting("WHATNOW_GLOBAL_24H_COST_UNITS", GLOBAL_24H_COST_UNIT_LIMIT),
   };
 }
 
-function unavailableSnapshot(now: number): QuotaSnapshot {
+function unavailableSnapshot(now: number, planCode: SubscriptionPlanCode): QuotaSnapshot {
   const unavailable = { limit: 0, remaining: 0, resetAt: now + 60_000 };
-  return { backend: "unavailable", checkedAt: now, daily: unavailable, weekly: unavailable };
+  return { backend: "unavailable", checkedAt: now, planCode, secondaryWindowDays: planCode === "pro" ? 30 : 7, daily: unavailable, weekly: unavailable };
 }
 
 export function analysisCostUnits(kind: AnalysisCostKind): number {
@@ -319,16 +339,18 @@ export async function checkAnalysisQuota({
   costKind,
   now = Date.now(),
   store,
+  planCode = "free",
 }: {
   userKey: string;
   costKind: AnalysisCostKind;
   now?: number;
   store?: QuotaStore;
+  planCode?: SubscriptionPlanCode;
 }): Promise<QuotaDecision> {
-  const limits = configuredLimits();
+  const limits = configuredLimits(planCode);
   const quotaStore = store ?? await resolveQuotaStore();
   if (!quotaStore) {
-    const snapshot = unavailableSnapshot(now);
+    const snapshot = unavailableSnapshot(now, planCode);
     return {
       allowed: false,
       backend: "unavailable",
@@ -339,6 +361,8 @@ export async function checkAnalysisQuota({
       retryAfterSeconds: 60,
       daily: snapshot.daily,
       weekly: snapshot.weekly,
+      planCode: snapshot.planCode,
+      secondaryWindowDays: snapshot.secondaryWindowDays,
     };
   }
   return quotaStore.consume({ userKey, costUnits: analysisCostUnits(costKind), now, limits });
@@ -348,14 +372,16 @@ export async function readAnalysisQuota({
   userKey,
   now = Date.now(),
   store,
+  planCode = "free",
 }: {
   userKey: string;
   now?: number;
   store?: QuotaStore;
+  planCode?: SubscriptionPlanCode;
 }): Promise<QuotaSnapshot> {
   const quotaStore = store ?? await resolveQuotaStore();
-  if (!quotaStore) return unavailableSnapshot(now);
-  return quotaStore.read({ userKey, now, limits: configuredLimits() });
+  if (!quotaStore) return unavailableSnapshot(now, planCode);
+  return quotaStore.read({ userKey, now, limits: configuredLimits(planCode) });
 }
 
 export function createMemoryQuotaStoreForTests(): QuotaStore {

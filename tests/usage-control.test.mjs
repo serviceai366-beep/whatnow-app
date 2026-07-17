@@ -149,7 +149,7 @@ test("allows ten requests per rolling seven days and resets on the exact boundar
   const blockedAt = startedAt + 3 * DAY_MS;
   const blocked = await consume({ store, userKey: "weekly-user", now: blockedAt });
   assert.equal(blocked.allowed, false);
-  assert.equal(blocked.scope, "user_7d");
+  assert.equal(blocked.scope, "user_window");
   assert.equal(blocked.limit, 10);
   assert.equal(blocked.remaining, 0);
   assert.equal(blocked.weekly.remaining, 0);
@@ -158,7 +158,7 @@ test("allows ten requests per rolling seven days and resets on the exact boundar
 
   const justBefore = await consume({ store, userKey: "weekly-user", now: startedAt + WEEK_MS - 1 });
   assert.equal(justBefore.allowed, false);
-  assert.equal(justBefore.scope, "user_7d");
+  assert.equal(justBefore.scope, "user_window");
   assert.equal(justBefore.retryAfterSeconds, 1);
 
   const atExactBoundary = await consume({ store, userKey: "weekly-user", now: startedAt + WEEK_MS });
@@ -178,6 +178,16 @@ test("one user's exhausted quota does not consume another user's personal quota"
   assert.equal(otherUser.allowed, true);
   assert.equal(otherUser.daily.remaining, 2);
   assert.equal(otherUser.weekly.remaining, 9);
+});
+
+test("Pro plan exposes 30 daily and 300 rolling 30-day analyses", async () => {
+  const store = createMemoryQuotaStoreForTests();
+  const now = Date.UTC(2026, 6, 13, 12);
+  const quota = await readAnalysisQuota({ store, userKey: "pro-user", now, planCode: "pro" });
+  assert.equal(quota.planCode, "pro");
+  assert.equal(quota.secondaryWindowDays, 30);
+  assert.equal(quota.daily.limit, 30);
+  assert.equal(quota.weekly.limit, 300);
 });
 
 test("global rolling request cap cannot be bypassed with many user accounts", async () => {
@@ -237,7 +247,7 @@ test("environment variables may tighten but cannot raise any safety cap", async 
     }
     assert.equal(
       (await consume({ store: weeklyStore, userKey: "env-weekly-user", now: now + 3 * DAY_MS })).scope,
-      "user_7d",
+      "user_window",
     );
 
     const globalCountStore = createMemoryQuotaStoreForTests();

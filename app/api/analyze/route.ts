@@ -28,6 +28,7 @@ import {
 } from "../../analysis-cost.ts";
 import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
 import { verifyTurnstileToken } from "../../turnstile-server.ts";
+import { activePlanForUser } from "../../subscription-store.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_REQUEST_TIMEOUT_MS = 45_000;
@@ -328,7 +329,8 @@ export async function POST(request: Request): Promise<Response> {
 
   let quota;
   try {
-    quota = await checkAnalysisQuota({ userKey: auth.user.id, costKind });
+    const planCode = await activePlanForUser(auth.user.id);
+    quota = await checkAnalysisQuota({ userKey: auth.user.id, costKind, planCode });
   } catch (error) {
     console.error("[analyze] Usage control error", { name: error instanceof Error ? error.name : "unknown" });
     return errorResponse(
@@ -350,7 +352,7 @@ export async function POST(request: Request): Promise<Response> {
         { "Retry-After": String(quota.retryAfterSeconds) },
       );
     }
-    const isUserLimit = quota.scope === "user_24h" || quota.scope === "user_7d";
+    const isUserLimit = quota.scope === "user_24h" || quota.scope === "user_window";
     const headers = {
       ...quotaHeaders(quota),
       "X-RateLimit-Scope": quota.scope ?? "unknown",

@@ -5,6 +5,7 @@ export type SubscriptionSnapshot = {
   planCode: SubscriptionPlanCode;
   state: SubscriptionState;
   checkoutAvailable: boolean;
+  managementAvailable: boolean;
   testMode: boolean;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
