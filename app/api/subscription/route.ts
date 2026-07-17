@@ -84,16 +84,19 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   if (!isSameOriginRequest(request)) return error("forbidden", "Request origin was rejected.", 403);
-  if (request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
+  if (!request.headers.get("content-type")?.trim().toLowerCase().startsWith("application/json")) {
     return error("invalid_request", "Expected a JSON request.", 415);
   }
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (!Number.isFinite(contentLength) || contentLength > 1_024) {
+  const rawBody = await request.text();
+  if (new TextEncoder().encode(rawBody).byteLength > 1_024) {
     return error("invalid_request", "Request is too large.", 413);
   }
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return authenticationError(auth);
-  const body = await request.json().catch(() => null) as { action?: unknown } | null;
+  const body = (() => {
+    try { return JSON.parse(rawBody) as { action?: unknown }; }
+    catch { return null; }
+  })();
   const action = body?.action === "portal" ? "portal" : body?.action === undefined ? "checkout" : null;
   if (!action) return error("invalid_request", "Unknown subscription action.", 400);
   const configuration = stripeTestConfiguration();

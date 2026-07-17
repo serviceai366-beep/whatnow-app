@@ -19,19 +19,19 @@ export function SubscriptionPanel({ locale }: { locale: ProfileLanguage }) {
   useEffect(() => {
     let active = true;
     loadSubscription().then((value) => { if (active) setPayload(value); }).catch((cause: unknown) => {
-      if (active) setError(cause instanceof Error && "code" in cause ? String(cause.code) : "subscription_error");
+      if (active) setError(cause instanceof Error && "code" in cause ? `${String(cause.code)}: ${cause.message}` : "subscription_error");
     });
     return () => { active = false; };
   }, []);
   const checkout = async () => {
     setBusy(true); setError(null);
     try { window.location.assign(await startTestCheckout()); }
-    catch (cause: unknown) { setError(cause instanceof Error && "code" in cause ? String(cause.code) : "checkout_error"); setBusy(false); }
+    catch (cause: unknown) { setError(cause instanceof Error && "code" in cause ? `${String(cause.code)}: ${cause.message}` : "checkout_error"); setBusy(false); }
   };
   const manage = async () => {
     setBusy(true); setError(null);
     try { window.location.assign(await openTestSubscriptionPortal()); }
-    catch (cause: unknown) { setError(cause instanceof Error && "code" in cause ? String(cause.code) : "portal_error"); setBusy(false); }
+    catch (cause: unknown) { setError(cause instanceof Error && "code" in cause ? `${String(cause.code)}: ${cause.message}` : "portal_error"); setBusy(false); }
   };
   if (!payload && !error) return <p className="panel-state">{t.loading}</p>;
   const active = payload?.subscription.planCode === "pro" && payload.subscription.state === "active";
