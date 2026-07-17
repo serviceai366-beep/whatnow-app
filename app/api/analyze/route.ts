@@ -22,6 +22,10 @@ import {
   type AnalysisCostKind,
   type QuotaDecision,
 } from "../../usage-control.ts";
+import {
+  recordAnalysisCost,
+  type AnalysisTokenUsage,
+} from "../../analysis-cost.ts";
 import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
 import { verifyTurnstileToken } from "../../turnstile-server.ts";
 
@@ -154,14 +158,7 @@ function extractOutputText(payload: unknown): string | null {
   return null;
 }
 
-type TokenUsage = {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  cachedInputTokens: number;
-};
-
-function extractTokenUsage(payload: unknown): TokenUsage | null {
+function extractTokenUsage(payload: unknown): AnalysisTokenUsage | null {
   if (typeof payload !== "object" || payload === null) return null;
   const usage = (payload as { usage?: unknown }).usage;
   if (typeof usage !== "object" || usage === null) return null;
@@ -442,12 +439,20 @@ export async function POST(request: Request): Promise<Response> {
       return errorResponse("invalid_model_response", "Результат анализа не прошёл проверку структуры.", 502, true, limitHeaders);
     }
 
+    const usage = extractTokenUsage(payload);
+    await recordAnalysisCost({
+      userKey: auth.user.id,
+      model: MODEL_ID,
+      costKind,
+      usage,
+    });
+
     return jsonResponse({
       result,
       meta: {
         model: MODEL_ID,
         reasoningEffort: REASONING_EFFORT,
-        usage: extractTokenUsage(payload),
+        usage,
       },
     }, 200, limitHeaders);
   } catch (error) {

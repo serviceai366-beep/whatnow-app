@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WhatNow? Subscription Pricing Recommendation</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #102525; background: #f4f8f7; }
+    body { margin: 0; }
+    main { width: min(960px, calc(100% - 32px)); margin: 32px auto 64px; }
+    header, section { background: #fff; border: 1px solid #d8e4e1; border-radius: 18px; padding: 24px; margin-bottom: 16px; }
+    h1 { margin: 0 0 8px; font-size: clamp(30px, 6vw, 52px); line-height: 1.02; }
+    h2 { margin-top: 0; }
+    p, li { line-height: 1.6; }
+    .lede { color: #49615e; font-size: 18px; }
+    .decision { border-left: 6px solid #0b8279; }
+    .price { color: #0b8279; font-size: 42px; font-weight: 850; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #d8e4e1; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    .caveat { background: #fff8e8; border-color: #ead9ad; }
+    a { color: #086b65; }
+    small { color: #5f7370; }
+    @media (max-width: 620px) { main { width: min(100% - 20px, 960px); margin-top: 10px; } header, section { padding: 18px; border-radius: 14px; } table { font-size: 13px; } th, td { padding: 10px 5px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <small>WhatNow? · Subscription preparation · 17 July 2026</small>
+    <h1>Subscription pricing recommendation</h1>
+    <p class="lede">A decision-ready planning model for a sustainable paid plan. No checkout or paid service has been enabled.</p>
+  </header>
+
+  <section class="decision">
+    <h2>Executive Summary</h2>
+    <p><strong>Recommended launch price:</strong> <span class="price">€19.99/month</span> including an assumed 21% Latvian VAT.</p>
+    <p><strong>Do not sell literal unlimited usage.</strong> A fixed price cannot guarantee profit when one account can submit an unbounded number of large PDFs. Position the plan as high-use personal access with a clear fair-use policy, document ceilings, account-level abuse controls, and a global budget circuit breaker.</p>
+    <p><strong>Prepare before charging.</strong> Measure real input, cached-input, and output tokens for at least 100 successful analyses or 30 days, then confirm the price and safety thresholds from observed usage.</p>
+  </section>
+
+  <section>
+    <h2>What €19.99 leaves for service costs</h2>
+    <p>Using a 21% VAT planning assumption and Stripe's standard EEA card fee of 1.5% + €0.25, approximately <strong>€15.97</strong> remains before AI, email, database, hosting, support, refunds, and other business costs.</p>
+    <table>
+      <thead><tr><th>Document scenario</th><th>Input tokens</th><th>Output tokens</th><th>Estimated AI cost</th></tr></thead>
+      <tbody>
+        <tr><td>Light text</td><td>4,000</td><td>1,000</td><td>€0.0087</td></tr>
+        <tr><td>Typical document</td><td>12,000</td><td>1,500</td><td>€0.0183</td></tr>
+        <tr><td>Heavy PDF</td><td>50,000</td><td>2,500</td><td>€0.0567</td></tr>
+        <tr><td>Very large request</td><td>250,000</td><td>3,500</td><td>€0.2363</td></tr>
+      </tbody>
+    </table>
+    <p><small>Scenarios are planning assumptions, not observed production usage. EUR conversion uses the ECB reference rate of 1 EUR = 1.1467 USD on 17 July 2026.</small></p>
+  </section>
+
+  <section>
+    <h2>Recommended launch controls</h2>
+    <ol>
+      <li>Keep the current Free plan: 3 analyses per rolling 24 hours and 10 per rolling 7 days.</li>
+      <li>Draft Pro as high-use personal access at €19.99/month; do not enable checkout yet.</li>
+      <li>Use a transparent safety policy. The initial planning thresholds are 30 analyses per rolling 24 hours and 300 per rolling 30 days, subject to real-cost review.</li>
+      <li>Keep size and token controls for large documents. A 10 MB file-size ceiling alone does not bound PDF page count or model cost.</li>
+      <li>Keep authentication, Turnstile, per-account controls, and the service-wide budget stop.</li>
+      <li>Store only token counts, estimated cost, model, document class, time, and a hashed account key in cost telemetry—never document text.</li>
+    </ol>
+  </section>
+
+  <section class="caveat">
+    <h2>Further decisions before payments</h2>
+    <ul>
+      <li>Approve €19.99/month and whether an annual €199.90 option should exist.</li>
+      <li>Approve the public fair-use wording and exact safety thresholds.</li>
+      <li>Confirm tax/business readiness, cancellation and refund rules, and the legal seller identity.</li>
+      <li>Choose Stripe Checkout + Billing only after these decisions; payment code is intentionally absent.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Sources and assumptions</h2>
+    <ul>
+      <li><a href="https://developers.openai.com/api/docs/models/gpt-5.6-luna">OpenAI: GPT-5.6 Luna pricing</a></li>
+      <li><a href="https://stripe.com/en-lt/pricing">Stripe Latvia: standard EEA card pricing</a></li>
+      <li><a href="https://www.vid.gov.lv/en/value-added-tax">Latvian State Revenue Service: 21% standard VAT rate</a></li>
+      <li><a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html">ECB: EUR/USD reference rate</a></li>
+      <li><a href="https://supabase.com/pricing">Supabase pricing</a></li>
+      <li><a href="https://resend.com/pricing">Resend pricing</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

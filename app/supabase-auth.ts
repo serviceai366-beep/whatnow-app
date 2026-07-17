@@ -123,7 +123,8 @@ export async function loadAccount(): Promise<SupabaseAccount | null> {
 
   // getUser verifies the access token with Supabase; UI identity never comes
   // from an unverified JWT payload or arbitrary callback fragment.
-  let { data, error } = await auth.getUser();
+  const { data: verifiedData, error } = await auth.getUser();
+  let data = verifiedData;
   cleanAuthUrl();
   if (error || !data.user) {
     await auth.signOut({ scope: "local" }).catch(() => undefined);

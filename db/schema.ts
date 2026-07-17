@@ -18,6 +18,25 @@ export const analysisUsageEvents = sqliteTable("analysis_usage_events", {
   index("analysis_usage_events_time_idx").on(table.consumedAt),
 ]);
 
+export const analysisCostEvents = sqliteTable("analysis_cost_events", {
+  id: text("id").primaryKey().notNull(),
+  userKeyHash: text("user_key_hash").notNull(),
+  recordedAt: integer("recorded_at").notNull(),
+  model: text("model").notNull(),
+  costKind: text("cost_kind").notNull(),
+  inputTokens: integer("input_tokens").notNull(),
+  cachedInputTokens: integer("cached_input_tokens").notNull(),
+  outputTokens: integer("output_tokens").notNull(),
+  estimatedCostMicrousd: integer("estimated_cost_microusd").notNull(),
+}, (table) => [
+  index("analysis_cost_events_time_idx").on(table.recordedAt),
+  index("analysis_cost_events_user_time_idx").on(table.userKeyHash, table.recordedAt),
+  check("analysis_cost_events_input_nonnegative", sql`${table.inputTokens} >= 0`),
+  check("analysis_cost_events_cached_input_nonnegative", sql`${table.cachedInputTokens} >= 0`),
+  check("analysis_cost_events_output_nonnegative", sql`${table.outputTokens} >= 0`),
+  check("analysis_cost_events_cost_nonnegative", sql`${table.estimatedCostMicrousd} >= 0`),
+]);
+
 export const userFiles = sqliteTable("user_files", {
   id: text("id").primaryKey().notNull(),
   userId: text("user_id").notNull(),
