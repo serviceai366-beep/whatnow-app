@@ -78,7 +78,7 @@ export function TurnstileWidget({
   onToken,
   onError,
 }: {
-  action: "analyze" | "email-login";
+  action: "analyze" | "email-login" | "account-create";
   language: ProfileLanguage;
   theme: "light" | "dark";
   resetKey: number;

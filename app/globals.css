@@ -149,6 +149,7 @@ a { color: inherit; text-decoration: none; }
 .auth-message, .auth-error { margin: 14px 0 0; padding: 11px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; text-align: left; }
 .auth-message { background: var(--accent-soft); color: var(--accent-dark); }
 .auth-error { background: #fff0f0; color: #8d2929; }
+.auth-requirements { margin: 10px 0 2px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border)); border-radius: 12px; color: var(--accent-dark); background: color-mix(in srgb, var(--accent-soft) 58%, transparent); font-size: 12px; line-height: 1.45; text-align: left; }
 .auth-privacy { margin: 17px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .profile-dialog { text-align: left; }
 .profile-dialog h2, .profile-email { text-align: center; }

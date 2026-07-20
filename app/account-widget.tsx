@@ -40,7 +40,7 @@ const copy = {
     captchaWaiting: "Проверка защиты от ботов выполняется автоматически.",
     captchaReady: "Защита подтверждена.", captchaError: "Не удалось выполнить защитную проверку. Обновите её и попробуйте снова.",
     legalAgree: "Я принимаю Условия использования и подтверждаю, что прочитал(а) Политику конфиденциальности.",
-    terms: "Условия использования", privacyPolicy: "Политика конфиденциальности", legalRequired: "Для создания аккаунта сначала подтвердите условия.",
+    terms: "Условия использования", privacyPolicy: "Политика конфиденциальности", legalRequired: "Для создания аккаунта сначала подтвердите условия.", createRequirements: "Чтобы создать аккаунт, сначала согласитесь с политикой конфиденциальности и пройдите проверку от ботов.",
     createEmailAction: "Создать аккаунт по email", createSent: "Проверьте почту — одноразовая ссылка подтвердит email и завершит создание аккаунта.",
     finishLegalTitle: "Завершите создание аккаунта", finishLegalText: "Чтобы пользоваться WhatNow?, подтвердите действующие условия и политику конфиденциальности.",
     acceptAndContinue: "Принять и продолжить", accepting: "Сохраняем…",
@@ -63,7 +63,7 @@ const copy = {
     captchaWaiting: "Aizsardzības pārbaude pret robotiem notiek automātiski.",
     captchaReady: "Aizsardzība apstiprināta.", captchaError: "Neizdevās veikt aizsardzības pārbaudi. Atjaunojiet to un mēģiniet vēlreiz.",
     legalAgree: "Es piekrītu Lietošanas noteikumiem un apliecinu, ka esmu izlasījis Privātuma politiku.",
-    terms: "Lietošanas noteikumi", privacyPolicy: "Privātuma politika", legalRequired: "Lai izveidotu kontu, vispirms apstipriniet noteikumus.",
+    terms: "Lietošanas noteikumi", privacyPolicy: "Privātuma politika", legalRequired: "Lai izveidotu kontu, vispirms apstipriniet noteikumus.", createRequirements: "Lai izveidotu kontu, vispirms piekrītiet privātuma politikai un pabeidziet aizsardzības pārbaudi.",
     createEmailAction: "Izveidot kontu ar e-pastu", createSent: "Pārbaudiet e-pastu — vienreizējā saite apstiprinās adresi un pabeigs konta izveidi.",
     finishLegalTitle: "Pabeidziet konta izveidi", finishLegalText: "Lai izmantotu WhatNow?, apstipriniet spēkā esošos noteikumus un privātuma politiku.",
     acceptAndContinue: "Piekrītu un turpinu", accepting: "Saglabājam…",
@@ -86,7 +86,7 @@ const copy = {
     captchaWaiting: "The bot-protection check runs automatically.",
     captchaReady: "Protection verified.", captchaError: "The protection check could not be completed. Refresh it and try again.",
     legalAgree: "I agree to the Terms of Service and acknowledge that I have read the Privacy Policy.",
-    terms: "Terms of Service", privacyPolicy: "Privacy Policy", legalRequired: "Accept the terms before creating an account.",
+    terms: "Terms of Service", privacyPolicy: "Privacy Policy", legalRequired: "Accept the terms before creating an account.", createRequirements: "To create an account, first agree to the Privacy Policy and complete the bot-protection check.",
     createEmailAction: "Create account with email", createSent: "Check your inbox — the one-time link will verify your email and finish creating the account.",
     finishLegalTitle: "Finish creating your account", finishLegalText: "To use WhatNow?, accept the current Terms of Service and acknowledge the Privacy Policy.",
     acceptAndContinue: "Accept and continue", accepting: "Saving…",
@@ -132,9 +132,9 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   const [googleLoading, setGoogleLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [emailCaptchaToken, setEmailCaptchaToken] = useState<string | null>(null);
-  const [emailCaptchaResetKey, setEmailCaptchaResetKey] = useState(0);
-  const [emailCaptchaError, setEmailCaptchaError] = useState(false);
+  const [authCaptchaToken, setAuthCaptchaToken] = useState<string | null>(null);
+  const [authCaptchaResetKey, setAuthCaptchaResetKey] = useState(0);
+  const [authCaptchaError, setAuthCaptchaError] = useState(false);
   const [authMode, setAuthMode] = useState<AccountAccessMode>("sign-in");
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [acceptingLegal, setAcceptingLegal] = useState(false);
@@ -194,24 +194,24 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
 
   const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (authMode === "create-account" && !legalAccepted) {
-      setError(t.legalRequired);
+    if (authMode === "create-account" && (!legalAccepted || !authCaptchaToken)) {
+      setError(t.createRequirements);
       return;
     }
-    if (!emailCaptchaToken) {
-      setEmailCaptchaError(true);
+    if (authMode === "sign-in" && !authCaptchaToken) {
+      setAuthCaptchaError(true);
       return;
     }
     setError(null); setMessage(null); setSending(true);
     try {
-      await sendEmailSignInLink(email.trim(), emailCaptchaToken, authMode, legalAccepted);
+      await sendEmailSignInLink(email.trim(), authCaptchaToken, authMode, legalAccepted);
       setMessage(authMode === "create-account" ? t.createSent : t.sent);
     }
     catch { setError(t.error); }
     finally {
       setSending(false);
-      setEmailCaptchaToken(null);
-      setEmailCaptchaResetKey((value) => value + 1);
+      setAuthCaptchaToken(null);
+      setAuthCaptchaResetKey((value) => value + 1);
     }
   };
 
@@ -296,8 +296,8 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
               <>
                 <img className="auth-mark" src="/whatnow-logo.jpg" alt="" />
                 <div className="auth-mode-switch" role="tablist" aria-label={t.title}>
-                  <button type="button" role="tab" aria-selected={authMode === "sign-in"} className={authMode === "sign-in" ? "active" : ""} onClick={() => { setAuthMode("sign-in"); setLegalAccepted(false); setError(null); setMessage(null); }}>{t.signInTab}</button>
-                  <button type="button" role="tab" aria-selected={authMode === "create-account"} className={authMode === "create-account" ? "active" : ""} onClick={() => { setAuthMode("create-account"); setError(null); setMessage(null); }}>{t.createTab}</button>
+                  <button type="button" role="tab" aria-selected={authMode === "sign-in"} className={authMode === "sign-in" ? "active" : ""} onClick={() => { setAuthMode("sign-in"); setLegalAccepted(false); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); setMessage(null); }}>{t.signInTab}</button>
+                  <button type="button" role="tab" aria-selected={authMode === "create-account"} className={authMode === "create-account" ? "active" : ""} onClick={() => { setAuthMode("create-account"); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); setMessage(null); }}>{t.createTab}</button>
                 </div>
                 <h2 id="account-dialog-title">{authMode === "create-account" ? t.createTitle : t.title}</h2>
                 <p className="auth-intro">{t.intro}</p>
@@ -307,26 +307,33 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                     <span>{t.legalAgree}</span>
                   </label>
                   <p className="legal-links"><a href="/terms" target="_blank">{t.terms}</a><span>·</span><a href="/privacy" target="_blank">{t.privacyPolicy}</a></p>
+                  <div className={`captcha-box compact${authCaptchaError ? " has-error" : ""}`}>
+                    <TurnstileWidget action="account-create" language={locale} theme={theme} resetKey={authCaptchaResetKey}
+                      onToken={(token) => { setAuthCaptchaToken(token); if (token) setAuthCaptchaError(false); }}
+                      onError={() => setAuthCaptchaError(true)} />
+                    <small>{authCaptchaError ? t.captchaError : authCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
+                  </div>
+                  {(!legalAccepted || !authCaptchaToken) && <p className="auth-requirements" role="status">{t.createRequirements}</p>}
                 </>}
-                <button className="google-sign-in" type="button" disabled={googleLoading || (authMode === "create-account" && !legalAccepted)} onClick={async () => {
+                <button className="google-sign-in" type="button" disabled={googleLoading || (authMode === "create-account" && (!legalAccepted || !authCaptchaToken))} onClick={async () => {
                   setError(null);
-                  if (authMode === "create-account" && !legalAccepted) return setError(t.legalRequired);
+                  if (authMode === "create-account" && (!legalAccepted || !authCaptchaToken)) return setError(t.createRequirements);
                   if (!isSupabaseConfigured()) return setError(t.unavailable);
                   setGoogleLoading(true);
-                  try { await startGoogleSignIn(authMode, legalAccepted); } catch { setError(t.error); setGoogleLoading(false); }
+                  try { await startGoogleSignIn(authMode, legalAccepted, authCaptchaToken); } catch { setError(t.error); setGoogleLoading(false); }
                 }}><span aria-hidden="true">G</span>{googleLoading ? t.googleLoading : t.google}</button>
                 <div className="auth-divider"><span>{t.divider}</span></div>
                 <form className="email-sign-in" onSubmit={submitEmail}>
                   <label htmlFor="account-email">{t.email}</label>
                   <input id="account-email" type="email" value={email} required autoComplete="email"
                     placeholder={t.emailPlaceholder} onChange={(event) => setEmail(event.target.value)} />
-                  <div className={`captcha-box compact${emailCaptchaError ? " has-error" : ""}`}>
-                    <TurnstileWidget action="email-login" language={locale} theme={theme} resetKey={emailCaptchaResetKey}
-                      onToken={(token) => { setEmailCaptchaToken(token); if (token) setEmailCaptchaError(false); }}
-                      onError={() => setEmailCaptchaError(true)} />
-                    <small>{emailCaptchaError ? t.captchaError : emailCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
-                  </div>
-                  <button type="submit" disabled={sending || !email.trim() || !emailCaptchaToken || (authMode === "create-account" && !legalAccepted)}>{sending ? t.sending : authMode === "create-account" ? t.createEmailAction : t.emailAction}</button>
+                  {authMode === "sign-in" && <div className={`captcha-box compact${authCaptchaError ? " has-error" : ""}`}>
+                    <TurnstileWidget action="email-login" language={locale} theme={theme} resetKey={authCaptchaResetKey}
+                      onToken={(token) => { setAuthCaptchaToken(token); if (token) setAuthCaptchaError(false); }}
+                      onError={() => setAuthCaptchaError(true)} />
+                    <small>{authCaptchaError ? t.captchaError : authCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
+                  </div>}
+                  <button type="submit" disabled={sending || !email.trim() || !authCaptchaToken || (authMode === "create-account" && !legalAccepted)}>{sending ? t.sending : authMode === "create-account" ? t.createEmailAction : t.emailAction}</button>
                 </form>
                 {message && <p className="auth-message" role="status">{message}</p>}
                 {error && <p className="auth-error" role="alert">{error}</p>}

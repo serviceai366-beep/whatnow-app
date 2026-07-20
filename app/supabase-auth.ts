@@ -148,14 +148,16 @@ export async function getAccessToken(): Promise<string | null> {
   return error ? null : data.session?.access_token ?? null;
 }
 
-export async function startGoogleSignIn(mode: AccountAccessMode, acceptedLegalTerms: boolean): Promise<void> {
+export async function startGoogleSignIn(mode: AccountAccessMode, acceptedLegalTerms: boolean, captchaToken: string | null): Promise<void> {
   if (mode === "create-account" && !acceptedLegalTerms) throw new Error("Legal acceptance is required");
+  if (mode === "create-account" && !captchaToken) throw new Error("Captcha verification is required");
   rememberPendingLegalAcceptance(mode === "create-account" && acceptedLegalTerms);
   const { error } = await getClient().auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: authRedirectUrl(),
       scopes: "openid email profile",
+      captchaToken: captchaToken ?? undefined,
     },
   });
   if (error) throw error;
@@ -163,18 +165,19 @@ export async function startGoogleSignIn(mode: AccountAccessMode, acceptedLegalTe
 
 export async function sendEmailSignInLink(
   email: string,
-  captchaToken: string,
+  captchaToken: string | null,
   mode: AccountAccessMode,
   acceptedLegalTerms: boolean,
 ): Promise<void> {
   if (mode === "create-account" && !acceptedLegalTerms) throw new Error("Legal acceptance is required");
+  if (mode === "create-account" && !captchaToken) throw new Error("Captcha verification is required");
   const { error } = await getClient().auth.signInWithOtp({
     email,
     options: {
       emailRedirectTo: authRedirectUrl(),
       shouldCreateUser: mode === "create-account",
       data: mode === "create-account" ? legalAcceptanceMetadata() : undefined,
-      captchaToken,
+      captchaToken: captchaToken ?? undefined,
     },
   });
   if (error) throw error;
