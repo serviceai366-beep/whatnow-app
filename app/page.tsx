@@ -30,9 +30,15 @@ const languages = [
 ] as const;
 
 const workspaceCopy = {
-  en: { calendar: "Calendar", space: "My space", support: "Support", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
-  ru: { calendar: "Календарь", space: "Моё пространство", support: "Поддержка", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось." },
-  lv: { calendar: "Kalendārs", space: "Mana telpa", support: "Atbalsts", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt." },
+  en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
+  ru: { info: "О сервисе", calendar: "Календарь", space: "Моё пространство", support: "Поддержка", privateHint: "Приватная обработка · Важные решения нужно проверять", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось." },
+  lv: { info: "Par servisu", calendar: "Kalendārs", space: "Mana telpa", support: "Atbalsts", privateHint: "Privāta apstrāde · Svarīgus lēmumus pārbaudiet", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt." },
+} as const;
+
+const infoCopy = {
+  en: { eyebrow: "About WhatNow?", title: "The details, when you need them", subtitle: "The main screen stays focused on one task: helping you understand a document. Service details live here.", close: "Close information", how: "How it works", first: "Add a photo, PDF, Word file, or paste text.", second: "Choose the language you want the explanation in.", third: "Receive a summary, deadlines, next steps, evidence, and a reply draft when needed.", privacy: "Privacy and storage", accuracy: "Accuracy and responsibility", output: "What you receive", legal: "Legal information" },
+  ru: { eyebrow: "О WhatNow?", title: "Подробности — когда они нужны", subtitle: "Главный экран сосредоточен на одной задаче: помочь понять документ. Информация о работе сервиса находится здесь.", close: "Закрыть информацию", how: "Как это работает", first: "Добавьте фотографию, PDF, файл Word или вставьте текст.", second: "Выберите язык, на котором хотите получить объяснение.", third: "Получите краткий разбор, сроки, план действий, подтверждающие фрагменты и черновик ответа, если он нужен.", privacy: "Конфиденциальность и хранение", accuracy: "Точность и ответственность", output: "Что вы получите", legal: "Правовая информация" },
+  lv: { eyebrow: "Par WhatNow?", title: "Sīkāka informācija — kad tā ir vajadzīga", subtitle: "Galvenais ekrāns ir veltīts vienam uzdevumam: palīdzēt saprast dokumentu. Informācija par servisu atrodas šeit.", close: "Aizvērt informāciju", how: "Kā tas darbojas", first: "Pievienojiet fotoattēlu, PDF, Word failu vai ielīmējiet tekstu.", second: "Izvēlieties valodu, kurā vēlaties saņemt skaidrojumu.", third: "Saņemiet kopsavilkumu, termiņus, rīcības plānu, pamatojošos fragmentus un atbildes melnrakstu, ja tas vajadzīgs.", privacy: "Privātums un glabāšana", accuracy: "Precizitāte un atbildība", output: "Ko jūs saņemsiet", legal: "Juridiskā informācija" },
 } as const;
 
 const historyCopy = {
@@ -121,6 +127,7 @@ export default function Home() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [userHubOpen, setUserHubOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
@@ -453,7 +460,7 @@ export default function Home() {
           <span>WhatNow?</span>
         </a>
         <div className="header-actions">
-          <span className="prototype-badge">{t.badge}</span>
+          <button className="header-tool-button" type="button" onClick={() => setInfoOpen(true)}><span aria-hidden="true">i</span>{w.info}</button>
           <button className="header-tool-button" type="button" onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><span aria-hidden="true">?</span>{w.support}</button>
           {account && <button className="header-tool-button" type="button" onClick={() => setCalendarOpen(true)}><span aria-hidden="true">□</span>{w.calendar}</button>}
           {account && <button className="header-tool-button" type="button" onClick={() => setUserHubOpen(true)}><span aria-hidden="true">◇</span>{w.space}</button>}
@@ -473,22 +480,13 @@ export default function Home() {
         <>
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">{t.heroEyebrow}</p>
           <h1>{t.heroTitle}</h1>
           <p className="hero-lead">{t.heroLead}</p>
-          <div className="trust-row">
-            <span><span className="check" aria-hidden="true">✓</span> {t.featureFiles}</span>
-            <span><span className="check" aria-hidden="true">✓</span> {t.featureLanguages}</span>
-          </div>
         </div>
 
         <div className="analyzer-card" aria-labelledby="analyzer-title">
           <div className="card-heading">
-            <div>
-              <p className="step-label">{t.stepOne}</p>
-              <h2 id="analyzer-title">{t.addDocument}</h2>
-            </div>
-            <span className="secure-label"><span aria-hidden="true">●</span> {t.confidential}</span>
+            <h2 id="analyzer-title">{t.addDocument}</h2>
           </div>
 
           <fieldset className="language-fieldset">
@@ -613,28 +611,6 @@ export default function Home() {
             </div>
           )}
 
-          <div className="privacy-notice" aria-labelledby="privacy-title">
-            <span className="privacy-notice-icon" aria-hidden="true">i</span>
-            <div>
-              <strong id="privacy-title">{t.privacyTitle}</strong>
-              <p>{t.privacyAppStorage}</p>
-              <p>{t.serverPrivacy}</p>
-              <details>
-                <summary>{t.privacyMore}</summary>
-                <div>
-                  <p>{t.privacyOpenAI}</p>
-                  <p>{t.privacyTraining}</p>
-                  <p>{t.privacyMinimize}</p>
-                </div>
-              </details>
-            </div>
-          </div>
-
-          <div className="professional-notice">
-            <span aria-hidden="true">!</span>
-            <p><strong>{t.professionalTitle}</strong><br />{t.professionalText}</p>
-          </div>
-
           <div className={`captcha-box${captchaError ? " has-error" : ""}`}>
             <div><strong>{t.captchaTitle}</strong><small>{captchaError || (captchaToken ? t.captchaReady : t.captchaWaiting)}</small></div>
             <TurnstileWidget action="analyze" language={language} theme={theme} resetKey={captchaResetKey}
@@ -651,20 +627,8 @@ export default function Home() {
           </button>
           {isAnalyzing && <AnalysisProgress t={t} />}
           {analysisError && <p className="input-error analysis-error" role="alert">{analysisError}</p>}
+          <button className="privacy-shortcut" type="button" onClick={() => setInfoOpen(true)}><span aria-hidden="true">⌁</span>{w.privateHint}</button>
 
-        </div>
-      </section>
-
-      <section className="benefits" aria-labelledby="benefits-title">
-        <div className="section-heading">
-          <p className="eyebrow">{t.benefitsEyebrow}</p>
-          <h2 id="benefits-title">{t.benefitsTitle}</h2>
-        </div>
-        <div className="benefit-grid">
-          <article><span className="benefit-number">01</span><h3>{t.benefitSummary}</h3><p>{t.benefitSummaryText}</p></article>
-          <article><span className="benefit-number">02</span><h3>{t.benefitDeadline}</h3><p>{t.benefitDeadlineText}</p></article>
-          <article><span className="benefit-number">03</span><h3>{t.benefitPlan}</h3><p>{t.benefitPlanText}</p></article>
-          <article><span className="benefit-number">04</span><h3>{t.benefitReply}</h3><p>{t.benefitReplyText}</p></article>
         </div>
       </section>
         </>
@@ -673,11 +637,7 @@ export default function Home() {
       {account && <CalendarPanel open={calendarOpen} locale={language} preferences={preferences} onClose={() => setCalendarOpen(false)} />}
       {account && <UserHub open={userHubOpen} locale={language} preferences={preferences} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
       {account && <SupportPanel open={supportOpen} locale={language} onClose={() => setSupportOpen(false)} />}
-
-      <section className="privacy-strip">
-        <div><span className="privacy-icon" aria-hidden="true">✓</span><p><strong>{t.documentsNotPublished}</strong><br />{t.documentsNotPublishedText}</p></div>
-        <div><span className="privacy-icon warning" aria-hidden="true">!</span><p><strong>{t.aiCanErr}</strong><br />{t.aiCanErrText}</p></div>
-      </section>
+      <InfoPanel open={infoOpen} locale={language} t={t} onClose={() => setInfoOpen(false)} />
 
       <footer>
         <a className="brand footer-brand" href="#top"><img className="brand-mark" src="/whatnow-logo.jpg" alt="" /><span>WhatNow?</span></a>
@@ -685,6 +645,31 @@ export default function Home() {
       </footer>
     </main>
   );
+}
+
+function InfoPanel({ open, locale, t, onClose }: { open: boolean; locale: SupportedLanguage; t: UiCopy; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose, open]);
+  if (!open) return null;
+  const c = infoCopy[locale];
+  return <div className="hub-backdrop info-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="info-panel" role="dialog" aria-modal="true" aria-labelledby="info-title">
+      <header className="hub-panel-header info-panel-header">
+        <div><p className="eyebrow">{c.eyebrow}</p><h2 id="info-title">{c.title}</h2><p>{c.subtitle}</p></div>
+        <button className="icon-button" type="button" aria-label={c.close} onClick={onClose}>×</button>
+      </header>
+      <div className="info-content">
+        <section><h3>{c.how}</h3><ol className="info-steps"><li><span>1</span><p>{c.first}</p></li><li><span>2</span><p>{c.second}</p></li><li><span>3</span><p>{c.third}</p></li></ol></section>
+        <section><h3>{c.output}</h3><div className="info-benefits"><article><strong>{t.benefitSummary}</strong><p>{t.benefitSummaryText}</p></article><article><strong>{t.benefitDeadline}</strong><p>{t.benefitDeadlineText}</p></article><article><strong>{t.benefitPlan}</strong><p>{t.benefitPlanText}</p></article><article><strong>{t.benefitReply}</strong><p>{t.benefitReplyText}</p></article></div></section>
+        <div className="info-detail-grid"><section><h3>{c.privacy}</h3><p>{t.privacyAppStorage}</p><p>{t.serverPrivacy}</p><p>{t.privacyOpenAI}</p><p>{t.privacyTraining}</p></section><section><h3>{c.accuracy}</h3><p>{t.professionalText}</p><p>{t.aiCanErrText}</p><p>{t.privacyMinimize}</p></section></div>
+        <section className="info-legal"><h3>{c.legal}</h3><nav><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a></nav></section>
+      </div>
+    </section>
+  </div>;
 }
 
 function localeTag(locale: SupportedLanguage): string {

@@ -33,8 +33,9 @@ test("server-renders the WhatNow prototype", async () => {
   assert.match(html, /Don’t just translate the document/);
   assert.match(html, /Analyze document/);
   assert.match(html, /PDF, photo, TXT, RTF, DOCX, or ODT/);
-  assert.match(html, /How the document is handled/);
-  assert.match(html, /does not replace a lawyer, doctor/);
+  assert.match(html, /Private processing · Check important decisions/);
+  assert.doesNotMatch(html, /How the document is handled/);
+  assert.doesNotMatch(html, /does not replace a lawyer, doctor/);
   assert.match(html, /type="file"/);
   assert.match(html, /accept="application\/pdf,image\/jpeg,image\/png,image\/webp,text\/plain/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
@@ -61,4 +62,17 @@ test("removes the disposable starter preview", async () => {
   assert.match(layout, /whatnow-logo\.jpg/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview", templateRoot)));
+});
+
+test("keeps the home screen focused and moves explanatory content into the information panel", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(page, /<InfoPanel open=\{infoOpen\}/);
+  assert.match(page, /className="privacy-shortcut"/);
+  assert.match(page, /className="info-panel"/);
+  assert.doesNotMatch(page, /<section className="benefits"/);
+  assert.doesNotMatch(page, /className="privacy-notice"/);
+  assert.doesNotMatch(page, /className="professional-notice"/);
+  assert.match(styles, /\.hero \{[\s\S]*width: min\(820px/);
+  assert.match(styles, /\.info-detail-grid/);
 });
