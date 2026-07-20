@@ -151,12 +151,13 @@ test("support email is opt-in by server configuration, localized, and omits priv
 });
 
 test("support API, UI, and D1 migration enforce server-side privacy and provide all supported languages", async () => {
-  const [route, store, panel, page, migration] = await Promise.all([
+  const [route, store, panel, page, migration, styles] = await Promise.all([
     readFile(new URL("../app/api/support/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/support-store.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/support-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0007_blue_mister_fear.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
   assert.match(route, /verifySupabaseRequest\(request\)/);
   assert.match(route, /isSameOriginRequest\(request\)/);
@@ -174,6 +175,12 @@ test("support API, UI, and D1 migration enforce server-side privacy and provide 
   assert.match(panel, /support-search/);
   assert.match(panel, /support-file-input/);
   assert.match(panel, /set_priority/);
+  const englishSupportCopy = panel.match(/en: \{([\s\S]*?)\n  \},\n  ru:/)?.[1] ?? "";
+  assert.ok(englishSupportCopy.length > 0);
+  assert.doesNotMatch(englishSupportCopy, /[А-Яа-яЁё]/);
+  assert.match(styles, /\.support-panel \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*overflow: hidden;/);
+  assert.match(styles, /\.support-layout \{[^}]*min-height: 0;[^}]*flex: 1 1 auto;/);
+  assert.match(styles, /\.support-main \{[^}]*min-height: 0;[^}]*overflow: auto;/);
   assert.match(page, /<SupportPanel/);
   assert.match(migration, /support_conversations/);
   assert.match(migration, /support_messages/);
