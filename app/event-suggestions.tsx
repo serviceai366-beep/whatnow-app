@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { AnalysisResult, DocumentEvent, SupportedLanguage } from "./analysis-schema";
+import type { AnalysisResult, DocumentEvent } from "./analysis-schema";
+import type { ProfileLanguage } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 import { CalendarRequestError, updateCalendar } from "./calendar-client";
 import { loadReminderState, updateReminderState } from "./reminder-client";
 import { reminderOffsets, reminderQuotaBlocked, supportedReminderTimeZones, type ReminderOffsetMinutes } from "./reminder-types";
@@ -18,12 +20,12 @@ function eventsFrom(result: AnalysisResult): DocumentEvent[] {
   return result.deadlines.filter((deadline) => deadline.status !== "not_found").slice(0, 8).map((deadline, index) => ({ id: `deadline_${index + 1}`, title: deadline.meaning || deadline.dateText || "Deadline", kind: "deadline", dateText: deadline.dateText, localDate: deadline.normalizedDate, localTime: null, documentTimeZone: null, location: null, status: deadline.status, evidenceIds: deadline.evidenceIds, confidence: deadline.confidence, basis: deadline.basis }));
 }
 
-function limitText(locale: SupportedLanguage) {
+function limitText(locale: ProfileLanguage) {
   return locale === "ru" ? "Лимит email-напоминаний достигнут: максимум 3 активных и 10 за 7 дней. Событие можно добавить без письма." : locale === "lv" ? "E-pasta atgādinājumu limits sasniegts: ne vairāk kā 3 aktīvi un 10 septiņās dienās. Notikumu var pievienot bez e-pasta." : "The email reminder limit is reached: up to 3 active and 10 in 7 days. You can still add the event without email.";
 }
 
-export function EventSuggestions({ result, analysisId, locale, preferences }: { result: AnalysisResult; analysisId: string | null; locale: SupportedLanguage; preferences: UserProfilePreferences }) {
-  const t = copy[locale];
+export function EventSuggestions({ result, analysisId, locale, preferences }: { result: AnalysisResult; analysisId: string | null; locale: ProfileLanguage; preferences: UserProfilePreferences }) {
+  const t = copy[interfaceCopyFallback(locale)];
   const events = useMemo(() => eventsFrom(result), [result]);
   const [dates, setDates] = useState<Record<string, string>>(() => Object.fromEntries(events.map((event) => [event.id, event.localDate ?? ""])));
   const [times, setTimes] = useState<Record<string, string>>(() => Object.fromEntries(events.map((event) => [event.id, event.localTime ?? ""])));

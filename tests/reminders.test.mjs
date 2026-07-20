@@ -48,7 +48,7 @@ test("validates and sanitizes every reminder mutation", () => {
 });
 
 test("database design keeps reminders private, bounded, and idempotent", async () => {
-  const migration = await readFile(new URL("../supabase/migrations/20260714_email_reminders.sql", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../supabase/migrations/20260714120000_email_reminders.sql", import.meta.url), "utf8");
   assert.match(migration, /enable row level security/gi);
   assert.match(migration, /auth\.uid\(\) = user_id/g);
   assert.match(migration, /revoke all on table public\.email_reminders from anon, authenticated/i);
@@ -69,7 +69,7 @@ test("database design keeps reminders private, bounded, and idempotent", async (
 test("dispatcher restricts pilot delivery and prevents duplicate email sends", async () => {
   const [dispatcher, permissionFix] = await Promise.all([
     readFile(new URL("../supabase/functions/dispatch-reminders/index.ts", import.meta.url), "utf8"),
-    readFile(new URL("../supabase/migrations/20260715_dispatcher_permission_fix.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260715120000_dispatcher_permission_fix.sql", import.meta.url), "utf8"),
   ]);
   assert.match(dispatcher, /REMINDER_TEST_RECIPIENT/);
   assert.match(dispatcher, /mode === "pilot" && email !== pilotRecipient/);

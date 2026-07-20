@@ -1,4 +1,8 @@
-export const profileLanguages = ["en", "ru", "lv"] as const;
+import type { SupportedLanguage } from "./analysis-schema";
+
+// Interface locales are deliberately a smaller, fully curated set. The
+// explanation selector supports the broader set in analysis-schema.ts.
+export const profileLanguages = ["en", "ru", "lv", "es", "pt", "fr", "de"] as const;
 export const profileThemes = ["system", "light", "dark"] as const;
 export const profileFontScales = ["normal", "large"] as const;
 export const profileDensities = ["comfortable", "compact"] as const;
@@ -16,7 +20,7 @@ export type ProfileReminderMinutes = (typeof profileReminderMinutes)[number];
 
 export type UserProfilePreferences = {
   uiLanguage: ProfileLanguage;
-  analysisLanguage: ProfileLanguage;
+  analysisLanguage: SupportedLanguage;
   theme: ProfileTheme;
   fontScale: ProfileFontScale;
   reducedMotion: boolean;

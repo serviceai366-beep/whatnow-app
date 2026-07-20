@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { loadSubscription, openTestSubscriptionPortal, startTestCheckout } from "./subscription-client";
 import type { ProfileLanguage } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 import type { SubscriptionPublicPayload } from "./subscription-types";
 
 const copy = {
@@ -12,7 +13,7 @@ const copy = {
 } as const;
 
 export function SubscriptionPanel({ locale }: { locale: ProfileLanguage }) {
-  const t = copy[locale];
+  const t = copy[interfaceCopyFallback(locale)];
   const [payload, setPayload] = useState<SubscriptionPublicPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

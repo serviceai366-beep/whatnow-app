@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { SupportedLanguage } from "./analysis-schema";
+import type { ProfileLanguage } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 import {
   deleteAnalysisFromHistory,
   listAnalysisHistory,
@@ -15,11 +16,11 @@ const copy = {
 } as const;
 
 export function HistoryPanel({ locale, onClose, onOpen }: {
-  locale: SupportedLanguage;
+  locale: ProfileLanguage;
   onClose: () => void;
   onOpen: (item: AnalysisHistoryItem) => void;
 }) {
-  const t = copy[locale];
+  const t = copy[interfaceCopyFallback(locale)];
   const [items, setItems] = useState<AnalysisHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

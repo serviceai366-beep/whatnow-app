@@ -5,6 +5,7 @@ import { deleteStoredFile, downloadStoredFile, FileClientError, loadStoredFile, 
 import { formatFileSize, validateDocumentFile } from "./file-validation";
 import type { FileStorageSnapshot, StoredUserFile } from "./file-store";
 import type { ProfileLanguage } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 
 const copy = {
   en: { title: "My files", intro: "Private copies saved to your account. They are never published.", files: "files", storage: "storage", remaining: "remaining", add: "Save a file", uploading: "Saving…", use: "Use for analysis", preparing: "Preparing…", download: "Download", remove: "Delete", empty: "No saved files yet.", loadError: "Could not load your private files.", invalid: "Choose a supported PDF, photo, TXT, RTF, DOCX or ODT file.", saved: "File saved privately.", duplicate: "This file was already saved.", countLimit: "The 10-file limit is full. Delete a file before adding another.", bytesLimit: "The 25 MB storage limit is full. Delete files before adding another.", uploadLimit: "The 24-hour upload safety limit was reached. Try again later.", generic: "Could not save this file.", deleteConfirm: "Delete this saved file? This cannot be undone." },
@@ -13,7 +14,7 @@ const copy = {
 } as const;
 
 export function FileLibrary({ locale, onUseFile }: { locale: ProfileLanguage; onUseFile?: (file: File) => void }) {
-  const t = copy[locale];
+  const t = copy[interfaceCopyFallback(locale)];
   const input = useRef<HTMLInputElement>(null);
   const [snapshot, setSnapshot] = useState<FileStorageSnapshot | null>(null);
   const [busy, setBusy] = useState<string | null>(null);

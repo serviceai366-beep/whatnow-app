@@ -351,7 +351,7 @@ test("rejects malformed multipart, oversized bodies, and unsupported languages",
     }));
     assert.equal(oversized.status, 413);
 
-    const unsupported = await POST(requestWithText("de"));
+    const unsupported = await POST(requestWithText("fi"));
     assert.equal(unsupported.status, 400);
   } finally { globalThis.fetch = previousFetch; }
 }));

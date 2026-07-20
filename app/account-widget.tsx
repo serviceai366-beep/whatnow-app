@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import type { SupportedLanguage } from "./analysis-schema";
+import type { ProfileLanguage } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 import {
   isSupabaseConfigured,
   acceptCurrentLegalTerms,
@@ -105,7 +106,7 @@ function quotaText(template: string, quota: WindowQuota): string {
   return template.replace("{remaining}", String(quota.remaining)).replace("{limit}", String(quota.limit));
 }
 
-function quotaResetText(template: string, quota: WindowQuota, locale: SupportedLanguage): string | null {
+function quotaResetText(template: string, quota: WindowQuota, locale: ProfileLanguage): string | null {
   if (quota.remaining > 0) return null;
   const languageTag = locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-US";
   const time = new Intl.DateTimeFormat(languageTag, { dateStyle: "short", timeStyle: "short" }).format(quota.resetAt);
@@ -113,7 +114,7 @@ function quotaResetText(template: string, quota: WindowQuota, locale: SupportedL
 }
 
 export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHistory, theme, onThemeChange, open, onOpenChange, quotaRefreshKey }: {
-  locale: SupportedLanguage;
+  locale: ProfileLanguage;
   accountAria: string;
   onAccountChange?: (account: SupabaseAccount | null) => void;
   onOpenHistory?: () => void;
@@ -123,7 +124,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   onOpenChange: (open: boolean) => void;
   quotaRefreshKey: number;
 }) {
-  const t = copy[locale];
+  const t = copy[interfaceCopyFallback(locale)];
   const [account, setAccount] = useState<SupabaseAccount | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [email, setEmail] = useState("");

@@ -12,6 +12,8 @@ import {
   type UserProfilePatch,
   type UserProfilePreferences,
 } from "./profile-types";
+import type { SupportedLanguage } from "./analysis-schema";
+import { interfaceLanguageOptions, responseLanguageOptions } from "./language-options";
 
 type ProfileSettingsProps = {
   locale: ProfileLanguage;
@@ -54,9 +56,55 @@ const copy = {
     files: "Faili", autoSaveFiles: "Automātiski saglabāt augšupielādētos failus konta privātajā krātuvē",
     saving: "Saglabā…", saved: "Iestatījumi saglabāti", error: "Neizdevās saglabāt iestatījumus. Mēģiniet vēlreiz.",
   },
+  es: {
+    title: "Preferencias", intro: "Estas preferencias siguen a tu cuenta en todos los dispositivos.", language: "Idiomas",
+    interfaceLanguage: "Idioma de la interfaz", analysisLanguage: "Idioma predeterminado de la explicación", appearance: "Apariencia",
+    theme: "Tema", system: "Usar ajuste del dispositivo", light: "Claro", dark: "Oscuro", fontScale: "Tamaño del texto",
+    normal: "Normal", large: "Grande", density: "Espaciado", comfortable: "Cómodo", compact: "Compacto",
+    reducedMotion: "Reducir animaciones", planning: "Calendario y recordatorios", weekStartsOn: "La semana empieza el",
+    monday: "Lunes", sunday: "Domingo", timeFormat: "Formato de hora", defaultReminder: "Recordatorio de correo predeterminado",
+    hour: "1 hora antes", day: "1 día antes", week: "1 semana antes", month: "1 mes antes",
+    files: "Archivos", autoSaveFiles: "Guardar automáticamente los archivos subidos en el almacenamiento privado de mi cuenta",
+    saving: "Guardando…", saved: "Preferencias guardadas", error: "No se pudieron guardar las preferencias. Inténtalo de nuevo.",
+  },
+  pt: {
+    title: "Preferências", intro: "Estas preferências acompanham a sua conta em todos os dispositivos.", language: "Idiomas",
+    interfaceLanguage: "Idioma da interface", analysisLanguage: "Idioma predefinido da explicação", appearance: "Aspeto",
+    theme: "Tema", system: "Usar definição do dispositivo", light: "Claro", dark: "Escuro", fontScale: "Tamanho do texto",
+    normal: "Normal", large: "Grande", density: "Espaçamento", comfortable: "Confortável", compact: "Compacto",
+    reducedMotion: "Reduzir animações", planning: "Calendário e lembretes", weekStartsOn: "A semana começa em",
+    monday: "Segunda-feira", sunday: "Domingo", timeFormat: "Formato de hora", defaultReminder: "Lembrete de email predefinido",
+    hour: "1 hora antes", day: "1 dia antes", week: "1 semana antes", month: "1 mês antes",
+    files: "Ficheiros", autoSaveFiles: "Guardar automaticamente ficheiros enviados no armazenamento privado da minha conta",
+    saving: "A guardar…", saved: "Preferências guardadas", error: "Não foi possível guardar as preferências. Tente novamente.",
+  },
+  fr: {
+    title: "Préférences", intro: "Ces préférences suivent votre compte sur tous vos appareils.", language: "Langues",
+    interfaceLanguage: "Langue de l’interface", analysisLanguage: "Langue d’explication par défaut", appearance: "Apparence",
+    theme: "Thème", system: "Utiliser le réglage de l’appareil", light: "Clair", dark: "Sombre", fontScale: "Taille du texte",
+    normal: "Normale", large: "Grande", density: "Espacement", comfortable: "Confortable", compact: "Compact",
+    reducedMotion: "Réduire les animations", planning: "Calendrier et rappels", weekStartsOn: "La semaine commence le",
+    monday: "Lundi", sunday: "Dimanche", timeFormat: "Format de l’heure", defaultReminder: "Rappel e-mail par défaut",
+    hour: "1 heure avant", day: "1 jour avant", week: "1 semaine avant", month: "1 mois avant",
+    files: "Fichiers", autoSaveFiles: "Enregistrer automatiquement les fichiers ajoutés dans le stockage privé de mon compte",
+    saving: "Enregistrement…", saved: "Préférences enregistrées", error: "Impossible d’enregistrer les préférences. Réessayez.",
+  },
+  de: {
+    title: "Einstellungen", intro: "Diese Einstellungen gelten für dein Konto auf allen Geräten.", language: "Sprachen",
+    interfaceLanguage: "Sprache der Oberfläche", analysisLanguage: "Standard-Sprache der Erklärung", appearance: "Darstellung",
+    theme: "Design", system: "Geräteeinstellung verwenden", light: "Hell", dark: "Dunkel", fontScale: "Textgröße",
+    normal: "Normal", large: "Groß", density: "Abstände", comfortable: "Komfortabel", compact: "Kompakt",
+    reducedMotion: "Animationen reduzieren", planning: "Kalender und Erinnerungen", weekStartsOn: "Wochenbeginn",
+    monday: "Montag", sunday: "Sonntag", timeFormat: "Zeitformat", defaultReminder: "Standard-E-Mail-Erinnerung",
+    hour: "1 Stunde vorher", day: "1 Tag vorher", week: "1 Woche vorher", month: "1 Monat vorher",
+    files: "Dateien", autoSaveFiles: "Hochgeladene Dateien automatisch im privaten Kontospeicher sichern",
+    saving: "Wird gespeichert…", saved: "Einstellungen gespeichert", error: "Einstellungen konnten nicht gespeichert werden. Bitte erneut versuchen.",
+  },
 } as const;
 
-const languageLabels: Record<ProfileLanguage, string> = { en: "English", ru: "Русский", lv: "Latviešu" };
+const languageLabels: Record<ProfileLanguage, string> = Object.fromEntries(
+  interfaceLanguageOptions.map((option) => [option.code, option.nativeName]),
+) as Record<ProfileLanguage, string>;
 
 export function ProfileSettings({ locale, preferences, onChange, disabled = false }: ProfileSettingsProps) {
   const t = copy[locale];
@@ -95,8 +143,8 @@ export function ProfileSettings({ locale, preferences, onChange, disabled = fals
         </select>
         <label htmlFor={`${id}-analysis-language`}>{t.analysisLanguage}</label>
         <select id={`${id}-analysis-language`} value={preferences.analysisLanguage}
-          onChange={(event) => void apply("analysisLanguage", event.target.value as ProfileLanguage)}>
-          {Object.entries(languageLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          onChange={(event) => void apply("analysisLanguage", event.target.value as SupportedLanguage)}>
+          {responseLanguageOptions.map((option) => <option key={option.code} value={option.code}>{option.nativeName} — {option.englishName}</option>)}
         </select>
       </fieldset>
 

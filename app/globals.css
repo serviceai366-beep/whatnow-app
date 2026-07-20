@@ -210,10 +210,28 @@ h1 { margin: 0; max-width: 740px; font-size: clamp(36px, 5vw, 58px); line-height
 .secure-label span { font-size: 9px; }
 .language-fieldset { border: 0; padding: 0; margin: 20px 0 16px; }
 .language-fieldset legend { margin-bottom: 9px; color: #394741; font-size: 14px; font-weight: 700; }
-.language-switcher { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.language-switcher button { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--border); border-radius: 12px; color: #405049; background: #fff; font-size: 13px; font-weight: 650; }
-.language-switcher button.active { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-.language-short { display: none; }
+.language-picker { position: relative; }
+.language-picker-trigger { width: 100%; min-height: 58px; display: grid; grid-template-columns: 34px minmax(0, 1fr) 22px; align-items: center; gap: 11px; padding: 8px 14px 8px 10px; border: 1px solid var(--border); border-radius: 15px; color: var(--foreground); background: linear-gradient(135deg, #fff, #f6fbf9); text-align: left; box-shadow: 0 4px 14px rgb(18 78 67 / 5%); }
+.language-picker-trigger:hover, .language-picker-trigger[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.language-picker-glyph { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px; color: #f4fffc; background: linear-gradient(145deg, var(--accent), var(--accent-dark)); font-family: Georgia, serif; font-size: 19px; font-weight: 800; }
+.language-picker-current { min-width: 0; display: grid; gap: 1px; }
+.language-picker-current small { color: var(--muted); font-size: 11px; font-weight: 650; }
+.language-picker-current strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.language-picker-chevron { color: var(--accent-dark); font-size: 21px; line-height: 1; transition: transform 160ms ease; }
+.language-picker-trigger[aria-expanded="true"] .language-picker-chevron { transform: rotate(180deg); }
+.language-picker-hint { margin: 8px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.language-picker-menu { position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; right: 0; padding: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 20px 46px rgb(14 46 39 / 20%); }
+.language-picker-search { min-height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid var(--border); border-radius: 11px; color: var(--muted); background: var(--surface-muted); }
+.language-picker-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--foreground); background: transparent; font: inherit; }
+.language-picker-options { max-height: min(286px, 42vh); display: grid; gap: 4px; margin-top: 8px; padding-right: 2px; overflow-y: auto; overscroll-behavior: contain; }
+.language-picker-options button { width: 100%; min-height: 48px; display: grid; grid-template-columns: 34px minmax(0, 1fr) 22px; align-items: center; gap: 9px; padding: 7px; border: 1px solid transparent; border-radius: 11px; color: var(--foreground); background: transparent; text-align: left; }
+.language-picker-options button:hover, .language-picker-options button:focus-visible { border-color: var(--border); background: var(--surface-muted); }
+.language-picker-options button.active { border-color: #90d6cb; background: var(--accent-soft); }
+.language-picker-code { width: 34px; height: 31px; display: grid; place-items: center; border-radius: 9px; color: var(--accent-dark); background: #e5f4ef; font-size: 10px; font-weight: 850; letter-spacing: .05em; }
+.language-picker-options button > span:nth-child(2) { min-width: 0; display: grid; gap: 1px; }
+.language-picker-options strong { font-size: 14px; }
+.language-picker-options small { color: var(--muted); font-size: 11px; }
+.language-picker-check { color: var(--accent-dark); font-weight: 850; text-align: center; }
 .source-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 12px; background: var(--surface-muted); }
 .source-tabs button { min-height: 42px; border: 0; border-radius: 9px; color: var(--muted); background: transparent; font-size: 14px; font-weight: 700; }
 .source-tabs button.active { color: var(--foreground); background: #fff; box-shadow: 0 3px 10px rgba(24, 53, 43, 0.08); }
@@ -255,7 +273,7 @@ h1 { margin: 0; max-width: 740px; font-size: clamp(36px, 5vw, 58px); line-height
 .preview-note span { margin-right: 5px; }
 .primary-button { width: 100%; min-height: 52px; margin-top: 16px; border: 0; border-radius: 13px; display: flex; justify-content: center; align-items: center; gap: 10px; color: #fff; background: var(--accent); font-weight: 750; box-shadow: 0 9px 20px rgba(15, 118, 110, 0.2); }
 .primary-button:hover { background: var(--accent-dark); }
-.primary-button:disabled, .language-switcher button:disabled, .source-tabs button:disabled { cursor: wait; opacity: 0.68; }
+.primary-button:disabled, .language-picker-trigger:disabled, .source-tabs button:disabled { cursor: wait; opacity: 0.68; }
 .privacy-shortcut { width: 100%; margin: 12px 0 -4px; padding: 7px; border: 0; color: var(--muted); background: transparent; font-size: 11px; text-align: center; }
 .privacy-shortcut:hover { color: var(--accent-dark); }
 .privacy-shortcut span { margin-right: 6px; }
@@ -522,7 +540,7 @@ footer p { max-width: 620px; margin: 0; color: var(--muted); text-align: right; 
 :root[data-theme="dark"] .auth-dialog,
 :root[data-theme="dark"] .google-sign-in,
 :root[data-theme="dark"] .email-sign-in input,
-:root[data-theme="dark"] .language-switcher button,
+:root[data-theme="dark"] .language-picker-trigger,
 :root[data-theme="dark"] .source-tabs button.active,
 :root[data-theme="dark"] .dropzone,
 :root[data-theme="dark"] .secondary-button,
@@ -1042,9 +1060,8 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .analyzer-card { margin: 0; border-radius: 19px; }
   .card-heading { display: block; }
   .secure-label { margin-top: 10px; }
-  .language-switcher button { min-height: 47px; }
-  .language-short { display: inline; }
-  .language-switcher button span:last-child { display: none; }
+  .language-picker-menu { position: fixed; z-index: 90; top: auto; right: 12px; bottom: 12px; left: 12px; max-height: min(470px, calc(100dvh - 24px)); border-radius: 19px; }
+  .language-picker-options { max-height: min(342px, calc(100dvh - 142px)); }
   .dropzone { min-height: 174px; }
   .file-preview-header { align-items: start; }
   .file-summary strong { max-width: 170px; }

@@ -51,7 +51,8 @@ test("rejects empty, unknown, incomplete, and out-of-range preference data", () 
     [],
     {},
     { unknown: true },
-    { uiLanguage: "de" },
+    { uiLanguage: "it" },
+    { analysisLanguage: "fi" },
     { analysisLanguage: null },
     { theme: "automatic" },
     { fontScale: "huge" },
@@ -87,7 +88,7 @@ test("maps only validated database fields into the public profile shape", () => 
 });
 
 test("profile storage is account-owned and writable only through SECURITY DEFINER RPCs", async () => {
-  const migration = await readFile(new URL("../supabase/migrations/20260714_user_profiles.sql", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../supabase/migrations/20260714120200_user_profiles.sql", import.meta.url), "utf8");
   assert.match(migration, /ui_language text not null default 'en'/i);
   assert.match(migration, /analysis_language text not null default 'en'/i);
   assert.match(migration, /enable row level security/i);
@@ -108,6 +109,8 @@ test("settings component is internally localized and exposes accessible controls
   assert.match(component, /en:\s*\{/);
   assert.match(component, /ru:\s*\{/);
   assert.match(component, /lv:\s*\{/);
+  assert.match(component, /es:\s*\{/);
+  assert.match(component, /responseLanguageOptions/);
   assert.match(component, /<fieldset/);
   assert.match(component, /<legend>/);
   assert.match(component, /htmlFor=/);

@@ -1,4 +1,9 @@
-export const supportedLanguages = ["ru", "lv", "en"] as const;
+// Languages in which WhatNow? can return a complete, structured explanation.
+// Keep this separate from interface locales: a person may use an English UI and
+// still ask for a Polish or Portuguese explanation of their document.
+export const supportedLanguages = [
+  "en", "ru", "lv", "es", "pt", "fr", "de", "it", "pl", "uk", "nl", "ro", "sv", "cs",
+] as const;
 
 export type SupportedLanguage = (typeof supportedLanguages)[number];
 export type SourceLanguage = SupportedLanguage | "unknown";

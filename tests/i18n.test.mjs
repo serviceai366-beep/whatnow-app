@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { apiErrorKeyByCode, translations } from "../app/i18n.ts";
+import { profileLanguages } from "../app/profile-types.ts";
 
-test("all three interface languages contain the same complete key set", () => {
+test("all interface languages contain the same complete key set", () => {
   const baseline = Object.keys(translations.ru).sort();
-  for (const language of ["ru", "lv", "en"]) {
+  for (const language of profileLanguages) {
     assert.deepEqual(Object.keys(translations[language]).sort(), baseline);
     for (const [key, value] of Object.entries(translations[language])) {
       assert.equal(typeof value, "string", `${language}.${key} must be a string`);
@@ -21,7 +22,7 @@ test("translations preserve Cyrillic, Latvian diacritics, and the approved Engli
 
 test("every server error code maps to an existing localized message", () => {
   for (const key of Object.values(apiErrorKeyByCode)) {
-    for (const language of ["ru", "lv", "en"]) {
+    for (const language of profileLanguages) {
       assert.equal(typeof translations[language][key], "string");
       assert.ok(translations[language][key].length > 0);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { SupportedLanguage } from "./analysis-schema";
+import type { ProfileLanguage } from "./profile-types";
 import { TURNSTILE_SITE_KEY } from "./turnstile-config";
 
 const SCRIPT_ID = "whatnow-turnstile-script";
@@ -79,7 +79,7 @@ export function TurnstileWidget({
   onError,
 }: {
   action: "analyze" | "email-login";
-  language: SupportedLanguage;
+  language: ProfileLanguage;
   theme: "light" | "dark";
   resetKey: number;
   onToken: (token: string | null) => void;

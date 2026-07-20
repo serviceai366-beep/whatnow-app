@@ -24,7 +24,7 @@ test("history stores only the structured result and metadata, not the original i
 
 test("history is capped at the latest 10 analyses for each account", async () => {
   const history = await readFile(new URL("../app/analysis-history.ts", import.meta.url), "utf8");
-  const migration = await readFile(new URL("../supabase/migrations/20260714_limit_document_analyses.sql", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../supabase/migrations/20260714120100_limit_document_analyses.sql", import.meta.url), "utf8");
 
   assert.match(history, /ANALYSIS_HISTORY_LIMIT = 10/);
   assert.match(history, /limit=\$\{ANALYSIS_HISTORY_LIMIT\}/);

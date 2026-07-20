@@ -1,5 +1,5 @@
 import type { AnalysisResult, SupportedLanguage } from "./analysis-schema";
-import { validateAnalysisResult } from "./analysis-schema";
+import { supportedLanguages, validateAnalysisResult } from "./analysis-schema";
 import { getAccessToken } from "./supabase-auth";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-config";
 
@@ -26,7 +26,7 @@ type HistoryRow = {
 type HistoryIdRow = { id?: unknown };
 
 function isLanguage(value: unknown): value is SupportedLanguage {
-  return value === "ru" || value === "lv" || value === "en";
+  return typeof value === "string" && supportedLanguages.includes(value as SupportedLanguage);
 }
 
 function parseRow(row: HistoryRow): AnalysisHistoryItem | null {

@@ -6,6 +6,7 @@ import { ProfileSettings } from "./profile-settings";
 import { ReminderProfileSection } from "./reminder-profile-section";
 import { SubscriptionPanel } from "./subscription-panel";
 import type { ProfileLanguage, UserProfilePatch, UserProfilePreferences } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 
 const copy = {
   en: { title: "My space", intro: "Files, preferences, reminders and plan linked to your account.", files: "Files", settings: "Preferences", reminders: "Email reminders", plan: "Plan", close: "Close profile workspace" },
@@ -21,7 +22,7 @@ export function UserHub({ open, locale, preferences, onPreferencesChange, onUseF
   onUseFile: (file: File) => void;
   onClose: () => void;
 }) {
-  const t = copy[locale];
+  const t = copy[interfaceCopyFallback(locale)];
   const [tab, setTab] = useState<"files" | "settings" | "reminders" | "plan">("files");
   useEffect(() => { if (!open) return; const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); }; document.addEventListener("keydown", onKey); return () => document.removeEventListener("keydown", onKey); }, [onClose, open]);
   if (!open) return null;

@@ -36,9 +36,20 @@ const MODEL_ID = "gpt-5.6-luna";
 const REASONING_EFFORT = "low";
 
 const languageNames: Record<SupportedLanguage, string> = {
+  en: "English",
   ru: "Russian",
   lv: "Latvian",
-  en: "English",
+  es: "Spanish",
+  pt: "Portuguese",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pl: "Polish",
+  uk: "Ukrainian",
+  nl: "Dutch",
+  ro: "Romanian",
+  sv: "Swedish",
+  cs: "Czech",
 };
 
 type ApiErrorCode =
@@ -126,7 +137,7 @@ Rules:
 - If information is ambiguous, use status "unclear" and explain it in uncertainties.
 - Every important fact should reference one or more evidence IDs. Evidence quotes must be short, exact excerpts from the document, with a page or visible location when possible.
 - normalizedDate must be YYYY-MM-DD only when the full date is certain; otherwise use null and preserve the original date text.
-- sourceLanguage is the primary language of the source document: ru, lv, en, or unknown when it cannot be determined confidently.
+- sourceLanguage is the primary language of the source document. Use one of the supported ISO language codes when it is clear, or unknown when it cannot be determined confidently.
 - Add an events item only for an appointment, meeting, deadline, payment date, or other concrete dated event supported by the document. Use stable IDs event_1, event_2, and so on in document order.
 - For every event, localDate must be YYYY-MM-DD only when the complete calendar date is certain. localTime must be HH:mm only when an exact time is printed or stated. Never invent a default time.
 - documentTimeZone must be an IANA time-zone name only when the document explicitly identifies that zone or an unambiguous UTC offset. Do not infer a time zone merely from the sender's country or language.

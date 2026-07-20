@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSupport, openSupportAttachment, SupportRequestError, updateSupport } from "./support-client";
 import type { SupportCategory, SupportConversation, SupportConversationDetail, SupportPriority, SupportSnapshot, SupportStatus } from "./support-types";
 import type { ProfileLanguage } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 
 type Props = { open: boolean; locale: ProfileLanguage; onClose: () => void };
 
@@ -53,7 +54,7 @@ function validAttachments(files: File[]): boolean {
 }
 
 export function SupportPanel({ open, locale, onClose }: Props) {
-  const t = copy[locale];
+  const t = copy[interfaceCopyFallback(locale)];
   const [snapshot, setSnapshot] = useState<SupportSnapshot | null>(null);
   const [detail, setDetail] = useState<SupportConversationDetail | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -86,7 +87,7 @@ export function SupportPanel({ open, locale, onClose }: Props) {
       setDetail(payload.conversation);
       if (conversationId && !payload.conversation) setSelectedId(null);
     } catch (cause) {
-      setError(errorText(cause instanceof SupportRequestError ? cause.code : "support_error", copy[locale]));
+      setError(errorText(cause instanceof SupportRequestError ? cause.code : "support_error", copy[interfaceCopyFallback(locale)]));
     } finally {
       setLoading(false);
     }

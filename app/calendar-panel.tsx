@@ -6,6 +6,7 @@ import { updateReminderState } from "./reminder-client";
 import type { CalendarEvent, CalendarState } from "./calendar-types";
 import { calendarReminderOffsets, reminderQuotaBlocked, supportedReminderTimeZones, type CalendarReminderOffsetMinutes, type ReminderQuota } from "./reminder-types";
 import type { ProfileLanguage, UserProfilePreferences } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 
 type Props = {
   open: boolean;
@@ -48,7 +49,7 @@ function quotaError(locale: ProfileLanguage, code: string) {
 }
 
 export function CalendarPanel({ open, locale, preferences, onClose }: Props) {
-  const t = copy[locale];
+  const t = copy[interfaceCopyFallback(locale)];
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(() => iso(new Date()));
   const [state, setState] = useState<CalendarState | null>(null);

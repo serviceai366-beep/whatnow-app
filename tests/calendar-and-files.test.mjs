@@ -127,9 +127,9 @@ test("calendar validation accepts bounded user actions and rejects ambiguous eve
 
 test("calendar database design is private, bounded, and keeps reminders linked after history trimming", async () => {
   const [migration, exactReminderMigration, limitMigration, api, panel, suggestions] = await Promise.all([
-    readFile(new URL("../supabase/migrations/20260714_calendar_events.sql", import.meta.url), "utf8"),
-    readFile(new URL("../supabase/migrations/20260715_exact_calendar_reminders.sql", import.meta.url), "utf8"),
-    readFile(new URL("../supabase/migrations/20260715_reminder_limits.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260714000000_calendar_events.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260715120100_exact_calendar_reminders.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260715120200_reminder_limits.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/calendar/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/calendar-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/event-suggestions.tsx", import.meta.url), "utf8"),

@@ -1,23 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { SupportedLanguage } from "./analysis-schema";
+import type { ProfileLanguage } from "./profile-types";
+import { interfaceCopyFallback } from "./language-options";
 import { loadReminderState, updateReminderState } from "./reminder-client";
 import { reminderCopy } from "./reminder-copy";
 import { supportedReminderTimeZones, type ReminderState } from "./reminder-types";
 
-function localeTag(locale: SupportedLanguage): string {
+function localeTag(locale: ProfileLanguage): string {
   return locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-GB";
 }
 
-function quotaText(locale: SupportedLanguage, active: number, weekly: number): string {
+function quotaText(locale: ProfileLanguage, active: number, weekly: number): string {
   if (locale === "ru") return `Активные: ${active}/3 · Создано за 7 дней: ${weekly}/10`;
   if (locale === "lv") return `Aktīvi: ${active}/3 · Izveidoti 7 dienās: ${weekly}/10`;
   return `Active: ${active}/3 · Created in 7 days: ${weekly}/10`;
 }
 
-export function ReminderProfileSection({ locale }: { locale: SupportedLanguage }) {
-  const copy = reminderCopy[locale];
+export function ReminderProfileSection({ locale }: { locale: ProfileLanguage }) {
+  const copy = reminderCopy[interfaceCopyFallback(locale)];
   const [state, setState] = useState<ReminderState | null>(null);
   const [timezone, setTimezone] = useState("Europe/Riga");
   const [consentChecked, setConsentChecked] = useState(false);

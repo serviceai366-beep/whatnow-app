@@ -21,13 +21,9 @@ import { UserHub } from "./user-hub";
 import { SupportPanel } from "./support-panel";
 import { loadUserProfile, updateUserProfile } from "./profile-client";
 import { DEFAULT_PROFILE_PREFERENCES, type UserProfilePatch, type UserProfilePreferences } from "./profile-types";
+import type { ProfileLanguage } from "./profile-types";
 import { FileClientError, uploadStoredFile } from "./file-client";
-
-const languages = [
-  { code: "en", label: "English", short: "EN" },
-  { code: "ru", label: "Русский", short: "RU" },
-  { code: "lv", label: "Latviešu", short: "LV" },
-] as const;
+import { interfaceCopyFallback, languageOption, responseLanguageOptions } from "./language-options";
 
 const workspaceCopy = {
   en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
@@ -105,7 +101,7 @@ function resolvedProfileTheme(preferences: UserProfilePreferences): ColorTheme {
 }
 
 export default function Home() {
-  const [language, setLanguage] = useState<SupportedLanguage>("en");
+  const [language, setLanguage] = useState<ProfileLanguage>("en");
   const [analysisLanguage, setAnalysisLanguage] = useState<SupportedLanguage>("en");
   const [preferences, setPreferences] = useState<UserProfilePreferences>({ ...DEFAULT_PROFILE_PREFERENCES });
   const [inputMode, setInputMode] = useState<"file" | "text">("file");
@@ -135,12 +131,20 @@ export default function Home() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
+  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
+  const [languageQuery, setLanguageQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const languagePickerRef = useRef<HTMLDivElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
   const accountIdRef = useRef<string | null | undefined>(undefined);
   const t = translations[language];
-  const h = historyCopy[language];
-  const w = workspaceCopy[language];
+  const interfaceCopyLanguage = interfaceCopyFallback(language);
+  const h = historyCopy[interfaceCopyLanguage];
+  const w = workspaceCopy[interfaceCopyLanguage];
+  const filteredResponseLanguages = responseLanguageOptions.filter((option) => {
+    const search = languageQuery.trim().toLocaleLowerCase();
+    return !search || `${option.nativeName} ${option.englishName}`.toLocaleLowerCase().includes(search);
+  });
 
   const handleAccountChange = useCallback((value: SupabaseAccount | null) => {
     const nextId = value?.id ?? null;
@@ -210,6 +214,22 @@ export default function Home() {
     document.documentElement.dataset.density = preferences.density;
     document.documentElement.dataset.reducedMotion = preferences.reducedMotion ? "true" : "false";
   }, [preferences.density, preferences.fontScale, preferences.reducedMotion]);
+
+  useEffect(() => {
+    if (!languagePickerOpen) return;
+    const closeWhenOutside = (event: MouseEvent) => {
+      if (!languagePickerRef.current?.contains(event.target as Node)) setLanguagePickerOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLanguagePickerOpen(false);
+    };
+    document.addEventListener("mousedown", closeWhenOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeWhenOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [languagePickerOpen]);
 
   const applyPreferences = useCallback(async (patch: UserProfilePatch) => {
     if (!account) return;
@@ -295,7 +315,7 @@ export default function Home() {
         return item.id;
       }
     } catch {
-      if (accountIdRef.current === accountId) setHistoryError(historyCopy[outputLanguage].error);
+      if (accountIdRef.current === accountId) setHistoryError(historyCopy[interfaceCopyFallback(language)].error);
     } finally {
       if (accountIdRef.current === accountId) setSavingHistory(false);
     }
@@ -496,26 +516,52 @@ export default function Home() {
 
           <fieldset className="language-fieldset">
             <legend>{t.explanationLanguage}</legend>
-            <div className="language-switcher">
-              {languages.map((item) => (
-                <button
-                  className={analysisLanguage === item.code ? "active" : ""}
-                  key={item.code}
-                  onClick={() => {
-                    setAnalysisLanguage(item.code);
-                    if (account) void applyPreferences({ analysisLanguage: item.code });
-                    setAnalysis(null);
-                    setAnalysisError(null);
-                    setShowResult(false);
-                  }}
-                  type="button"
-                  aria-pressed={analysisLanguage === item.code}
-                  disabled={isAnalyzing}
-                >
-                  <span className="language-short">{item.short}</span>
-                  <span>{item.label}</span>
-                </button>
-              ))}
+            <div className="language-picker" ref={languagePickerRef}>
+              <button
+                className="language-picker-trigger"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={languagePickerOpen}
+                aria-controls="response-language-options"
+                disabled={isAnalyzing}
+                onClick={() => setLanguagePickerOpen((current) => !current)}
+              >
+                <span className="language-picker-glyph" aria-hidden="true">A</span>
+                <span className="language-picker-current"><small>{t.languagePickerSelected}</small><strong>{languageOption(analysisLanguage).nativeName}</strong></span>
+                <span className="language-picker-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <p className="language-picker-hint">{t.languagePickerHint}</p>
+              {languagePickerOpen && <div className="language-picker-menu" role="dialog" aria-label={t.explanationLanguage}>
+                <label className="language-picker-search">
+                  <span className="visually-hidden">{t.languagePickerSearch}</span>
+                  <span aria-hidden="true">⌕</span>
+                  <input autoFocus type="search" value={languageQuery} onChange={(event) => setLanguageQuery(event.target.value)} placeholder={t.languagePickerSearch} />
+                </label>
+                <div id="response-language-options" className="language-picker-options" role="listbox" aria-label={t.explanationLanguage}>
+                  {filteredResponseLanguages.map((option) => (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={analysisLanguage === option.code}
+                      className={analysisLanguage === option.code ? "active" : ""}
+                      key={option.code}
+                      onClick={() => {
+                        setAnalysisLanguage(option.code);
+                        if (account) void applyPreferences({ analysisLanguage: option.code });
+                        setAnalysis(null);
+                        setAnalysisError(null);
+                        setShowResult(false);
+                        setLanguagePickerOpen(false);
+                        setLanguageQuery("");
+                      }}
+                    >
+                      <span className="language-picker-code">{option.code.toUpperCase()}</span>
+                      <span><strong>{option.nativeName}</strong><small>{option.englishName}</small></span>
+                      {analysisLanguage === option.code && <span className="language-picker-check" aria-label={t.languagePickerSelected}>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>}
             </div>
           </fieldset>
 
@@ -654,7 +700,7 @@ function ToolIcon({ kind }: { kind: "about" | "support" | "calendar" | "space" }
 }
 
 function SecurityChallenge({ locale, theme, resetKey, error, onClose, onVerified, onError }: {
-  locale: SupportedLanguage;
+  locale: ProfileLanguage;
   theme: ColorTheme;
   resetKey: number;
   error: string | null;
@@ -662,7 +708,7 @@ function SecurityChallenge({ locale, theme, resetKey, error, onClose, onVerified
   onVerified: (token: string) => void;
   onError: () => void;
 }) {
-  const copy = challengeCopy[locale];
+  const copy = challengeCopy[interfaceCopyFallback(locale)];
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKeyDown);
@@ -684,7 +730,7 @@ function SecurityChallenge({ locale, theme, resetKey, error, onClose, onVerified
   </div>;
 }
 
-function InfoPanel({ open, locale, t, onClose }: { open: boolean; locale: SupportedLanguage; t: UiCopy; onClose: () => void }) {
+function InfoPanel({ open, locale, t, onClose }: { open: boolean; locale: ProfileLanguage; t: UiCopy; onClose: () => void }) {
   useEffect(() => {
     if (!open) return;
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -692,7 +738,7 @@ function InfoPanel({ open, locale, t, onClose }: { open: boolean; locale: Suppor
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose, open]);
   if (!open) return null;
-  const c = infoCopy[locale];
+  const c = infoCopy[interfaceCopyFallback(locale)];
   return <div className="hub-backdrop info-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="info-panel" role="dialog" aria-modal="true" aria-labelledby="info-title">
       <header className="hub-panel-header info-panel-header">
@@ -709,11 +755,11 @@ function InfoPanel({ open, locale, t, onClose }: { open: boolean; locale: Suppor
   </div>;
 }
 
-function localeTag(locale: SupportedLanguage): string {
+function localeTag(locale: ProfileLanguage): string {
   return locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-US";
 }
 
-function durationLabel(milliseconds: number, locale: SupportedLanguage): string {
+function durationLabel(milliseconds: number, locale: ProfileLanguage): string {
   const totalMinutes = Math.max(0, Math.ceil(milliseconds / 60_000));
   const days = Math.floor(totalMinutes / 1440);
   const hours = Math.floor((totalMinutes % 1440) / 60);
@@ -725,9 +771,9 @@ function durationLabel(milliseconds: number, locale: SupportedLanguage): string 
   return parts.join(" ");
 }
 
-function LimitToast({ data, locale, onClose }: { data: LimitNoticeData; locale: SupportedLanguage; onClose: () => void }) {
+function LimitToast({ data, locale, onClose }: { data: LimitNoticeData; locale: ProfileLanguage; onClose: () => void }) {
   const [now, setNow] = useState(data.observedAt);
-  const t = limitCopy[locale];
+  const t = limitCopy[interfaceCopyFallback(locale)];
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(interval);
@@ -759,7 +805,7 @@ function FilePreview({
   document: SelectedDocument;
   onRemove: () => void;
   t: UiCopy;
-  locale: SupportedLanguage;
+  locale: ProfileLanguage;
 }) {
   return (
     <div className="file-preview" data-testid="file-preview">
@@ -826,7 +872,7 @@ function deadlineLabel(deadline: Deadline | undefined, t: UiCopy): string {
   return deadline.dateText || deadline.normalizedDate || t.cannotDetermine;
 }
 
-function stepCount(count: number, locale: SupportedLanguage): string {
+function stepCount(count: number, locale: ProfileLanguage): string {
   if (locale === "en") return `${count} ${count === 1 ? "step" : "steps"}`;
   if (locale === "lv") return `${count} ${count === 1 ? "solis" : "soļi"}`;
   const mod10 = count % 10;
@@ -864,7 +910,7 @@ function AnalysisResultView({
   result: AnalysisResult;
   onRestart: () => void;
   t: UiCopy;
-  locale: SupportedLanguage;
+  locale: ProfileLanguage;
   account: SupabaseAccount | null;
   analysisId: string | null;
   preferences: UserProfilePreferences;
@@ -872,7 +918,7 @@ function AnalysisResultView({
   saving: boolean;
   saved: boolean;
   historyError: string | null;
-  h: (typeof historyCopy)[SupportedLanguage];
+  h: (typeof historyCopy)[keyof typeof historyCopy];
 }) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const primaryDeadline = result.deadlines.find((item) => item.status === "found") || result.deadlines[0];

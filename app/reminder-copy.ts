@@ -1,5 +1,3 @@
-import type { SupportedLanguage } from "./analysis-schema";
-
 export const reminderCopy = {
   ru: {
     eyebrow: "Email-напоминания", title: "Не пропустите важную дату",
@@ -61,4 +59,4 @@ export const reminderCopy = {
     profileTitle: "Email reminders", profileIntro: "Manage consent, your time zone, and upcoming emails.", enabled: "Allowed", disabled: "Off",
     disable: "Turn off and cancel future reminders", saveTimezone: "Save time zone", settingsSaved: "Settings saved.", upcoming: "Upcoming reminders", noneUpcoming: "No reminders are scheduled yet.",
   },
-} satisfies Record<SupportedLanguage, Record<string, string>>;
+} satisfies Record<"en" | "ru" | "lv", Record<string, string>>;
