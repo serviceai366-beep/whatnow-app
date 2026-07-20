@@ -186,6 +186,7 @@ test("support API, UI, and D1 migration enforce server-side privacy and provide 
   assert.match(styles, /\.support-layout \{[^}]*min-height: 0;[^}]*flex: 1 1 auto;/);
   assert.match(styles, /\.support-main \{[^}]*min-height: 0;[^}]*overflow: auto;/);
   assert.match(styles, /\.support-panel \.primary-mini:disabled \{[^}]*color: var\(--muted\);[^}]*background: var\(--surface-muted\);[^}]*opacity: 1;/);
+  assert.match(styles, /\.support-panel \.primary-mini:not\(:disabled\) \{[^}]*color: #fff;[^}]*background: linear-gradient/);
   assert.match(styles, /\.support-file-picker \{[^}]*display: flex;[^}]*background: var\(--surface\);/);
   assert.match(page, /<SupportPanel/);
   assert.match(migration, /support_conversations/);
