@@ -150,7 +150,7 @@ export async function getAccessToken(): Promise<string | null> {
 
 export async function startGoogleSignIn(mode: AccountAccessMode, acceptedLegalTerms: boolean, captchaToken: string | null): Promise<void> {
   if (mode === "create-account" && !acceptedLegalTerms) throw new Error("Legal acceptance is required");
-  if (mode === "create-account" && !captchaToken) throw new Error("Captcha verification is required");
+  if (!captchaToken) throw new Error("Captcha verification is required");
   rememberPendingLegalAcceptance(mode === "create-account" && acceptedLegalTerms);
   const { error } = await getClient().auth.signInWithOAuth({
     provider: "google",
@@ -170,7 +170,7 @@ export async function sendEmailSignInLink(
   acceptedLegalTerms: boolean,
 ): Promise<void> {
   if (mode === "create-account" && !acceptedLegalTerms) throw new Error("Legal acceptance is required");
-  if (mode === "create-account" && !captchaToken) throw new Error("Captcha verification is required");
+  if (!captchaToken) throw new Error("Captcha verification is required");
   const { error } = await getClient().auth.signInWithOtp({
     email,
     options: {

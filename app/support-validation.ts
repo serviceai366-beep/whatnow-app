@@ -67,5 +67,9 @@ export function parseSupportAction(value: unknown): SupportAction | null {
     const parsedPriority = priority(input.priority);
     return conversationId && parsedPriority ? { action: "set_priority", conversationId, priority: parsedPriority } : null;
   }
+  if (input.action === "delete") {
+    const conversationId = supportId(input.conversationId);
+    return conversationId ? { action: "delete", conversationId } : null;
+  }
   return null;
 }

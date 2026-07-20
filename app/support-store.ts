@@ -2,6 +2,7 @@ import type { D1DatabaseLike, D1StatementLike } from "./file-store.ts";
 import type { SupportAttachment, SupportCategory, SupportConversation, SupportConversationDetail, SupportLocale, SupportMessage, SupportPriority, SupportStatus } from "./support-types.ts";
 
 export const SUPPORT_CONVERSATION_LIMIT = 25;
+export const SUPPORT_HISTORY_LIMIT = 100;
 export const SUPPORT_MESSAGE_LIMIT = 100;
 export const SUPPORT_USER_MESSAGE_LIMIT = 10;
 export const SUPPORT_USER_MESSAGE_WINDOW_MS = 10 * 60 * 1_000;
@@ -111,6 +112,7 @@ export type SupportStore = {
   addReply(input: { userId: string; conversationId: string; message: string; locale: SupportLocale; isAdmin: boolean; now?: number }): Promise<SupportConversationDetail>;
   setStatus(conversationId: string, status: SupportStatus, now?: number): Promise<SupportConversationDetail | null>;
   setPriority(conversationId: string, priority: SupportPriority, now?: number): Promise<SupportConversationDetail | null>;
+  deleteConversation(conversationId: string): Promise<boolean>;
   notificationContext(conversationId: string): Promise<{ contactEmail: string | null; locale: SupportLocale; subject: string; priority: SupportPriority } | null>;
 };
 
@@ -155,6 +157,10 @@ function createStore(db: D1DatabaseLike): SupportStore {
         size_bytes INTEGER NOT NULL CHECK (size_bytes > 0),
         created_at INTEGER NOT NULL
       )`).run();
+      await db.prepare(`CREATE TABLE IF NOT EXISTS support_attachment_deletions (
+        object_key TEXT PRIMARY KEY NOT NULL,
+        created_at INTEGER NOT NULL
+      )`).run();
       await db.batch([
         db.prepare("CREATE INDEX IF NOT EXISTS support_conversations_user_updated_idx ON support_conversations (user_id, updated_at DESC)"),
         db.prepare("CREATE INDEX IF NOT EXISTS support_conversations_updated_idx ON support_conversations (updated_at DESC)"),
@@ -169,7 +175,7 @@ function createStore(db: D1DatabaseLike): SupportStore {
 
   const conversationQuery = (scope: "owner" | "admin") => `SELECT ${CONVERSATION_COLUMNS},
     (SELECT body FROM support_messages WHERE conversation_id = support_conversations.id ORDER BY created_at DESC, id DESC LIMIT 1) AS last_message_preview
-    FROM support_conversations${scope === "owner" ? " WHERE user_id = ?" : ""} ORDER BY updated_at DESC, id DESC LIMIT ?`;
+    FROM support_conversations${scope === "owner" ? " WHERE user_id = ?" : " WHERE status <> 'resolved'"} ORDER BY updated_at DESC, id DESC LIMIT ?`;
 
   const readDetail = async (userId: string, conversationId: string, isAdmin: boolean): Promise<SupportConversationDetail | null> => {
     const row = await db.prepare(`SELECT ${CONVERSATION_COLUMNS},
@@ -208,7 +214,16 @@ function createStore(db: D1DatabaseLike): SupportStore {
   }) => {
     const accessible = await readDetail(userId, conversationId, isAdmin);
     if (!accessible) throw new SupportStoreError("support_not_found", 404);
-    if (!isAdmin) await consumeUserMessageBudget(userId, now);
+    if (!isAdmin) {
+      if (accessible.status === "resolved") {
+        const active = await db.prepare("SELECT COUNT(*) AS count FROM support_conversations WHERE user_id = ? AND status <> 'resolved'")
+          .bind(userId).first<{ count: number | null }>();
+        if (Number(active?.count ?? 0) >= SUPPORT_CONVERSATION_LIMIT) {
+          throw new SupportStoreError("support_conversation_limit", 409);
+        }
+      }
+      await consumeUserMessageBudget(userId, now);
+    }
     const inserted = await db.prepare(`INSERT INTO support_messages (id, conversation_id, sender_type, body, created_at)
       SELECT ?, ?, ?, ?, ?
       WHERE (SELECT COUNT(*) FROM support_messages WHERE conversation_id = ?) < ?
@@ -226,7 +241,7 @@ function createStore(db: D1DatabaseLike): SupportStore {
     async listConversations(userId, isAdmin) {
       await initialize();
       const rows = await allRows<ConversationRow>(db.prepare(conversationQuery(isAdmin ? "admin" : "owner"))
-        .bind(...(isAdmin ? [100] : [userId, SUPPORT_CONVERSATION_LIMIT])));
+        .bind(...(isAdmin ? [100] : [userId, SUPPORT_HISTORY_LIMIT])));
       return rows.map((row) => conversationFromRow(row, isAdmin)).filter((conversation): conversation is SupportConversation => Boolean(conversation));
     },
     async getConversation(userId, conversationId, isAdmin) {
@@ -235,7 +250,7 @@ function createStore(db: D1DatabaseLike): SupportStore {
     },
     async createConversation({ userId, contactEmail, subject, category, message, locale, now = Date.now() }) {
       await initialize();
-      const existing = await db.prepare("SELECT COUNT(*) AS count FROM support_conversations WHERE user_id = ?")
+      const existing = await db.prepare("SELECT COUNT(*) AS count FROM support_conversations WHERE user_id = ? AND status <> 'resolved'")
         .bind(userId).first<{ count: number | null }>();
       if (Number(existing?.count ?? 0) >= SUPPORT_CONVERSATION_LIMIT) {
         throw new SupportStoreError("support_conversation_limit", 409);
@@ -245,7 +260,7 @@ function createStore(db: D1DatabaseLike): SupportStore {
       const created = await db.prepare(`INSERT INTO support_conversations
         (id,user_id,subject,category,status,priority,contact_email,locale,created_at,updated_at,last_message_at)
         SELECT ?, ?, ?, ?, 'open', 'normal', ?, ?, ?, ?, ?
-        WHERE (SELECT COUNT(*) FROM support_conversations WHERE user_id = ?) < ?
+        WHERE (SELECT COUNT(*) FROM support_conversations WHERE user_id = ? AND status <> 'resolved') < ?
         RETURNING id`).bind(id, userId, subject, category, contactEmail, locale, now, now, now, userId, SUPPORT_CONVERSATION_LIMIT).first<{ id: string }>();
       if (!created?.id) throw new SupportStoreError("support_conversation_limit", 409);
       const inserted = await db.prepare("INSERT INTO support_messages (id,conversation_id,sender_type,body,created_at) VALUES (?,?,'user',?,?) RETURNING id")
@@ -275,6 +290,20 @@ function createStore(db: D1DatabaseLike): SupportStore {
       const result = await db.prepare("UPDATE support_conversations SET priority = ?, updated_at = ? WHERE id = ? RETURNING user_id")
         .bind(priority, now, conversationId).first<{ user_id: string }>();
       return result?.user_id ? readDetail(result.user_id, conversationId, true) : null;
+    },
+    async deleteConversation(conversationId) {
+      await initialize();
+      const existing = await db.prepare("SELECT id FROM support_conversations WHERE id = ? LIMIT 1")
+        .bind(conversationId).first<{ id: string }>();
+      if (existing?.id !== conversationId) return false;
+      await db.batch([
+        db.prepare(`INSERT OR IGNORE INTO support_attachment_deletions (object_key,created_at)
+          SELECT object_key, ? FROM support_attachments WHERE conversation_id = ?`).bind(Date.now(), conversationId),
+        db.prepare("DELETE FROM support_conversations WHERE id = ?").bind(conversationId),
+      ]);
+      const remaining = await db.prepare("SELECT id FROM support_conversations WHERE id = ? LIMIT 1")
+        .bind(conversationId).first<{ id: string }>();
+      return !remaining?.id;
     },
     async notificationContext(conversationId) {
       await initialize();

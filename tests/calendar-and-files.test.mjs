@@ -126,10 +126,11 @@ test("calendar validation accepts bounded user actions and rejects ambiguous eve
 });
 
 test("calendar database design is private, bounded, and keeps reminders linked after history trimming", async () => {
-  const [migration, exactReminderMigration, limitMigration, api, panel, suggestions] = await Promise.all([
+  const [migration, exactReminderMigration, limitMigration, languageMigration, api, panel, suggestions] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260714000000_calendar_events.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260715120100_exact_calendar_reminders.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260715120200_reminder_limits.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260720150000_extended_content_languages.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/calendar/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/calendar-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/event-suggestions.tsx", import.meta.url), "utf8"),
@@ -155,6 +156,15 @@ test("calendar database design is private, bounded, and keeps reminders linked a
   assert.match(limitMigration, /interval '7 days'[\s\S]*>= 10[\s\S]*weekly_reminder_limit/i);
   assert.match(limitMigration, /insert into public\.reminder_schedule_usage/i);
   assert.match(api, /weekly_reminder_limit/);
+  assert.match(api, /supportedLanguages\.includes/);
+  assert.match(languageMigration, /document_analyses_language_check/i);
+  assert.match(languageMigration, /calendar_events_source_language_check/i);
+  assert.match(languageMigration, /email_reminders_source_language_check/i);
+  assert.match(languageMigration, /'es'.*'pt'.*'fr'.*'de'.*'it'.*'pl'.*'uk'.*'nl'.*'ro'.*'sv'.*'cs'/is);
+  assert.match(languageMigration, /confirm_analysis_calendar_event/);
+  assert.match(languageMigration, /create_manual_calendar_event/);
+  assert.match(languageMigration, /schedule_email_reminder/);
+  assert.match(languageMigration, /regexp_replace/);
   assert.match(panel, /reminderQuotaBlocked/);
   assert.match(suggestions, /reminderQuotaBlocked/);
   assert.match(panel, /onClick=\{\(\) => openNew\(key\)\}/);

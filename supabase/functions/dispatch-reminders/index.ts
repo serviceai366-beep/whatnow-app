@@ -1,5 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.93.3";
 
+type ReminderLanguage = "en" | "ru" | "lv" | "es" | "pt" | "fr" | "de" | "it" | "pl" | "uk" | "nl" | "ro" | "sv" | "cs";
+
 type ReminderRow = {
   id: string;
   user_id: string;
@@ -7,7 +9,7 @@ type ReminderRow = {
   event_at: string;
   timezone: string;
   remind_before_minutes: number;
-  source_language: "ru" | "lv" | "en";
+  source_language: ReminderLanguage;
   event_key: string;
 };
 
@@ -43,17 +45,51 @@ function escapeHtml(value: string): string {
   })[character] ?? character);
 }
 
+const localeTags: Record<ReminderLanguage, string> = {
+  en: "en-GB", ru: "ru-RU", lv: "lv-LV", es: "es-ES", pt: "pt-PT", fr: "fr-FR", de: "de-DE",
+  it: "it-IT", pl: "pl-PL", uk: "uk-UA", nl: "nl-NL", ro: "ro-RO", sv: "sv-SE", cs: "cs-CZ",
+};
+
+const offsetLabels: Record<ReminderLanguage, Record<number, string>> = {
+  en: { 0: "at the selected time", 60: "1 hour before", 1440: "24 hours before", 10080: "1 week before", 43200: "30 days before" },
+  ru: { 0: "в выбранное время", 60: "за 1 час", 1440: "за 24 часа", 10080: "за 1 неделю", 43200: "за 30 дней" },
+  lv: { 0: "izvēlētajā laikā", 60: "1 stundu iepriekš", 1440: "24 stundas iepriekš", 10080: "1 nedēļu iepriekš", 43200: "30 dienas iepriekš" },
+  es: { 0: "a la hora seleccionada", 60: "1 hora antes", 1440: "24 horas antes", 10080: "1 semana antes", 43200: "30 días antes" },
+  pt: { 0: "à hora selecionada", 60: "1 hora antes", 1440: "24 horas antes", 10080: "1 semana antes", 43200: "30 dias antes" },
+  fr: { 0: "à l’heure choisie", 60: "1 heure avant", 1440: "24 heures avant", 10080: "1 semaine avant", 43200: "30 jours avant" },
+  de: { 0: "zur ausgewählten Zeit", 60: "1 Stunde vorher", 1440: "24 Stunden vorher", 10080: "1 Woche vorher", 43200: "30 Tage vorher" },
+  it: { 0: "all’ora selezionata", 60: "1 ora prima", 1440: "24 ore prima", 10080: "1 settimana prima", 43200: "30 giorni prima" },
+  pl: { 0: "o wybranej godzinie", 60: "1 godzinę wcześniej", 1440: "24 godziny wcześniej", 10080: "1 tydzień wcześniej", 43200: "30 dni wcześniej" },
+  uk: { 0: "у вибраний час", 60: "за 1 годину", 1440: "за 24 години", 10080: "за 1 тиждень", 43200: "за 30 днів" },
+  nl: { 0: "op het gekozen tijdstip", 60: "1 uur vooraf", 1440: "24 uur vooraf", 10080: "1 week vooraf", 43200: "30 dagen vooraf" },
+  ro: { 0: "la ora selectată", 60: "cu 1 oră înainte", 1440: "cu 24 de ore înainte", 10080: "cu 1 săptămână înainte", 43200: "cu 30 de zile înainte" },
+  sv: { 0: "vid den valda tiden", 60: "1 timme före", 1440: "24 timmar före", 10080: "1 vecka före", 43200: "30 dagar före" },
+  cs: { 0: "ve zvolený čas", 60: "1 hodinu předem", 1440: "24 hodin předem", 10080: "1 týden předem", 43200: "30 dní předem" },
+};
+
+const emailCopy: Record<ReminderLanguage, { subject: string; heading: string; when: string; advance: string; manual: string; analysis: string }> = {
+  en: { subject: "Reminder", heading: "An important event is coming up", when: "Date and time", advance: "Reminder timing", manual: "This is an automatic WhatNow? reminder from your calendar.", analysis: "This is an automatic WhatNow? reminder based on a saved analysis. Check the date and requirements against the original document before acting." },
+  ru: { subject: "Напоминание", heading: "Скоро важное событие", when: "Дата и время", advance: "Когда отправлено", manual: "Это автоматическое напоминание WhatNow? из вашего календаря.", analysis: "Это автоматическое напоминание WhatNow? по сохранённому разбору. Перед действием проверьте дату и требования в исходном документе." },
+  lv: { subject: "Atgādinājums", heading: "Drīzumā svarīgs notikums", when: "Datums un laiks", advance: "Atgādinājuma laiks", manual: "Šis ir automātisks WhatNow? atgādinājums no jūsu kalendāra.", analysis: "Šis ir automātisks WhatNow? atgādinājums no saglabātās analīzes. Pirms rīcības pārbaudiet datumu un prasības sākotnējā dokumentā." },
+  es: { subject: "Recordatorio", heading: "Se acerca un evento importante", when: "Fecha y hora", advance: "Momento del recordatorio", manual: "Este es un recordatorio automático de WhatNow? desde tu calendario.", analysis: "Este es un recordatorio automático de WhatNow? basado en un análisis guardado. Comprueba la fecha y los requisitos en el documento original antes de actuar." },
+  pt: { subject: "Lembrete", heading: "Um evento importante está a aproximar-se", when: "Data e hora", advance: "Momento do lembrete", manual: "Este é um lembrete automático do WhatNow? a partir do seu calendário.", analysis: "Este é um lembrete automático do WhatNow? baseado numa análise guardada. Confirme a data e os requisitos no documento original antes de agir." },
+  fr: { subject: "Rappel", heading: "Un événement important approche", when: "Date et heure", advance: "Moment du rappel", manual: "Ceci est un rappel automatique WhatNow? provenant de votre calendrier.", analysis: "Ceci est un rappel automatique WhatNow? basé sur une analyse enregistrée. Vérifiez la date et les exigences dans le document original avant d’agir." },
+  de: { subject: "Erinnerung", heading: "Ein wichtiger Termin steht bevor", when: "Datum und Uhrzeit", advance: "Erinnerungszeitpunkt", manual: "Dies ist eine automatische WhatNow?-Erinnerung aus Ihrem Kalender.", analysis: "Dies ist eine automatische WhatNow?-Erinnerung auf Grundlage einer gespeicherten Analyse. Prüfen Sie Datum und Anforderungen im Originaldokument, bevor Sie handeln." },
+  it: { subject: "Promemoria", heading: "Si avvicina un evento importante", when: "Data e ora", advance: "Momento del promemoria", manual: "Questo è un promemoria automatico di WhatNow? dal tuo calendario.", analysis: "Questo è un promemoria automatico di WhatNow? basato su un’analisi salvata. Verifica la data e i requisiti nel documento originale prima di agire." },
+  pl: { subject: "Przypomnienie", heading: "Zbliża się ważne wydarzenie", when: "Data i godzina", advance: "Czas przypomnienia", manual: "To automatyczne przypomnienie WhatNow? z Twojego kalendarza.", analysis: "To automatyczne przypomnienie WhatNow? na podstawie zapisanego przeglądu. Przed podjęciem działania sprawdź datę i wymagania w oryginalnym dokumencie." },
+  uk: { subject: "Нагадування", heading: "Наближається важлива подія", when: "Дата й час", advance: "Час нагадування", manual: "Це автоматичне нагадування WhatNow? з вашого календаря.", analysis: "Це автоматичне нагадування WhatNow? на основі збереженого аналізу. Перед дією перевірте дату й вимоги в оригінальному документі." },
+  nl: { subject: "Herinnering", heading: "Er komt een belangrijke gebeurtenis aan", when: "Datum en tijd", advance: "Moment van herinnering", manual: "Dit is een automatische WhatNow?-herinnering uit je agenda.", analysis: "Dit is een automatische WhatNow?-herinnering op basis van een opgeslagen analyse. Controleer de datum en vereisten in het oorspronkelijke document voordat je handelt." },
+  ro: { subject: "Memento", heading: "Se apropie un eveniment important", when: "Data și ora", advance: "Momentul notificării", manual: "Acesta este un memento automat WhatNow? din calendarul tău.", analysis: "Acesta este un memento automat WhatNow? bazat pe o analiză salvată. Verifică data și cerințele în documentul original înainte de a acționa." },
+  sv: { subject: "Påminnelse", heading: "En viktig händelse närmar sig", when: "Datum och tid", advance: "Påminnelsetid", manual: "Detta är en automatisk WhatNow?-påminnelse från din kalender.", analysis: "Detta är en automatisk WhatNow?-påminnelse baserad på en sparad analys. Kontrollera datum och krav i originaldokumentet innan du agerar." },
+  cs: { subject: "Připomenutí", heading: "Blíží se důležitá událost", when: "Datum a čas", advance: "Čas připomenutí", manual: "Toto je automatické připomenutí WhatNow? z vašeho kalendáře.", analysis: "Toto je automatické připomenutí WhatNow? na základě uložené analýzy. Před provedením kroku zkontrolujte datum a požadavky v původním dokumentu." },
+};
+
 function offsetText(minutes: number, language: ReminderRow["source_language"]): string {
-  const labels = {
-    ru: { 0: "в выбранное время", 60: "за 1 час", 1440: "за 24 часа", 10080: "за 1 неделю", 43200: "за 30 дней" },
-    lv: { 0: "izvēlētajā laikā", 60: "1 stundu iepriekš", 1440: "24 stundas iepriekš", 10080: "1 nedēļu iepriekš", 43200: "30 dienas iepriekš" },
-    en: { 0: "at the selected time", 60: "1 hour before", 1440: "24 hours before", 10080: "1 week before", 43200: "30 days before" },
-  } as const;
-  return labels[language][minutes as keyof (typeof labels)[typeof language]] ?? String(minutes);
+  return offsetLabels[language][minutes] ?? String(minutes);
 }
 
 function emailContent(reminder: ReminderRow) {
-  const locale = reminder.source_language === "ru" ? "ru-RU" : reminder.source_language === "lv" ? "lv-LV" : "en-GB";
+  const locale = localeTags[reminder.source_language];
   const eventTime = new Intl.DateTimeFormat(locale, {
     dateStyle: "full",
     timeStyle: "short",
@@ -62,25 +98,8 @@ function emailContent(reminder: ReminderRow) {
   const title = reminder.event_title;
   const offset = offsetText(reminder.remind_before_minutes, reminder.source_language);
   const manual = reminder.event_key.startsWith("calendar_");
-  const copy = reminder.source_language === "ru" ? {
-    subject: `Напоминание: ${title}`,
-    heading: "Скоро важное событие",
-    when: "Дата и время",
-    advance: "Когда отправлено",
-    note: manual ? "Это автоматическое напоминание WhatNow? из вашего календаря." : "Это автоматическое напоминание WhatNow? по сохранённому разбору. Перед действием проверьте дату и требования в исходном документе.",
-  } : reminder.source_language === "lv" ? {
-    subject: `Atgādinājums: ${title}`,
-    heading: "Drīzumā svarīgs notikums",
-    when: "Datums un laiks",
-    advance: "Atgādinājuma laiks",
-    note: manual ? "Šis ir automātisks WhatNow? atgādinājums no jūsu kalendāra." : "Šis ir automātisks WhatNow? atgādinājums no saglabātās analīzes. Pirms rīcības pārbaudiet datumu un prasības sākotnējā dokumentā.",
-  } : {
-    subject: `Reminder: ${title}`,
-    heading: "An important event is coming up",
-    when: "Date and time",
-    advance: "Reminder timing",
-    note: manual ? "This is an automatic WhatNow? reminder from your calendar." : "This is an automatic WhatNow? reminder based on a saved analysis. Check the date and requirements against the original document before acting.",
-  };
+  const localized = emailCopy[reminder.source_language];
+  const copy = { ...localized, subject: `${localized.subject}: ${title}`, note: manual ? localized.manual : localized.analysis };
   const safeTitle = escapeHtml(title);
   const safeTime = escapeHtml(eventTime);
   const safeOffset = escapeHtml(offset);

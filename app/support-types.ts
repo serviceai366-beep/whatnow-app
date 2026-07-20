@@ -1,5 +1,3 @@
-import type { ProfileLanguage } from "./profile-types.ts";
-
 export const supportCategories = ["question", "bug", "feature"] as const;
 export const supportStatuses = ["open", "waiting_for_user", "resolved"] as const;
 export const supportPriorities = ["low", "normal", "high", "urgent"] as const;
@@ -51,6 +49,7 @@ export type SupportAction =
   | { action: "create"; subject: string; category: SupportCategory; message: string; locale: SupportLocale }
   | { action: "reply"; conversationId: string; message: string; locale: SupportLocale }
   | { action: "set_status"; conversationId: string; status: SupportStatus }
-  | { action: "set_priority"; conversationId: string; priority: SupportPriority };
+  | { action: "set_priority"; conversationId: string; priority: SupportPriority }
+  | { action: "delete"; conversationId: string };
 
-export type SupportLocale = ProfileLanguage;
+export type SupportLocale = "en" | "ru" | "lv";

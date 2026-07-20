@@ -1,5 +1,5 @@
 import { isSupportAdministrator } from "../../support-admin.ts";
-import { saveSupportAttachments, SUPPORT_ATTACHMENT_MAX_BYTES, SUPPORT_ATTACHMENT_MAX_FILES_PER_MESSAGE, SupportAttachmentError, validateSupportAttachmentUploads } from "../../support-attachment-store.ts";
+import { drainSupportAttachmentDeletions, saveSupportAttachments, SUPPORT_ATTACHMENT_MAX_BYTES, SUPPORT_ATTACHMENT_MAX_FILES_PER_MESSAGE, SupportAttachmentError, validateSupportAttachmentUploads } from "../../support-attachment-store.ts";
 import { sendSupportNotification, supportEmailConfigured } from "../../support-email.ts";
 import { getSupportStore, SupportStoreError } from "../../support-store.ts";
 import type { SupportSnapshot } from "../../support-types.ts";
@@ -101,6 +101,7 @@ export async function GET(request: Request): Promise<Response> {
   if ("response" in auth) return auth.response;
   const store = await getSupportStore();
   if (!store) return error("support_storage_unavailable", 503);
+  if (auth.isAdmin) await drainSupportAttachmentDeletions().catch(() => undefined);
   try {
     const conversations = await store.listConversations(auth.user.id, auth.isAdmin);
     const id = new URL(request.url).searchParams.get("conversation");
@@ -123,6 +124,7 @@ export async function POST(request: Request): Promise<Response> {
   if ("response" in auth) return auth.response;
   const store = await getSupportStore();
   if (!store) return error("support_storage_unavailable", 503);
+  if (auth.isAdmin) await drainSupportAttachmentDeletions().catch(() => undefined);
 
   try {
     let conversation;
@@ -136,12 +138,19 @@ export async function POST(request: Request): Promise<Response> {
       if (!auth.isAdmin) return error("forbidden", 403);
       conversation = await store.setStatus(action.conversationId, action.status);
       if (!conversation) return error("support_not_found", 404);
-    } else {
+    } else if (action.action === "set_priority") {
       if (!auth.isAdmin) return error("forbidden", 403);
       conversation = await store.setPriority(action.conversationId, action.priority);
       if (!conversation) return error("support_not_found", 404);
+    } else {
+      if (!auth.isAdmin) return error("forbidden", 403);
+      const existing = await store.getConversation(auth.user.id, action.conversationId, true);
+      if (!existing) return error("support_not_found", 404);
+      if (!await store.deleteConversation(action.conversationId)) return error("support_not_found", 404);
+      await drainSupportAttachmentDeletions().catch(() => undefined);
+      conversation = null;
     }
-    if (parsed.files.length > 0 && (action.action === "create" || action.action === "reply")) {
+    if (parsed.files.length > 0 && conversation && (action.action === "create" || action.action === "reply")) {
       const messageId = conversation.messages.at(-1)?.id;
       if (messageId) {
         try {
@@ -152,7 +161,7 @@ export async function POST(request: Request): Promise<Response> {
         }
       }
     }
-    if (action.action === "create" || action.action === "reply") {
+    if (conversation && (action.action === "create" || action.action === "reply")) {
       const context = await store.notificationContext(conversation.id);
       if (context) {
         const delivery = await sendSupportNotification({

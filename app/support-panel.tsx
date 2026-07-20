@@ -20,7 +20,43 @@ const copy = {
   },
 } as const;
 
-type SupportCopy = { [Key in keyof typeof copy.en]: string };
+const lifecycleCopy = {
+  en: {
+    emptyAdmin: "No active support requests. Resolved requests are hidden from this queue.",
+    resolvedForUser: "Resolved — support marked this problem as fixed. Reply here if you still need help; the request will reopen automatically.",
+    resolvedHidden: "Marked as resolved and removed from the owner queue.",
+    deleteRequest: "Delete request",
+    deleteTitle: "Delete this request permanently?",
+    deleteBody: "The request, every message, and all screenshots will be erased. This cannot be undone.",
+    deletePermanently: "Delete permanently",
+    deleting: "Deleting…",
+    deleted: "The support request was permanently deleted.",
+  },
+  ru: {
+    emptyAdmin: "Активных обращений нет. Решённые обращения скрыты из этой очереди.",
+    resolvedForUser: "Решено — поддержка отметила проблему как устранённую. Если помощь всё ещё нужна, ответьте здесь: обращение откроется снова автоматически.",
+    resolvedHidden: "Обращение отмечено как решённое и убрано из очереди владельца.",
+    deleteRequest: "Удалить обращение",
+    deleteTitle: "Удалить это обращение навсегда?",
+    deleteBody: "Обращение, все сообщения и скриншоты будут стёрты. Это действие нельзя отменить.",
+    deletePermanently: "Удалить навсегда",
+    deleting: "Удаляем…",
+    deleted: "Обращение в поддержку безвозвратно удалено.",
+  },
+  lv: {
+    emptyAdmin: "Nav aktīvu atbalsta pieprasījumu. Atrisinātie pieprasījumi šajā rindā ir paslēpti.",
+    resolvedForUser: "Atrisināts — atbalsts atzīmēja problēmu kā novērstu. Ja palīdzība vēl ir vajadzīga, atbildiet šeit; pieprasījums automātiski tiks atvērts no jauna.",
+    resolvedHidden: "Pieprasījums atzīmēts kā atrisināts un noņemts no īpašnieka rindas.",
+    deleteRequest: "Dzēst pieprasījumu",
+    deleteTitle: "Neatgriezeniski dzēst šo pieprasījumu?",
+    deleteBody: "Pieprasījums, visas ziņas un ekrānuzņēmumi tiks dzēsti. Šo darbību nevar atsaukt.",
+    deletePermanently: "Dzēst neatgriezeniski",
+    deleting: "Dzēš…",
+    deleted: "Atbalsta pieprasījums ir neatgriezeniski izdzēsts.",
+  },
+} as const;
+
+type SupportCopy = { [Key in keyof typeof copy.en]: string } & { [Key in keyof typeof lifecycleCopy.en]: string };
 
 function errorText(code: string, t: SupportCopy): string {
   if (code === "support_rate_limited") return t.limit;
@@ -60,7 +96,8 @@ function attachmentSelection(files: File[], t: SupportCopy): string {
 }
 
 export function SupportPanel({ open, locale, onClose }: Props) {
-  const t = copy[interfaceCopyFallback(locale)];
+  const supportLocale = interfaceCopyFallback(locale);
+  const t = useMemo<SupportCopy>(() => ({ ...copy[supportLocale], ...lifecycleCopy[supportLocale] }), [supportLocale]);
   const [snapshot, setSnapshot] = useState<SupportSnapshot | null>(null);
   const [detail, setDetail] = useState<SupportConversationDetail | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -75,6 +112,7 @@ export function SupportPanel({ open, locale, onClose }: Props) {
   const [search, setSearch] = useState("");
   const [newAttachments, setNewAttachments] = useState<File[]>([]);
   const [replyAttachments, setReplyAttachments] = useState<File[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const filteredConversations = useMemo(() => {
     const query = search.trim().toLocaleLowerCase(locale);
@@ -119,6 +157,7 @@ export function SupportPanel({ open, locale, onClose }: Props) {
     setSelectedId(conversation.id);
     setReply("");
     setReplyAttachments([]);
+    setConfirmDelete(false);
     setNotice(null);
     void refresh(conversation.id);
   };
@@ -131,27 +170,45 @@ export function SupportPanel({ open, locale, onClose }: Props) {
     setCategory("question");
     setNewMessage("");
     setNewAttachments([]);
+    setConfirmDelete(false);
     setError(null);
     setNotice(null);
   };
 
-  const apply = async (kind: "create" | "reply" | "status" | "priority", value?: SupportStatus | SupportPriority) => {
+  const apply = async (kind: "create" | "reply" | "status" | "priority" | "delete", value?: SupportStatus | SupportPriority) => {
     if (busy) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       const result = kind === "create"
-        ? await updateSupport({ action: "create", subject, category, message: newMessage, locale }, newAttachments)
+        ? await updateSupport({ action: "create", subject, category, message: newMessage, locale: supportLocale }, newAttachments)
         : kind === "reply" && detail
-          ? await updateSupport({ action: "reply", conversationId: detail.id, message: reply, locale }, replyAttachments)
+          ? await updateSupport({ action: "reply", conversationId: detail.id, message: reply, locale: supportLocale }, replyAttachments)
           : kind === "status" && detail && value
             ? await updateSupport({ action: "set_status", conversationId: detail.id, status: value as SupportStatus })
             : kind === "priority" && detail && value
               ? await updateSupport({ action: "set_priority", conversationId: detail.id, priority: value as SupportPriority })
-            : null;
-      if (!result?.conversation) throw new SupportRequestError("invalid_support_response", 502);
+              : kind === "delete" && detail
+                ? await updateSupport({ action: "delete", conversationId: detail.id })
+              : null;
+      if (!result) throw new SupportRequestError("invalid_support_response", 502);
       setSnapshot(result.snapshot);
+      if (kind === "delete") {
+        setDetail(null);
+        setSelectedId(null);
+        setConfirmDelete(false);
+        setNotice(t.deleted);
+        return;
+      }
+      if (!result.conversation) throw new SupportRequestError("invalid_support_response", 502);
+      if (kind === "status" && value === "resolved" && result.snapshot.isAdmin) {
+        setDetail(null);
+        setSelectedId(null);
+        setConfirmDelete(false);
+        setNotice(t.resolvedHidden);
+        return;
+      }
       setDetail(result.conversation);
       setSelectedId(result.conversation.id);
       if (kind === "create") {
@@ -229,7 +286,26 @@ export function SupportPanel({ open, locale, onClose }: Props) {
             {newAttachments.length ? <div className="support-file-chips">{newAttachments.map((file, index) => <span key={`${file.name}-${file.size}`}><b>{file.name}</b><button type="button" onClick={() => setNewAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t.remove}</button></span>)}</div> : null}
             <div className="support-form-actions"><small>{newMessage.length}/4000</small><button className="primary-mini" type="submit" disabled={busy || !subject.trim() || !newMessage.trim()}>{busy ? t.sending : t.create}</button></div>
           </form> : detail ? <div className="support-thread">
-            <div className="support-thread-heading"><div><span className={`support-status support-status-${detail.status}`}>{statusLabel(detail.status, t)}</span><h3>{detail.subject}</h3><p>{categoryLabel(detail.category, t)} · {localDate(detail.createdAt, locale)}</p></div>{snapshot?.isAdmin ? <div className="support-admin-controls"><label className="support-status-control">{t.status}<select value={detail.status} disabled={busy} onChange={(event) => void apply("status", event.target.value as SupportStatus)}><option value="open">{t.open}</option><option value="waiting_for_user">{t.waiting}</option><option value="resolved">{t.resolved}</option></select></label><label className="support-status-control">{t.priority}<select value={detail.priority} disabled={busy} onChange={(event) => void apply("priority", event.target.value as SupportPriority)}><option value="low">{t.low}</option><option value="normal">{t.normal}</option><option value="high">{t.high}</option><option value="urgent">{t.urgent}</option></select></label></div> : null}</div>
+            <div className="support-thread-heading">
+              <div>
+                <span className={`support-status support-status-${detail.status}`}>{statusLabel(detail.status, t)}</span>
+                <h3>{detail.subject}</h3>
+                <p>{categoryLabel(detail.category, t)} · {localDate(detail.createdAt, locale)}</p>
+                {!snapshot?.isAdmin && detail.status === "resolved" ? <div className="support-resolved-note" role="status">{t.resolvedForUser}</div> : null}
+              </div>
+              {snapshot?.isAdmin ? <div className="support-admin-column">
+                <div className="support-admin-controls">
+                  <label className="support-status-control">{t.status}<select value={detail.status} disabled={busy} onChange={(event) => void apply("status", event.target.value as SupportStatus)}><option value="open">{t.open}</option><option value="waiting_for_user">{t.waiting}</option><option value="resolved">{t.resolved}</option></select></label>
+                  <label className="support-status-control">{t.priority}<select value={detail.priority} disabled={busy} onChange={(event) => void apply("priority", event.target.value as SupportPriority)}><option value="low">{t.low}</option><option value="normal">{t.normal}</option><option value="high">{t.high}</option><option value="urgent">{t.urgent}</option></select></label>
+                  <button className="support-delete-button" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>{t.deleteRequest}</button>
+                </div>
+                {confirmDelete ? <div className="support-delete-confirm" role="alertdialog" aria-labelledby="support-delete-title" aria-describedby="support-delete-description">
+                  <strong id="support-delete-title">{t.deleteTitle}</strong>
+                  <p id="support-delete-description">{t.deleteBody}</p>
+                  <div><button type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>{t.cancel}</button><button className="danger" type="button" disabled={busy} onClick={() => void apply("delete")}>{busy ? t.deleting : t.deletePermanently}</button></div>
+                </div> : null}
+              </div> : null}
+            </div>
             <div className="support-messages" aria-live="polite">{detail.messages.map((message) => <article key={message.id} className={`support-message support-message-${message.sender}`}><header><strong>{message.sender === "support" ? t.support : t.user}</strong><time dateTime={new Date(message.createdAt).toISOString()}>{localDate(message.createdAt, locale)}</time></header><p>{message.body}</p>{message.attachments.length ? <div className="support-message-attachments">{message.attachments.map((attachment) => <button type="button" key={attachment.id} onClick={() => void viewAttachment(attachment.id, attachment.name)}><span aria-hidden="true">▧</span> {t.openAttachment}: {attachment.name}</button>)}</div> : null}</article>)}</div>
             <form className="support-reply" onSubmit={(event) => { event.preventDefault(); void apply("reply"); }}><label>{t.reply}<textarea value={reply} onChange={(event) => setReply(event.target.value)} maxLength={4000} placeholder={t.replyPlaceholder} required disabled={busy} /></label><label className="support-file-input"><span>{t.attachments}</span><span className="support-file-picker"><input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={(event) => chooseAttachments(Array.from(event.target.files ?? []), "reply")} /><span className="support-file-button">{t.chooseAttachments}</span><span className="support-file-selection" aria-live="polite">{attachmentSelection(replyAttachments, t)}</span></span><small>{t.attachmentHint}</small></label>{replyAttachments.length ? <div className="support-file-chips">{replyAttachments.map((file, index) => <span key={`${file.name}-${file.size}`}><b>{file.name}</b><button type="button" onClick={() => setReplyAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t.remove}</button></span>)}</div> : null}<div className="support-form-actions"><small>{snapshot?.emailNotificationsEnabled ? t.emailReplyNotice : t.replyNotice}</small><button className="primary-mini" type="submit" disabled={busy || !reply.trim()}>{busy ? t.sending : t.send}</button></div></form>
           </div> : <p className="panel-state">{loading ? t.loading : t.noSelection}</p>}

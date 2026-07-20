@@ -8,13 +8,14 @@ const auth = await readFile(new URL("../app/supabase-auth.ts", import.meta.url),
 test("new account creation requires accepted legal terms and a fresh bot-protection token", () => {
   assert.match(widget, /authMode === "create-account" && \(!legalAccepted \|\| !authCaptchaToken\)/);
   assert.match(widget, /TurnstileWidget action="account-create"/);
-  assert.match(widget, /disabled=\{googleLoading \|\| \(authMode === "create-account" && \(!legalAccepted \|\| !authCaptchaToken\)\)\}/);
+  assert.match(widget, /TurnstileWidget action="account-login"/);
+  assert.match(widget, /disabled=\{googleLoading \|\| !authCaptchaToken \|\| \(authMode === "create-account" && !legalAccepted\)\}/);
   assert.match(widget, /createRequirements/);
 });
 
 test("Google and email account creation forward the CAPTCHA token to Supabase", () => {
   assert.match(auth, /startGoogleSignIn\(mode: AccountAccessMode, acceptedLegalTerms: boolean, captchaToken: string \| null\)/);
-  assert.match(auth, /mode === "create-account" && !captchaToken/);
+  assert.equal((auth.match(/if \(!captchaToken\) throw new Error\("Captcha verification is required"\)/g) ?? []).length, 2);
   assert.match(auth, /signInWithOAuth\([\s\S]*?captchaToken: captchaToken \?\? undefined/);
   assert.match(auth, /signInWithOtp\([\s\S]*?captchaToken: captchaToken \?\? undefined/);
 });

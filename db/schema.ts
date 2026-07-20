@@ -150,3 +150,8 @@ export const supportAttachments = sqliteTable("support_attachments", {
   check("support_attachments_mime_valid", sql`${table.mimeType} in ('image/jpeg', 'image/png', 'image/webp')`),
   check("support_attachments_size_positive", sql`${table.sizeBytes} > 0`),
 ]);
+
+export const supportAttachmentDeletions = sqliteTable("support_attachment_deletions", {
+  objectKey: text("object_key").primaryKey().notNull(),
+  createdAt: integer("created_at").notNull(),
+});

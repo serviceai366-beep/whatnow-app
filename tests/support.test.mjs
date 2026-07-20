@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { isSupportAdministrator } from "../app/support-admin.ts";
-import { getSupportAttachment, saveSupportAttachments, SupportAttachmentError } from "../app/support-attachment-store.ts";
+import { drainSupportAttachmentDeletions, getSupportAttachment, saveSupportAttachments, SupportAttachmentError } from "../app/support-attachment-store.ts";
 import { sendSupportNotification, supportEmailConfigured } from "../app/support-email.ts";
 import { createSupportStoreForTests, SUPPORT_CONVERSATION_LIMIT, SUPPORT_USER_MESSAGE_LIMIT, SupportStoreError } from "../app/support-store.ts";
 import { parseSupportAction, SUPPORT_MESSAGE_MAX_LENGTH, SUPPORT_SUBJECT_MAX_LENGTH } from "../app/support-validation.ts";
@@ -41,6 +41,8 @@ test("support validation keeps the request bounded and strips unsafe control mar
   assert.equal(parseSupportAction({ action: "reply", conversationId: "bad-id", message: "Hello", locale: "en" }), null);
   assert.equal(parseSupportAction({ action: "reply", conversationId: "11111111-1111-4111-8111-111111111111", message: "x".repeat(SUPPORT_MESSAGE_MAX_LENGTH + 1), locale: "en" }), null);
   assert.deepEqual(parseSupportAction({ action: "set_priority", conversationId: "11111111-1111-4111-8111-111111111111", priority: "urgent" }), { action: "set_priority", conversationId: "11111111-1111-4111-8111-111111111111", priority: "urgent" });
+  assert.deepEqual(parseSupportAction({ action: "delete", conversationId: "11111111-1111-4111-8111-111111111111" }), { action: "delete", conversationId: "11111111-1111-4111-8111-111111111111" });
+  assert.equal(parseSupportAction({ action: "delete", conversationId: "bad-id" }), null);
 });
 
 test("support owner allow-list never authorizes a partial or unrelated email", () => {
@@ -79,9 +81,14 @@ test("support conversations are private to their owner while the configured owne
     assert.equal(reopened.messages.at(-1)?.sender, "user");
     const resolved = await store.setStatus(created.id, "resolved", 5_000);
     assert.equal(resolved?.status, "resolved");
+    assert.equal((await store.listConversations("owner", true)).length, 0);
+    assert.equal((await store.listConversations("member-a", false))[0]?.status, "resolved");
     const urgent = await store.setPriority(created.id, "urgent", 6_000);
     assert.equal(urgent?.priority, "urgent");
     assert.equal((await store.notificationContext(created.id))?.locale, "ru");
+    const reopenedAfterResolution = await store.addReply({ userId: "member-a", conversationId: created.id, message: "The problem returned.", locale: "en", isAdmin: false, now: 7_000 });
+    assert.equal(reopenedAfterResolution.status, "open");
+    assert.equal((await store.listConversations("owner", true))[0]?.id, created.id);
   } finally {
     database.close();
   }
@@ -113,6 +120,33 @@ test("support rate and conversation caps resist repeated requests", async () => 
   }
 });
 
+test("resolved support history does not consume the active conversation limit", async () => {
+  const database = new DatabaseSync(":memory:");
+  try {
+    const store = createSupportStoreForTests(new Database(database));
+    let firstId = "";
+    for (let index = 0; index < SUPPORT_CONVERSATION_LIMIT; index += 1) {
+      const created = await store.createConversation({
+        userId: "history-member", contactEmail: "member@example.com", subject: `Request ${index}`,
+        category: "question", message: "Please help.", locale: "en", now: 1_000 + index * 700_000,
+      });
+      if (index === 0) firstId = created.id;
+    }
+    await store.setStatus(firstId, "resolved", 18_000_000);
+    const next = await store.createConversation({
+      userId: "history-member", contactEmail: "member@example.com", subject: "New active request",
+      category: "question", message: "This must remain possible.", locale: "en", now: 19_000_000,
+    });
+    assert.equal(next.status, "open");
+    const history = await store.listConversations("history-member", false);
+    assert.equal(history.length, SUPPORT_CONVERSATION_LIMIT + 1);
+    assert.ok(history.some((conversation) => conversation.id === firstId && conversation.status === "resolved"));
+    assert.equal((await store.listConversations("owner", true)).length, SUPPORT_CONVERSATION_LIMIT);
+  } finally {
+    database.close();
+  }
+});
+
 test("support screenshots are signature-checked, private, and loaded from the bound bucket", async () => {
   const sqlite = new DatabaseSync(":memory:");
   try {
@@ -131,6 +165,31 @@ test("support screenshots are signature-checked, private, and loaded from the bo
       saveSupportAttachments({ conversationId: conversation.id, messageId, files: [{ name: "fake.png", declaredMimeType: "image/png", bytes: Uint8Array.from([1, 2, 3]) }], suppliedRuntime: { db: database, bucket } }),
       (error) => error instanceof SupportAttachmentError && error.code === "support_attachment_invalid",
     );
+  } finally {
+    sqlite.close();
+  }
+});
+
+test("permanent support deletion cascades private data and drains queued R2 objects", async () => {
+  const sqlite = new DatabaseSync(":memory:");
+  try {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+    const database = new Database(sqlite);
+    const store = createSupportStoreForTests(database);
+    const conversation = await store.createConversation({ userId: "member-a", contactEmail: "member@example.com", subject: "Spam", category: "bug", message: "Delete me", locale: "en", now: 1_000 });
+    const bucket = new Bucket();
+    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]);
+    await saveSupportAttachments({ conversationId: conversation.id, messageId: conversation.messages[0].id, files: [{ name: "spam.png", declaredMimeType: "image/png", bytes: png }], suppliedRuntime: { db: database, bucket }, now: 2_000 });
+    assert.equal(bucket.objects.size, 1);
+    assert.equal(await store.deleteConversation(conversation.id), true);
+    assert.equal(await store.getConversation("member-a", conversation.id, false), null);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM support_messages").get().count, 0);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM support_attachments").get().count, 0);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM support_attachment_deletions").get().count, 1);
+    assert.deepEqual(await drainSupportAttachmentDeletions({ db: database, bucket }), { deleted: 1, failed: 0 });
+    assert.equal(bucket.objects.size, 0);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) AS count FROM support_attachment_deletions").get().count, 0);
+    assert.equal(await store.deleteConversation(conversation.id), false);
   } finally {
     sqlite.close();
   }
@@ -164,6 +223,9 @@ test("support API, UI, and D1 migration enforce server-side privacy and provide 
   assert.match(route, /isSupportAdministrator\(auth\.user\.email\)/);
   assert.match(route, /auth\.isAdmin/);
   assert.match(route, /saveSupportAttachments/);
+  assert.match(route, /action\.action === "set_priority"/);
+  assert.match(route, /store\.deleteConversation/);
+  assert.match(route, /drainSupportAttachmentDeletions/);
   assert.match(store, /user_id = \?/);
   assert.match(store, /support_message_events/);
   assert.match(store, /SUPPORT_USER_MESSAGE_LIMIT = 10/);
@@ -179,6 +241,10 @@ test("support API, UI, and D1 migration enforce server-side privacy and provide 
   assert.match(panel, /noAttachments: "No screenshots selected"/);
   assert.match(panel, /className="sr-only" type="file"/);
   assert.match(panel, /set_priority/);
+  assert.match(panel, /action: "delete"/);
+  assert.match(panel, /support-delete-confirm/);
+  assert.match(panel, /resolvedForUser/);
+  assert.match(panel, /locale: supportLocale/);
   const englishSupportCopy = panel.match(/en: \{([\s\S]*?)\n  \},\n  ru:/)?.[1] ?? "";
   assert.ok(englishSupportCopy.length > 0);
   assert.doesNotMatch(englishSupportCopy, /[А-Яа-яЁё]/);
@@ -188,6 +254,8 @@ test("support API, UI, and D1 migration enforce server-side privacy and provide 
   assert.match(styles, /\.support-panel \.primary-mini:disabled \{[^}]*color: var\(--muted\);[^}]*background: var\(--surface-muted\);[^}]*opacity: 1;/);
   assert.match(styles, /\.support-panel \.primary-mini:not\(:disabled\) \{[^}]*color: #fff;[^}]*background: linear-gradient/);
   assert.match(styles, /\.support-file-picker \{[^}]*display: flex;[^}]*background: var\(--surface\);/);
+  assert.match(styles, /\.support-delete-button/);
+  assert.match(styles, /\.support-delete-confirm/);
   assert.match(page, /<SupportPanel/);
   assert.match(migration, /support_conversations/);
   assert.match(migration, /support_messages/);

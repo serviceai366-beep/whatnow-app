@@ -103,6 +103,10 @@ async function initialize(db: D1DatabaseLike): Promise<void> {
     size_bytes INTEGER NOT NULL CHECK (size_bytes > 0),
     created_at INTEGER NOT NULL
   )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS support_attachment_deletions (
+    object_key TEXT PRIMARY KEY NOT NULL,
+    created_at INTEGER NOT NULL
+  )`).run();
   await db.batch([
     db.prepare("CREATE INDEX IF NOT EXISTS support_attachments_conversation_created_idx ON support_attachments (conversation_id, created_at ASC)"),
     db.prepare("CREATE INDEX IF NOT EXISTS support_attachments_message_idx ON support_attachments (message_id)"),
@@ -175,4 +179,27 @@ export async function getSupportAttachment(id: string, suppliedRuntime?: Runtime
   const object = await resolved.bucket.get(row.object_key).catch(() => null);
   if (!object) throw new SupportAttachmentError("support_attachment_unavailable", 503);
   return { attachment, conversationId: row.conversation_id, body: object.body };
+}
+
+export async function drainSupportAttachmentDeletions(suppliedRuntime?: Runtime, limit = 20): Promise<{ deleted: number; failed: number }> {
+  const resolved = suppliedRuntime ?? await runtime();
+  if (!resolved) throw new SupportAttachmentError("support_attachment_unavailable", 503);
+  await initialize(resolved.db);
+  const boundedLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  const result = await resolved.db.prepare("SELECT object_key FROM support_attachment_deletions ORDER BY created_at ASC LIMIT ?")
+    .bind(boundedLimit).all<{ object_key: string }>();
+  const rows = (Array.isArray(result) ? result : Array.isArray(result.results) ? result.results : [])
+    .filter((row): row is { object_key: string } => Boolean(row) && typeof row.object_key === "string");
+  let deleted = 0;
+  let failed = 0;
+  for (const row of rows) {
+    try {
+      await resolved.bucket.delete(row.object_key);
+      await resolved.db.prepare("DELETE FROM support_attachment_deletions WHERE object_key = ?").bind(row.object_key).run();
+      deleted += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+  return { deleted, failed };
 }

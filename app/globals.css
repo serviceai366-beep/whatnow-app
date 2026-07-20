@@ -984,9 +984,19 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 .support-thread-heading { display: flex; justify-content: space-between; gap: 18px; align-items: start; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
 .support-thread-heading h3 { margin-top: 9px; }
 .support-thread-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+.support-resolved-note { max-width: 590px; margin-top: 14px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); border-radius: 11px; color: var(--accent-dark); background: var(--accent-soft); font-size: 12px; font-weight: 700; line-height: 1.45; }
 .support-status-control { min-width: 148px; font-size: 11px; }
 .support-status-control select { min-height: 38px; padding: 7px 8px; font-size: 13px; }
 .support-admin-controls { display: flex; flex-wrap: wrap; justify-content: end; gap: 10px; }
+.support-admin-column { width: min(100%, 520px); display: grid; justify-items: end; gap: 10px; }
+.support-delete-button { min-height: 38px; align-self: end; padding: 8px 11px; border: 1px solid color-mix(in srgb, var(--danger) 42%, var(--border)); border-radius: 11px; color: var(--danger); background: color-mix(in srgb, var(--danger) 6%, var(--surface)); font: inherit; font-size: 12px; font-weight: 800; }
+.support-delete-button:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 11%, var(--surface)); }
+.support-delete-confirm { width: min(100%, 480px); padding: 13px 14px; border: 1px solid color-mix(in srgb, var(--danger) 34%, var(--border)); border-radius: 13px; color: var(--foreground); background: color-mix(in srgb, var(--danger) 5%, var(--surface)); box-shadow: 0 12px 34px rgb(0 0 0 / 10%); }
+.support-delete-confirm strong { color: var(--danger); font-size: 13px; }
+.support-delete-confirm p { margin: 5px 0 11px; font-size: 12px; line-height: 1.45; }
+.support-delete-confirm > div { display: flex; justify-content: end; gap: 8px; }
+.support-delete-confirm button { min-height: 36px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 9px; color: var(--foreground); background: var(--surface); font: inherit; font-size: 12px; font-weight: 800; }
+.support-delete-confirm button.danger { border-color: var(--danger); color: #fff; background: var(--danger); }
 .support-messages { display: grid; align-content: start; gap: 12px; }
 .support-message { max-width: min(88%, 650px); padding: 14px 15px; border: 1px solid var(--border); border-radius: 16px 16px 16px 4px; background: var(--surface-muted); }
 .support-message-support { justify-self: end; border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 16px 16px 4px 16px; background: var(--accent-soft); }
@@ -1064,8 +1074,10 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .support-file-button { width: 100%; }
   .support-file-selection { padding-inline: 3px; white-space: normal; overflow-wrap: anywhere; }
   .support-thread-heading { display: grid; }
+  .support-admin-column { width: 100%; justify-items: stretch; }
   .support-admin-controls { justify-content: start; }
   .support-status-control { max-width: 180px; }
+  .support-delete-confirm { width: 100%; }
   .support-message { max-width: 94%; }
 }
 

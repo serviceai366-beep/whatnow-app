@@ -1,4 +1,5 @@
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../../supabase-config.ts";
+import { supportedLanguages, type SupportedLanguage } from "../../analysis-schema.ts";
 import { parseReminderAction } from "../../reminder-validation.ts";
 import { REMINDER_ACTIVE_LIMIT, REMINDER_WEEKLY_LIMIT, type ReminderAvailability, type ReminderQuota, type ReminderState, type ScheduledReminder } from "../../reminder-types.ts";
 import { isSameOriginRequest } from "../../security.ts";
@@ -68,7 +69,7 @@ function reminderFromRow(row: SupabaseRow): ScheduledReminder | null {
     || typeof row.event_key !== "string" || typeof row.event_title !== "string"
     || typeof row.event_at !== "string" || typeof row.send_at !== "string"
     || typeof row.timezone !== "string" || ![0, 60, 1_440, 10_080, 43_200].includes(offset)
-    || (row.source_language !== "ru" && row.source_language !== "lv" && row.source_language !== "en")
+    || !supportedLanguages.includes(String(row.source_language) as SupportedLanguage)
     || (row.status !== "scheduled" && row.status !== "sending" && row.status !== "sent" && row.status !== "cancelled" && row.status !== "failed")
     || typeof row.created_at !== "string"
   ) return null;
@@ -81,7 +82,7 @@ function reminderFromRow(row: SupabaseRow): ScheduledReminder | null {
     sendAt: row.send_at,
     timezone: row.timezone,
     remindBeforeMinutes: offset as ScheduledReminder["remindBeforeMinutes"],
-    sourceLanguage: row.source_language,
+    sourceLanguage: row.source_language as ScheduledReminder["sourceLanguage"],
     status: row.status,
     createdAt: row.created_at,
   };

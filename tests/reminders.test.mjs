@@ -86,6 +86,9 @@ test("dispatcher restricts pilot delivery and prevents duplicate email sends", a
   assert.match(permissionFix, /grant select on table public\.reminder_preferences to service_role/i);
   assert.doesNotMatch(permissionFix, /grant (?:insert|update|delete|all)/i);
   assert.match(dispatcher, /source_language/);
+  for (const language of ["es", "pt", "fr", "de", "it", "pl", "uk", "nl", "ro", "sv", "cs"]) {
+    assert.match(dispatcher, new RegExp(`${language}: \\{`));
+  }
   assert.doesNotMatch(dispatcher, /console\.log\(|SUPABASE_SERVICE_ROLE_KEY.*Response/);
 });
 

@@ -51,6 +51,7 @@ test("limit notice is localized, accessible, dismissible, and uses server reset 
   assert.match(page, /data\.resetAt - now/);
   assert.match(page, /Intl\.DateTimeFormat/);
   assert.match(page, /window\.setInterval/);
+  assert.match(page, /limit\.scope === "user_window"/);
   assert.match(page, /aria-label=\{t\.close\}/);
   assert.match(css, /\.limit-toast \{/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.limit-toast/);

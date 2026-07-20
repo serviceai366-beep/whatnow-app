@@ -50,7 +50,7 @@ const historyCopy = {
 } as const;
 
 type LimitNoticeData = {
-  scope: "user_24h" | "user_7d";
+  scope: "user_24h" | "user_window";
   resetAt: number;
   observedAt: number;
   daily: { limit: number; remaining: number; resetAt: number };
@@ -402,7 +402,7 @@ export default function Home() {
         }
         if (
           limit?.code === "user_limit_reached"
-          && (limit.scope === "user_24h" || limit.scope === "user_7d")
+          && (limit.scope === "user_24h" || limit.scope === "user_window")
           && typeof limit.resetAt === "number"
           && limit.limits?.daily && limit.limits?.weekly
         ) {

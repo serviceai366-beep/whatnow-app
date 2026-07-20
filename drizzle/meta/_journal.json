@@ -57,6 +57,13 @@
       "when": 1784543085199,
       "tag": "0007_blue_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784563102624,
+      "tag": "0008_closed_the_stranger",
+      "breakpoints": true
     }
   ]
 }

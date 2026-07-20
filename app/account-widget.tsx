@@ -315,9 +315,15 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   </div>
                   {(!legalAccepted || !authCaptchaToken) && <p className="auth-requirements" role="status">{t.createRequirements}</p>}
                 </>}
-                <button className="google-sign-in" type="button" disabled={googleLoading || (authMode === "create-account" && (!legalAccepted || !authCaptchaToken))} onClick={async () => {
+                {authMode === "sign-in" && <div className={`captcha-box compact${authCaptchaError ? " has-error" : ""}`}>
+                  <TurnstileWidget action="account-login" language={locale} theme={theme} resetKey={authCaptchaResetKey}
+                    onToken={(token) => { setAuthCaptchaToken(token); if (token) setAuthCaptchaError(false); }}
+                    onError={() => setAuthCaptchaError(true)} />
+                  <small>{authCaptchaError ? t.captchaError : authCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
+                </div>}
+                <button className="google-sign-in" type="button" disabled={googleLoading || !authCaptchaToken || (authMode === "create-account" && !legalAccepted)} onClick={async () => {
                   setError(null);
-                  if (authMode === "create-account" && (!legalAccepted || !authCaptchaToken)) return setError(t.createRequirements);
+                  if (!authCaptchaToken || (authMode === "create-account" && !legalAccepted)) return setError(t.createRequirements);
                   if (!isSupabaseConfigured()) return setError(t.unavailable);
                   setGoogleLoading(true);
                   try { await startGoogleSignIn(authMode, legalAccepted, authCaptchaToken); } catch { setError(t.error); setGoogleLoading(false); }
@@ -327,12 +333,6 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   <label htmlFor="account-email">{t.email}</label>
                   <input id="account-email" type="email" value={email} required autoComplete="email"
                     placeholder={t.emailPlaceholder} onChange={(event) => setEmail(event.target.value)} />
-                  {authMode === "sign-in" && <div className={`captcha-box compact${authCaptchaError ? " has-error" : ""}`}>
-                    <TurnstileWidget action="email-login" language={locale} theme={theme} resetKey={authCaptchaResetKey}
-                      onToken={(token) => { setAuthCaptchaToken(token); if (token) setAuthCaptchaError(false); }}
-                      onError={() => setAuthCaptchaError(true)} />
-                    <small>{authCaptchaError ? t.captchaError : authCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
-                  </div>}
                   <button type="submit" disabled={sending || !email.trim() || !authCaptchaToken || (authMode === "create-account" && !legalAccepted)}>{sending ? t.sending : authMode === "create-account" ? t.createEmailAction : t.emailAction}</button>
                 </form>
                 {message && <p className="auth-message" role="status">{message}</p>}

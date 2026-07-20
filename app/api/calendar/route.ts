@@ -1,4 +1,5 @@
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../../supabase-config.ts";
+import { supportedLanguages, type SupportedLanguage } from "../../analysis-schema.ts";
 import { parseCalendarAction, parseCalendarRange } from "../../calendar-validation.ts";
 import type { CalendarEvent, CalendarEventReminder, CalendarState } from "../../calendar-types.ts";
 import { REMINDER_ACTIVE_LIMIT, REMINDER_WEEKLY_LIMIT, type ReminderAvailability } from "../../reminder-types.ts";
@@ -81,7 +82,7 @@ function eventFromRow(row: Row, reminders: Map<string, CalendarEventReminder>): 
     || (row.location !== null && typeof row.location !== "string") || typeof row.event_local_date !== "string"
     || (row.event_local_time !== null && typeof row.event_local_time !== "string")
     || (row.event_at !== null && typeof row.event_at !== "string") || typeof row.timezone !== "string"
-    || typeof row.is_all_day !== "boolean" || !["ru", "lv", "en"].includes(String(row.source_language))
+    || typeof row.is_all_day !== "boolean" || !supportedLanguages.includes(String(row.source_language) as SupportedLanguage)
     || typeof row.created_at !== "string" || typeof row.updated_at !== "string"
   ) return null;
   return {
