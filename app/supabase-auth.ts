@@ -117,6 +117,11 @@ export async function loadAccount(): Promise<SupabaseAccount | null> {
   const auth = getClient().auth;
   const { data: sessionData, error: sessionError } = await auth.getSession();
   if (sessionError || !sessionData.session) {
+    if (sessionError) {
+      // A revoked or expired refresh token must not remain in local storage and
+      // fail again on every page load. This clears only this browser's session.
+      await auth.signOut({ scope: "local" }).catch(() => undefined);
+    }
     cleanAuthUrl();
     return null;
   }

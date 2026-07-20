@@ -36,6 +36,7 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   assert.match(turnstile, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?render=explicit&onload=/);
   assert.match(turnstile, /SCRIPT_TIMEOUT_MS = 12_000/);
   assert.match(auth, /getUser\(\)/);
+  assert.match(auth, /sessionError[\s\S]*signOut\(\{ scope: "local" \}\)/);
   assert.match(auth, /new URL\("\/", window\.location\.origin\)/);
   assert.match(auth, /history\.replaceState/);
   assert.match(serverAuth, /\/auth\/v1\/user/);
