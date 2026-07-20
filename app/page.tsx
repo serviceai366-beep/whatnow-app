@@ -18,6 +18,7 @@ import { TurnstileWidget } from "./turnstile";
 import { EventSuggestions } from "./event-suggestions";
 import { CalendarPanel } from "./calendar-panel";
 import { UserHub } from "./user-hub";
+import { SupportPanel } from "./support-panel";
 import { loadUserProfile, updateUserProfile } from "./profile-client";
 import { DEFAULT_PROFILE_PREFERENCES, type UserProfilePatch, type UserProfilePreferences } from "./profile-types";
 import { FileClientError, uploadStoredFile } from "./file-client";
@@ -29,9 +30,9 @@ const languages = [
 ] as const;
 
 const workspaceCopy = {
-  en: { calendar: "Calendar", space: "My space", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
-  ru: { calendar: "Календарь", space: "Моё пространство", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось." },
-  lv: { calendar: "Kalendārs", space: "Mana telpa", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt." },
+  en: { calendar: "Calendar", space: "My space", support: "Support", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
+  ru: { calendar: "Календарь", space: "Моё пространство", support: "Поддержка", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось." },
+  lv: { calendar: "Kalendārs", space: "Mana telpa", support: "Atbalsts", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt." },
 } as const;
 
 const historyCopy = {
@@ -119,6 +120,7 @@ export default function Home() {
   const [quotaRefreshKey, setQuotaRefreshKey] = useState(0);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [userHubOpen, setUserHubOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
@@ -144,6 +146,7 @@ export default function Home() {
       setLimitNotice(null);
       setCalendarOpen(false);
       setUserHubOpen(false);
+      setSupportOpen(false);
       setFileSaveNotice(null);
       setCaptchaToken(null);
       setCaptchaResetKey((current) => current + 1);
@@ -451,6 +454,7 @@ export default function Home() {
         </a>
         <div className="header-actions">
           <span className="prototype-badge">{t.badge}</span>
+          <button className="header-tool-button" type="button" onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><span aria-hidden="true">?</span>{w.support}</button>
           {account && <button className="header-tool-button" type="button" onClick={() => setCalendarOpen(true)}><span aria-hidden="true">□</span>{w.calendar}</button>}
           {account && <button className="header-tool-button" type="button" onClick={() => setUserHubOpen(true)}><span aria-hidden="true">◇</span>{w.space}</button>}
           <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
@@ -668,6 +672,7 @@ export default function Home() {
       {historyOpen && account && <HistoryPanel locale={language} onClose={closeHistory} onOpen={openHistoryItem} />}
       {account && <CalendarPanel open={calendarOpen} locale={language} preferences={preferences} onClose={() => setCalendarOpen(false)} />}
       {account && <UserHub open={userHubOpen} locale={language} preferences={preferences} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
+      {account && <SupportPanel open={supportOpen} locale={language} onClose={() => setSupportOpen(false)} />}
 
       <section className="privacy-strip">
         <div><span className="privacy-icon" aria-hidden="true">✓</span><p><strong>{t.documentsNotPublished}</strong><br />{t.documentsNotPublishedText}</p></div>

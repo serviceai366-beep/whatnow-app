@@ -95,3 +95,36 @@ export const stripeWebhookEvents = sqliteTable("stripe_webhook_events", {
   type: text("type").notNull(),
   receivedAt: integer("received_at").notNull(),
 }, (table) => [index("stripe_webhook_events_received_idx").on(table.receivedAt)]);
+
+export const supportConversations = sqliteTable("support_conversations", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id").notNull(),
+  subject: text("subject").notNull(),
+  category: text("category").notNull(),
+  status: text("status").notNull().default("open"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  lastMessageAt: integer("last_message_at").notNull(),
+}, (table) => [
+  index("support_conversations_user_updated_idx").on(table.userId, table.updatedAt),
+  index("support_conversations_updated_idx").on(table.updatedAt),
+  check("support_conversations_category_valid", sql`${table.category} in ('question', 'bug', 'feature')`),
+  check("support_conversations_status_valid", sql`${table.status} in ('open', 'waiting_for_user', 'resolved')`),
+]);
+
+export const supportMessages = sqliteTable("support_messages", {
+  id: text("id").primaryKey().notNull(),
+  conversationId: text("conversation_id").notNull().references(() => supportConversations.id, { onDelete: "cascade" }),
+  senderType: text("sender_type").notNull(),
+  body: text("body").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("support_messages_conversation_created_idx").on(table.conversationId, table.createdAt),
+  check("support_messages_sender_valid", sql`${table.senderType} in ('user', 'support')`),
+]);
+
+export const supportMessageEvents = sqliteTable("support_message_events", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [index("support_message_events_user_created_idx").on(table.userId, table.createdAt)]);
