@@ -1,5 +1,5 @@
 import type { D1DatabaseLike, D1StatementLike } from "./file-store.ts";
-import type { SupportCategory, SupportConversation, SupportConversationDetail, SupportMessage, SupportStatus } from "./support-types.ts";
+import type { SupportAttachment, SupportCategory, SupportConversation, SupportConversationDetail, SupportLocale, SupportMessage, SupportPriority, SupportStatus } from "./support-types.ts";
 
 export const SUPPORT_CONVERSATION_LIMIT = 25;
 export const SUPPORT_MESSAGE_LIMIT = 100;
@@ -12,10 +12,22 @@ type ConversationRow = {
   subject: string;
   category: string;
   status: string;
+  priority: string;
+  contact_email: string | null;
+  locale: string;
   created_at: number;
   updated_at: number;
   last_message_at: number;
   last_message_preview?: string | null;
+};
+
+type AttachmentRow = {
+  id: string;
+  message_id: string;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: number;
 };
 
 type MessageRow = {
@@ -48,15 +60,24 @@ function isStatus(value: string): value is SupportStatus {
   return value === "open" || value === "waiting_for_user" || value === "resolved";
 }
 
+function isPriority(value: string): value is SupportPriority {
+  return value === "low" || value === "normal" || value === "high" || value === "urgent";
+}
+
+function isLocale(value: string): value is SupportLocale {
+  return value === "en" || value === "ru" || value === "lv";
+}
+
 function conversationFromRow(row: ConversationRow | null, admin = false): SupportConversation | null {
   if (!row || typeof row.id !== "string" || typeof row.user_id !== "string" || typeof row.subject !== "string"
-    || !isCategory(row.category) || !isStatus(row.status)
+    || !isCategory(row.category) || !isStatus(row.status) || !isPriority(row.priority) || !isLocale(row.locale)
     || !Number.isSafeInteger(row.created_at) || !Number.isSafeInteger(row.updated_at) || !Number.isSafeInteger(row.last_message_at)) return null;
   return {
     id: row.id,
     subject: row.subject,
     category: row.category,
     status: row.status,
+    priority: row.priority,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastMessageAt: row.last_message_at,
@@ -65,10 +86,17 @@ function conversationFromRow(row: ConversationRow | null, admin = false): Suppor
   };
 }
 
-function messageFromRow(row: MessageRow | null): SupportMessage | null {
+function attachmentFromRow(row: AttachmentRow | null): SupportAttachment | null {
+  if (!row || typeof row.id !== "string" || typeof row.original_name !== "string"
+    || (row.mime_type !== "image/jpeg" && row.mime_type !== "image/png" && row.mime_type !== "image/webp")
+    || !Number.isSafeInteger(row.size_bytes) || row.size_bytes <= 0 || !Number.isSafeInteger(row.created_at)) return null;
+  return { id: row.id, name: row.original_name, mimeType: row.mime_type, sizeBytes: row.size_bytes, createdAt: row.created_at };
+}
+
+function messageFromRow(row: MessageRow | null, attachments: Map<string, SupportAttachment[]>): SupportMessage | null {
   if (!row || typeof row.id !== "string" || (row.sender_type !== "user" && row.sender_type !== "support")
     || typeof row.body !== "string" || !Number.isSafeInteger(row.created_at)) return null;
-  return { id: row.id, sender: row.sender_type, body: row.body, createdAt: row.created_at };
+  return { id: row.id, sender: row.sender_type, body: row.body, createdAt: row.created_at, attachments: attachments.get(row.id) ?? [] };
 }
 
 async function allRows<T>(statement: D1StatementLike): Promise<T[]> {
@@ -79,12 +107,14 @@ async function allRows<T>(statement: D1StatementLike): Promise<T[]> {
 export type SupportStore = {
   listConversations(userId: string, isAdmin: boolean): Promise<SupportConversation[]>;
   getConversation(userId: string, conversationId: string, isAdmin: boolean): Promise<SupportConversationDetail | null>;
-  createConversation(input: { userId: string; subject: string; category: SupportCategory; message: string; now?: number }): Promise<SupportConversationDetail>;
-  addReply(input: { userId: string; conversationId: string; message: string; isAdmin: boolean; now?: number }): Promise<SupportConversationDetail>;
+  createConversation(input: { userId: string; contactEmail: string; subject: string; category: SupportCategory; message: string; locale: SupportLocale; now?: number }): Promise<SupportConversationDetail>;
+  addReply(input: { userId: string; conversationId: string; message: string; locale: SupportLocale; isAdmin: boolean; now?: number }): Promise<SupportConversationDetail>;
   setStatus(conversationId: string, status: SupportStatus, now?: number): Promise<SupportConversationDetail | null>;
+  setPriority(conversationId: string, priority: SupportPriority, now?: number): Promise<SupportConversationDetail | null>;
+  notificationContext(conversationId: string): Promise<{ contactEmail: string | null; locale: SupportLocale; subject: string; priority: SupportPriority } | null>;
 };
 
-const CONVERSATION_COLUMNS = "id,user_id,subject,category,status,created_at,updated_at,last_message_at";
+const CONVERSATION_COLUMNS = "id,user_id,subject,category,status,priority,contact_email,locale,created_at,updated_at,last_message_at";
 
 function createStore(db: D1DatabaseLike): SupportStore {
   let initialization: Promise<void> | null = null;
@@ -96,6 +126,9 @@ function createStore(db: D1DatabaseLike): SupportStore {
         subject TEXT NOT NULL,
         category TEXT NOT NULL CHECK (category IN ('question', 'bug', 'feature')),
         status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'waiting_for_user', 'resolved')),
+        priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+        contact_email TEXT,
+        locale TEXT NOT NULL DEFAULT 'en' CHECK (locale IN ('en', 'ru', 'lv')),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         last_message_at INTEGER NOT NULL
@@ -112,11 +145,23 @@ function createStore(db: D1DatabaseLike): SupportStore {
         user_id TEXT NOT NULL,
         created_at INTEGER NOT NULL
       )`).run();
+      await db.prepare(`CREATE TABLE IF NOT EXISTS support_attachments (
+        id TEXT PRIMARY KEY NOT NULL,
+        conversation_id TEXT NOT NULL REFERENCES support_conversations(id) ON DELETE CASCADE,
+        message_id TEXT NOT NULL REFERENCES support_messages(id) ON DELETE CASCADE,
+        object_key TEXT NOT NULL UNIQUE,
+        original_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL CHECK (mime_type IN ('image/jpeg', 'image/png', 'image/webp')),
+        size_bytes INTEGER NOT NULL CHECK (size_bytes > 0),
+        created_at INTEGER NOT NULL
+      )`).run();
       await db.batch([
         db.prepare("CREATE INDEX IF NOT EXISTS support_conversations_user_updated_idx ON support_conversations (user_id, updated_at DESC)"),
         db.prepare("CREATE INDEX IF NOT EXISTS support_conversations_updated_idx ON support_conversations (updated_at DESC)"),
         db.prepare("CREATE INDEX IF NOT EXISTS support_messages_conversation_created_idx ON support_messages (conversation_id, created_at ASC)"),
         db.prepare("CREATE INDEX IF NOT EXISTS support_message_events_user_created_idx ON support_message_events (user_id, created_at DESC)"),
+        db.prepare("CREATE INDEX IF NOT EXISTS support_attachments_conversation_created_idx ON support_attachments (conversation_id, created_at ASC)"),
+        db.prepare("CREATE INDEX IF NOT EXISTS support_attachments_message_idx ON support_attachments (message_id)"),
       ]);
     })();
     return initialization;
@@ -134,9 +179,18 @@ function createStore(db: D1DatabaseLike): SupportStore {
       .first<ConversationRow>();
     const conversation = conversationFromRow(row, isAdmin);
     if (!conversation) return null;
+    const attachmentRows = await allRows<AttachmentRow>(db.prepare(
+      "SELECT id,message_id,original_name,mime_type,size_bytes,created_at FROM support_attachments WHERE conversation_id = ? ORDER BY created_at ASC, id ASC LIMIT 20",
+    ).bind(conversationId));
+    const attachmentMap = new Map<string, SupportAttachment[]>();
+    for (const row of attachmentRows) {
+      const attachment = attachmentFromRow(row);
+      if (!attachment) continue;
+      attachmentMap.set(row.message_id, [...(attachmentMap.get(row.message_id) ?? []), attachment]);
+    }
     const messages = (await allRows<MessageRow>(db.prepare(
       "SELECT id,sender_type,body,created_at FROM support_messages WHERE conversation_id = ? ORDER BY created_at ASC, id ASC LIMIT ?",
-    ).bind(conversationId, SUPPORT_MESSAGE_LIMIT))).map(messageFromRow).filter((message): message is SupportMessage => Boolean(message));
+    ).bind(conversationId, SUPPORT_MESSAGE_LIMIT))).map((row) => messageFromRow(row, attachmentMap)).filter((message): message is SupportMessage => Boolean(message));
     return { ...conversation, messages };
   };
 
@@ -179,7 +233,7 @@ function createStore(db: D1DatabaseLike): SupportStore {
       await initialize();
       return readDetail(userId, conversationId, isAdmin);
     },
-    async createConversation({ userId, subject, category, message, now = Date.now() }) {
+    async createConversation({ userId, contactEmail, subject, category, message, locale, now = Date.now() }) {
       await initialize();
       const existing = await db.prepare("SELECT COUNT(*) AS count FROM support_conversations WHERE user_id = ?")
         .bind(userId).first<{ count: number | null }>();
@@ -189,10 +243,10 @@ function createStore(db: D1DatabaseLike): SupportStore {
       await consumeUserMessageBudget(userId, now);
       const id = crypto.randomUUID();
       const created = await db.prepare(`INSERT INTO support_conversations
-        (id,user_id,subject,category,status,created_at,updated_at,last_message_at)
-        SELECT ?, ?, ?, ?, 'open', ?, ?, ?
+        (id,user_id,subject,category,status,priority,contact_email,locale,created_at,updated_at,last_message_at)
+        SELECT ?, ?, ?, ?, 'open', 'normal', ?, ?, ?, ?, ?
         WHERE (SELECT COUNT(*) FROM support_conversations WHERE user_id = ?) < ?
-        RETURNING id`).bind(id, userId, subject, category, now, now, now, userId, SUPPORT_CONVERSATION_LIMIT).first<{ id: string }>();
+        RETURNING id`).bind(id, userId, subject, category, contactEmail, locale, now, now, now, userId, SUPPORT_CONVERSATION_LIMIT).first<{ id: string }>();
       if (!created?.id) throw new SupportStoreError("support_conversation_limit", 409);
       const inserted = await db.prepare("INSERT INTO support_messages (id,conversation_id,sender_type,body,created_at) VALUES (?,?,'user',?,?) RETURNING id")
         .bind(crypto.randomUUID(), id, message, now).first<{ id: string }>();
@@ -204,15 +258,30 @@ function createStore(db: D1DatabaseLike): SupportStore {
       if (!detail) throw new SupportStoreError("support_storage_unavailable", 503);
       return detail;
     },
-    async addReply({ userId, conversationId, message, isAdmin, now = Date.now() }) {
+    async addReply({ userId, conversationId, message, locale, isAdmin, now = Date.now() }) {
       await initialize();
-      return appendMessage({ userId, conversationId, message, isAdmin, now });
+      const detail = await appendMessage({ userId, conversationId, message, isAdmin, now });
+      if (!isAdmin) await db.prepare("UPDATE support_conversations SET locale = ? WHERE id = ? AND user_id = ?").bind(locale, conversationId, userId).run();
+      return isAdmin ? detail : (await readDetail(userId, conversationId, false) ?? detail);
     },
     async setStatus(conversationId, status, now = Date.now()) {
       await initialize();
       const result = await db.prepare("UPDATE support_conversations SET status = ?, updated_at = ? WHERE id = ? RETURNING user_id")
         .bind(status, now, conversationId).first<{ user_id: string }>();
       return result?.user_id ? readDetail(result.user_id, conversationId, true) : null;
+    },
+    async setPriority(conversationId, priority, now = Date.now()) {
+      await initialize();
+      const result = await db.prepare("UPDATE support_conversations SET priority = ?, updated_at = ? WHERE id = ? RETURNING user_id")
+        .bind(priority, now, conversationId).first<{ user_id: string }>();
+      return result?.user_id ? readDetail(result.user_id, conversationId, true) : null;
+    },
+    async notificationContext(conversationId) {
+      await initialize();
+      const row = await db.prepare("SELECT contact_email,locale,subject,priority FROM support_conversations WHERE id = ? LIMIT 1")
+        .bind(conversationId).first<{ contact_email: string | null; locale: string; subject: string; priority: string }>();
+      if (!row || !isLocale(row.locale) || !isPriority(row.priority) || typeof row.subject !== "string") return null;
+      return { contactEmail: typeof row.contact_email === "string" ? row.contact_email : null, locale: row.locale, subject: row.subject, priority: row.priority };
     },
   };
 }

@@ -1,4 +1,4 @@
-import { supportCategories, supportStatuses, type SupportAction, type SupportCategory, type SupportStatus } from "./support-types.ts";
+import { supportCategories, supportPriorities, supportStatuses, type SupportAction, type SupportCategory, type SupportPriority, type SupportStatus } from "./support-types.ts";
 
 export const SUPPORT_SUBJECT_MAX_LENGTH = 140;
 export const SUPPORT_MESSAGE_MAX_LENGTH = 4_000;
@@ -31,6 +31,16 @@ function status(value: unknown): SupportStatus | null {
     : null;
 }
 
+function priority(value: unknown): SupportPriority | null {
+  return typeof value === "string" && supportPriorities.includes(value as SupportPriority)
+    ? value as SupportPriority
+    : null;
+}
+
+function locale(value: unknown): "en" | "ru" | "lv" | null {
+  return value === "en" || value === "ru" || value === "lv" ? value : null;
+}
+
 export function parseSupportAction(value: unknown): SupportAction | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
@@ -38,17 +48,24 @@ export function parseSupportAction(value: unknown): SupportAction | null {
     const subject = cleanText(input.subject, SUPPORT_SUBJECT_MAX_LENGTH);
     const message = cleanText(input.message, SUPPORT_MESSAGE_MAX_LENGTH);
     const parsedCategory = category(input.category);
-    return subject && message && parsedCategory ? { action: "create", subject, category: parsedCategory, message } : null;
+    const parsedLocale = locale(input.locale);
+    return subject && message && parsedCategory && parsedLocale ? { action: "create", subject, category: parsedCategory, message, locale: parsedLocale } : null;
   }
   if (input.action === "reply") {
     const conversationId = supportId(input.conversationId);
     const message = cleanText(input.message, SUPPORT_MESSAGE_MAX_LENGTH);
-    return conversationId && message ? { action: "reply", conversationId, message } : null;
+    const parsedLocale = locale(input.locale);
+    return conversationId && message && parsedLocale ? { action: "reply", conversationId, message, locale: parsedLocale } : null;
   }
   if (input.action === "set_status") {
     const conversationId = supportId(input.conversationId);
     const parsedStatus = status(input.status);
     return conversationId && parsedStatus ? { action: "set_status", conversationId, status: parsedStatus } : null;
+  }
+  if (input.action === "set_priority") {
+    const conversationId = supportId(input.conversationId);
+    const parsedPriority = priority(input.priority);
+    return conversationId && parsedPriority ? { action: "set_priority", conversationId, priority: parsedPriority } : null;
   }
   return null;
 }

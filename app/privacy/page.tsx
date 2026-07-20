@@ -33,7 +33,7 @@ export default function PrivacyPolicy() {
             <li><strong>Analysis information:</strong> generated explanations, extracted dates, action plans, evidence passages, uncertainties, and related result metadata.</li>
             <li><strong>Saved content:</strong> your latest analysis history, files you choose or configure the service to save, calendar events, reminder settings, timezone, and reminder delivery status.</li>
             <li><strong>Technical, usage, and security information:</strong> IP address, browser and device information, request timestamps, authentication and security events, rate-limit records, bot-protection results, AI token counts, model name, document category, estimated processing cost, and diagnostic information needed to keep the service reliable and price the service sustainably. Cost records use a hashed account identifier and do not contain document text.</li>
-            <li><strong>Communications:</strong> messages you send to support and delivery information for service emails and reminders.</li>
+            <li><strong>Communications:</strong> messages and optional screenshots you send to support, plus delivery information for service emails and reminders.</li>
           </ul>
         </section>
 
@@ -68,6 +68,7 @@ export default function PrivacyPolicy() {
         <section><h2>6. How long information is kept</h2>
           <ul>
             <li>Your account and profile are kept until you delete the account or ask us to close it, subject to limited legal and security retention.</li>
+            <li>Support messages and screenshots are kept only while reasonably needed to answer, investigate, and maintain the service, then deleted or anonymised.</li>
             <li>The service keeps no more than the latest 10 analyses in account history. Older history entries are removed automatically.</li>
             <li>Saved files are kept until you delete them or close the account, subject to the storage limits shown in the application.</li>
             <li>Calendar events and reminders are kept until you delete them, they are no longer needed for delivery, or the account is closed. Limited delivery and security records may be kept for troubleshooting and abuse prevention.</li>

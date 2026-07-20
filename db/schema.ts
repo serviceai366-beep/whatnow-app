@@ -102,6 +102,9 @@ export const supportConversations = sqliteTable("support_conversations", {
   subject: text("subject").notNull(),
   category: text("category").notNull(),
   status: text("status").notNull().default("open"),
+  priority: text("priority").notNull().default("normal"),
+  contactEmail: text("contact_email"),
+  locale: text("locale").notNull().default("en"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
   lastMessageAt: integer("last_message_at").notNull(),
@@ -110,6 +113,8 @@ export const supportConversations = sqliteTable("support_conversations", {
   index("support_conversations_updated_idx").on(table.updatedAt),
   check("support_conversations_category_valid", sql`${table.category} in ('question', 'bug', 'feature')`),
   check("support_conversations_status_valid", sql`${table.status} in ('open', 'waiting_for_user', 'resolved')`),
+  check("support_conversations_priority_valid", sql`${table.priority} in ('low', 'normal', 'high', 'urgent')`),
+  check("support_conversations_locale_valid", sql`${table.locale} in ('en', 'ru', 'lv')`),
 ]);
 
 export const supportMessages = sqliteTable("support_messages", {
@@ -128,3 +133,20 @@ export const supportMessageEvents = sqliteTable("support_message_events", {
   userId: text("user_id").notNull(),
   createdAt: integer("created_at").notNull(),
 }, (table) => [index("support_message_events_user_created_idx").on(table.userId, table.createdAt)]);
+
+export const supportAttachments = sqliteTable("support_attachments", {
+  id: text("id").primaryKey().notNull(),
+  conversationId: text("conversation_id").notNull().references(() => supportConversations.id, { onDelete: "cascade" }),
+  messageId: text("message_id").notNull().references(() => supportMessages.id, { onDelete: "cascade" }),
+  objectKey: text("object_key").notNull(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("support_attachments_object_key_unique").on(table.objectKey),
+  index("support_attachments_conversation_created_idx").on(table.conversationId, table.createdAt),
+  index("support_attachments_message_idx").on(table.messageId),
+  check("support_attachments_mime_valid", sql`${table.mimeType} in ('image/jpeg', 'image/png', 'image/webp')`),
+  check("support_attachments_size_positive", sql`${table.sizeBytes} > 0`),
+]);
