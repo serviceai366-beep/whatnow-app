@@ -465,10 +465,10 @@ export default function Home() {
           <span>WhatNow?</span>
         </a>
         <div className="header-actions">
-          <button className="header-tool-button" type="button" onClick={() => setInfoOpen(true)}><span aria-hidden="true">i</span>{w.info}</button>
-          <button className="header-tool-button" type="button" onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><span aria-hidden="true">?</span>{w.support}</button>
-          {account && <button className="header-tool-button" type="button" onClick={() => setCalendarOpen(true)}><span aria-hidden="true">□</span>{w.calendar}</button>}
-          {account && <button className="header-tool-button" type="button" onClick={() => setUserHubOpen(true)}><span aria-hidden="true">◇</span>{w.space}</button>}
+          <button className="header-tool-button" type="button" aria-label={w.info} data-tooltip={w.info} onClick={() => setInfoOpen(true)}><ToolIcon kind="about" />{w.info}</button>
+          <button className="header-tool-button" type="button" aria-label={w.support} data-tooltip={w.support} onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><ToolIcon kind="support" />{w.support}</button>
+          {account && <button className="header-tool-button" type="button" aria-label={w.calendar} data-tooltip={w.calendar} onClick={() => setCalendarOpen(true)}><ToolIcon kind="calendar" />{w.calendar}</button>}
+          {account && <button className="header-tool-button" type="button" aria-label={w.space} data-tooltip={w.space} onClick={() => setUserHubOpen(true)}><ToolIcon kind="space" />{w.space}</button>}
           <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
             onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={changeTheme} open={authOpen} onOpenChange={setAuthOpen}
             quotaRefreshKey={quotaRefreshKey} />
@@ -647,6 +647,10 @@ export default function Home() {
       </footer>
     </main>
   );
+}
+
+function ToolIcon({ kind }: { kind: "about" | "support" | "calendar" | "space" }) {
+  return <span className={`tool-icon tool-icon-${kind}`} aria-hidden="true"><i /><b /></span>;
 }
 
 function SecurityChallenge({ locale, theme, resetKey, error, onClose, onVerified, onError }: {

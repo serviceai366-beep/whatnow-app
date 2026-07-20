@@ -90,3 +90,18 @@ test("adaptive CAPTCHA and every modal stay inside small dynamic viewports", asy
   assert.match(css, /\.brand > span \{ display: none; \}/);
   assert.match(css, /\.storage-toast[\s\S]*bottom:/);
 });
+
+test("header tools use a unified graphical icon system instead of text symbols", async () => {
+  const [page, , css] = await files;
+  for (const kind of ["about", "support", "calendar", "space"]) {
+    assert.match(page, new RegExp(`<ToolIcon kind="${kind}"`));
+    assert.match(css, new RegExp(`\\.tool-icon-${kind}`));
+  }
+  assert.match(page, /function ToolIcon/);
+  assert.doesNotMatch(page, /header-tool-button"[^\r\n]*aria-hidden="true">[i?□◇]<\/span>/);
+  assert.match(page, /data-tooltip=\{w\.info\}/);
+  assert.match(page, /data-tooltip=\{w\.space\}/);
+  assert.match(css, /content: attr\(data-tooltip\)/);
+  assert.match(css, /@media \(hover: hover\) and \(min-width: 721px\)/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.tool-icon/);
+});
