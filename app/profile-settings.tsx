@@ -134,64 +134,80 @@ export function ProfileSettings({ locale, preferences, onChange, disabled = fals
     <section className="profile-settings" aria-labelledby={`${id}-title`} aria-busy={saving}>
       <header><h3 id={`${id}-title`}>{t.title}</h3><p>{t.intro}</p></header>
 
-      <fieldset disabled={locked}>
+      <fieldset className="settings-card settings-card-languages" disabled={locked}>
         <legend>{t.language}</legend>
-        <label htmlFor={`${id}-ui-language`}>{t.interfaceLanguage}</label>
-        <select id={`${id}-ui-language`} value={preferences.uiLanguage}
-          onChange={(event) => void apply("uiLanguage", event.target.value as ProfileLanguage)}>
-          {Object.entries(languageLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
-        <label htmlFor={`${id}-analysis-language`}>{t.analysisLanguage}</label>
-        <select id={`${id}-analysis-language`} value={preferences.analysisLanguage}
-          onChange={(event) => void apply("analysisLanguage", event.target.value as SupportedLanguage)}>
-          {responseLanguageOptions.map((option) => <option key={option.code} value={option.code}>{option.nativeName} — {option.englishName}</option>)}
-        </select>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-ui-language`}>{t.interfaceLanguage}</label>
+          <select id={`${id}-ui-language`} value={preferences.uiLanguage}
+            onChange={(event) => void apply("uiLanguage", event.target.value as ProfileLanguage)}>
+            {Object.entries(languageLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </div>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-analysis-language`}>{t.analysisLanguage}</label>
+          <select id={`${id}-analysis-language`} value={preferences.analysisLanguage}
+            onChange={(event) => void apply("analysisLanguage", event.target.value as SupportedLanguage)}>
+            {responseLanguageOptions.map((option) => <option key={option.code} value={option.code}>{option.nativeName} — {option.englishName}</option>)}
+          </select>
+        </div>
       </fieldset>
 
-      <fieldset disabled={locked}>
+      <fieldset className="settings-card settings-card-appearance" disabled={locked}>
         <legend>{t.appearance}</legend>
-        <label htmlFor={`${id}-theme`}>{t.theme}</label>
-        <select id={`${id}-theme`} value={preferences.theme}
-          onChange={(event) => void apply("theme", event.target.value as ProfileTheme)}>
-          <option value="system">{t.system}</option><option value="light">{t.light}</option><option value="dark">{t.dark}</option>
-        </select>
-        <label htmlFor={`${id}-font-scale`}>{t.fontScale}</label>
-        <select id={`${id}-font-scale`} value={preferences.fontScale}
-          onChange={(event) => void apply("fontScale", event.target.value as ProfileFontScale)}>
-          <option value="normal">{t.normal}</option><option value="large">{t.large}</option>
-        </select>
-        <label htmlFor={`${id}-density`}>{t.density}</label>
-        <select id={`${id}-density`} value={preferences.density}
-          onChange={(event) => void apply("density", event.target.value as ProfileDensity)}>
-          <option value="comfortable">{t.comfortable}</option><option value="compact">{t.compact}</option>
-        </select>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-theme`}>{t.theme}</label>
+          <select id={`${id}-theme`} value={preferences.theme}
+            onChange={(event) => void apply("theme", event.target.value as ProfileTheme)}>
+            <option value="system">{t.system}</option><option value="light">{t.light}</option><option value="dark">{t.dark}</option>
+          </select>
+        </div>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-font-scale`}>{t.fontScale}</label>
+          <select id={`${id}-font-scale`} value={preferences.fontScale}
+            onChange={(event) => void apply("fontScale", event.target.value as ProfileFontScale)}>
+            <option value="normal">{t.normal}</option><option value="large">{t.large}</option>
+          </select>
+        </div>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-density`}>{t.density}</label>
+          <select id={`${id}-density`} value={preferences.density}
+            onChange={(event) => void apply("density", event.target.value as ProfileDensity)}>
+            <option value="comfortable">{t.comfortable}</option><option value="compact">{t.compact}</option>
+          </select>
+        </div>
         <label className="profile-settings-check"><input type="checkbox" checked={preferences.reducedMotion}
-          onChange={(event) => void apply("reducedMotion", event.target.checked)} /> <span>{t.reducedMotion}</span></label>
+          onChange={(event) => void apply("reducedMotion", event.target.checked)} /><span className="settings-toggle" aria-hidden="true"><span /></span><span>{t.reducedMotion}</span></label>
       </fieldset>
 
-      <fieldset disabled={locked}>
+      <fieldset className="settings-card settings-card-planning" disabled={locked}>
         <legend>{t.planning}</legend>
-        <label htmlFor={`${id}-week-start`}>{t.weekStartsOn}</label>
-        <select id={`${id}-week-start`} value={preferences.weekStartsOn}
-          onChange={(event) => void apply("weekStartsOn", event.target.value as ProfileWeekStartsOn)}>
-          <option value="monday">{t.monday}</option><option value="sunday">{t.sunday}</option>
-        </select>
-        <label htmlFor={`${id}-time-format`}>{t.timeFormat}</label>
-        <select id={`${id}-time-format`} value={preferences.timeFormat}
-          onChange={(event) => void apply("timeFormat", event.target.value as ProfileTimeFormat)}>
-          <option value="12">12</option><option value="24">24</option>
-        </select>
-        <label htmlFor={`${id}-default-reminder`}>{t.defaultReminder}</label>
-        <select id={`${id}-default-reminder`} value={preferences.defaultReminderMinutes}
-          onChange={(event) => void apply("defaultReminderMinutes", Number(event.target.value) as UserProfilePreferences["defaultReminderMinutes"])}>
-          {profileReminderMinutes.map((minutes) => <option value={minutes} key={minutes}>{reminderLabel(minutes)}</option>)}
-        </select>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-week-start`}>{t.weekStartsOn}</label>
+          <select id={`${id}-week-start`} value={preferences.weekStartsOn}
+            onChange={(event) => void apply("weekStartsOn", event.target.value as ProfileWeekStartsOn)}>
+            <option value="monday">{t.monday}</option><option value="sunday">{t.sunday}</option>
+          </select>
+        </div>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-time-format`}>{t.timeFormat}</label>
+          <select id={`${id}-time-format`} value={preferences.timeFormat}
+            onChange={(event) => void apply("timeFormat", event.target.value as ProfileTimeFormat)}>
+            <option value="12">12</option><option value="24">24</option>
+          </select>
+        </div>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-default-reminder`}>{t.defaultReminder}</label>
+          <select id={`${id}-default-reminder`} value={preferences.defaultReminderMinutes}
+            onChange={(event) => void apply("defaultReminderMinutes", Number(event.target.value) as UserProfilePreferences["defaultReminderMinutes"])}>
+            {profileReminderMinutes.map((minutes) => <option value={minutes} key={minutes}>{reminderLabel(minutes)}</option>)}
+          </select>
+        </div>
       </fieldset>
 
-      <fieldset disabled={locked}>
+      <fieldset className="settings-card settings-card-files" disabled={locked}>
         <legend>{t.files}</legend>
         <label className="profile-settings-check"><input type="checkbox" checked={preferences.autoSaveFiles}
-          onChange={(event) => void apply("autoSaveFiles", event.target.checked)} /> <span>{t.autoSaveFiles}</span></label>
+          onChange={(event) => void apply("autoSaveFiles", event.target.checked)} /><span className="settings-toggle" aria-hidden="true"><span /></span><span>{t.autoSaveFiles}</span></label>
       </fieldset>
 
       <div className="profile-settings-status" aria-live="polite">

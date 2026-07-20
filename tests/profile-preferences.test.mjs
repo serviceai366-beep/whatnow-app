@@ -101,10 +101,12 @@ test("profile storage is account-owned and writable only through SECURITY DEFINE
   assert.doesNotMatch(migration, /p_user_id|service_role/);
 });
 
-test("settings component is internally localized and exposes accessible controls", async () => {
-  const [component, client] = await Promise.all([
+test("settings component is internally localized, responsive, and exposes accessible controls", async () => {
+  const [component, client, styles, hub] = await Promise.all([
     readFile(new URL("../app/profile-settings.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/profile-client.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/user-hub.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(component, /en:\s*\{/);
   assert.match(component, /ru:\s*\{/);
@@ -116,6 +118,13 @@ test("settings component is internally localized and exposes accessible controls
   assert.match(component, /htmlFor=/);
   assert.match(component, /aria-live="polite"/);
   assert.match(component, /role="alert"/);
+  assert.match(component, /profile-setting-row/);
+  assert.match(component, /settings-toggle/);
+  assert.match(styles, /\.hub-tabs button[^}]*min-width:\s*max-content[^}]*white-space:\s*nowrap/s);
+  assert.match(styles, /\.profile-setting-row[^}]*grid-template-columns:\s*minmax\(180px[^}]*minmax\(240px/s);
+  assert.match(styles, /@media \(max-width:\s*720px\)[\s\S]*\.profile-setting-row[^}]*grid-template-columns:\s*1fr/);
+  assert.match(styles, /\.profile-settings select[^}]*width:\s*100%[^}]*min-width:\s*0/s);
+  assert.match(hub, /data-tab="settings"/);
   assert.match(client, /Authorization: `Bearer \$\{token\}`/);
   assert.match(client, /credentials: "same-origin"/);
   assert.match(client, /cache: "no-store"/);
