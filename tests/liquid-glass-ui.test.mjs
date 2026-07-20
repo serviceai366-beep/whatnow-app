@@ -37,3 +37,8 @@ test("scrollable surfaces keep scrolling without displaying browser scrollbar ch
   assert.match(styles, /\.language-picker-options[^}]*overflow-y:\s*auto/);
   assert.match(styles, /\.user-hub, \.calendar-panel[^}]*overflow:\s*auto/);
 });
+
+test("the sign-in close control stays independent from the modal content flow", () => {
+  assert.match(styles, /\.auth-dialog\s*>\s*\.auth-close\s*\{[\s\S]*?position:\s*absolute[\s\S]*?z-index:\s*3/);
+  assert.match(styles, /\.auth-dialog\s*>\s*\.auth-close\s*\{[\s\S]*?right:\s*14px/);
+});
