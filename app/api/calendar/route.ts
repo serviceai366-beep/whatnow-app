@@ -202,7 +202,9 @@ export async function POST(request: Request): Promise<Response> {
     const response = await supabase(`rpc/${rpcName}`, auth.token, { method: "POST", body: JSON.stringify(body), headers: { Prefer: "return=representation" } });
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { message?: string } | null;
-      const known = ["analysis_not_found", "analysis_event_not_found", "invalid_local_time", "reminder_too_late", "consent_required", "active_event_limit", "active_reminder_limit", "weekly_reminder_limit", "event_conflict", "calendar_event_not_found", "reminder_sending"]
+      const message = typeof payload?.message === "string" ? payload.message.slice(0, 180) : "unavailable";
+      console.warn("[calendar] RPC rejected", { rpcName, status: response.status, message });
+      const known = ["analysis_not_found", "analysis_event_not_found", "invalid_event", "invalid_reminder", "invalid_local_time", "reminder_too_late", "consent_required", "active_event_limit", "active_reminder_limit", "weekly_reminder_limit", "event_conflict", "calendar_event_not_found", "reminder_sending"]
         .find((code) => payload?.message?.includes(code));
       return error(known ?? "calendar_rejected", "The calendar change could not be saved.", known === "event_conflict" ? 409 : 400);
     }
