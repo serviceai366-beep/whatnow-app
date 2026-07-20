@@ -30,3 +30,10 @@ test("glass effects degrade safely for accessibility and browser support", () =>
   assert.match(styles, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?animation:\s*none/);
   assert.match(styles, /body\s*\{[\s\S]*?overflow-x:\s*clip/);
 });
+
+test("scrollable surfaces keep scrolling without displaying browser scrollbar chrome", () => {
+  assert.match(styles, /html,\s*\nbody,\s*\n\*\s*\{[\s\S]*?scrollbar-width:\s*none/);
+  assert.match(styles, /\*::\-webkit-scrollbar\s*\{[\s\S]*?display:\s*none/);
+  assert.match(styles, /\.language-picker-options[^}]*overflow-y:\s*auto/);
+  assert.match(styles, /\.user-hub, \.calendar-panel[^}]*overflow:\s*auto/);
+});
