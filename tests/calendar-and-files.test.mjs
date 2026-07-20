@@ -126,9 +126,11 @@ test("calendar validation accepts bounded user actions and rejects ambiguous eve
 });
 
 test("calendar database design is private, bounded, and keeps reminders linked after history trimming", async () => {
-  const [migration, exactReminderMigration, limitMigration, languageMigration, api, panel, suggestions] = await Promise.all([
+  const [migration, exactReminderMigration, exactReminderRepairMigration, exactDispatchRepairMigration, limitMigration, languageMigration, api, panel, suggestions] = await Promise.all([
     readFile(new URL("../supabase/migrations/20260714000000_calendar_events.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260715120100_exact_calendar_reminders.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260720200000_repair_exact_time_reminders.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260720202000_repair_exact_time_dispatch.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260715120200_reminder_limits.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260720150000_extended_content_languages.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/calendar/route.ts", import.meta.url), "utf8"),
@@ -150,6 +152,11 @@ test("calendar database design is private, bounded, and keeps reminders linked a
   assert.match(exactReminderMigration, /remind_before_minutes in \(0, 60, 1440, 10080, 43200\)/i);
   assert.match(exactReminderMigration, /create_manual_calendar_event_with_reminder/i);
   assert.match(exactReminderMigration, /remind_before_minutes = 0[\s\S]*interval '15 minutes'/i);
+  assert.match(exactReminderRepairMigration, /p_remind_before_minutes not in \(0, 60, 1440, 10080, 43200\)/i);
+  assert.match(exactReminderRepairMigration, /status in \('scheduled', 'sending'\)[\s\S]*\) >= 3/i);
+  assert.match(exactReminderRepairMigration, /created_at >= pg_catalog\.now\(\) - interval '7 days'[\s\S]*\) >= 10/i);
+  assert.match(exactDispatchRepairMigration, /remind_before_minutes = 0[\s\S]*interval '15 minutes'/i);
+  assert.match(exactDispatchRepairMigration, /grant execute on function public\.claim_due_email_reminders\(integer\)[\s\S]*to service_role/i);
   assert.match(limitMigration, /alter table public\.reminder_schedule_usage enable row level security/i);
   assert.match(limitMigration, /pg_advisory_xact_lock/i);
   assert.match(limitMigration, />= 3[\s\S]*active_reminder_limit/i);
