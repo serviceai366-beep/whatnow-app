@@ -35,6 +35,12 @@ const workspaceCopy = {
   lv: { info: "Par servisu", calendar: "Kalendārs", space: "Mana telpa", support: "Atbalsts", privateHint: "Privāta apstrāde · Svarīgus lēmumus pārbaudiet", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt." },
 } as const;
 
+const challengeCopy = {
+  en: { eyebrow: "Security check", title: "One quick check", body: "We noticed several actions in a short time. Complete this one-time check and your analysis will continue automatically.", close: "Close security check" },
+  ru: { eyebrow: "Проверка безопасности", title: "Одна быстрая проверка", body: "Мы заметили несколько быстрых действий подряд. Пройдите разовую проверку — анализ продолжится автоматически.", close: "Закрыть проверку безопасности" },
+  lv: { eyebrow: "Drošības pārbaude", title: "Viena ātra pārbaude", body: "Īsā laikā pamanījām vairākas darbības. Pabeidziet vienreizēju pārbaudi, un analīze turpināsies automātiski.", close: "Aizvērt drošības pārbaudi" },
+} as const;
+
 const infoCopy = {
   en: { eyebrow: "About WhatNow?", title: "The details, when you need them", subtitle: "The main screen stays focused on one task: helping you understand a document. Service details live here.", close: "Close information", how: "How it works", first: "Add a photo, PDF, Word file, or paste text.", second: "Choose the language you want the explanation in.", third: "Receive a summary, deadlines, next steps, evidence, and a reply draft when needed.", privacy: "Privacy and storage", accuracy: "Accuracy and responsibility", output: "What you receive", legal: "Legal information" },
   ru: { eyebrow: "О WhatNow?", title: "Подробности — когда они нужны", subtitle: "Главный экран сосредоточен на одной задаче: помочь понять документ. Информация о работе сервиса находится здесь.", close: "Закрыть информацию", how: "Как это работает", first: "Добавьте фотографию, PDF, файл Word или вставьте текст.", second: "Выберите язык, на котором хотите получить объяснение.", third: "Получите краткий разбор, сроки, план действий, подтверждающие фрагменты и черновик ответа, если он нужен.", privacy: "Конфиденциальность и хранение", accuracy: "Точность и ответственность", output: "Что вы получите", legal: "Правовая информация" },
@@ -120,7 +126,7 @@ export default function Home() {
   const [theme, setTheme] = useState<ColorTheme>(getInitialTheme);
   const [authOpen, setAuthOpen] = useState(false);
   const [limitNotice, setLimitNotice] = useState<LimitNoticeData | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaChallengeOpen, setCaptchaChallengeOpen] = useState(false);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [quotaRefreshKey, setQuotaRefreshKey] = useState(0);
@@ -296,7 +302,7 @@ export default function Home() {
     return null;
   };
 
-  const analyzeDocument = async () => {
+  const analyzeDocument = async (challengeToken?: string) => {
     if (isAnalyzing) return;
     if (!account) {
       setAnalysisError(t.errorAuthenticationRequired);
@@ -317,11 +323,6 @@ export default function Home() {
       setTextError(t.textMissing);
       return;
     }
-    if (!captchaToken) {
-      setCaptchaError(t.errorCaptchaRequired);
-      return;
-    }
-
     setFileError(null);
     setTextError(null);
     setAnalysisError(null);
@@ -341,7 +342,7 @@ export default function Home() {
     const formData = new FormData();
     formData.set("language", analysisLanguage);
     formData.set("mode", inputMode);
-    formData.set("turnstileToken", captchaToken);
+    if (challengeToken) formData.set("turnstileToken", challengeToken);
     if (inputMode === "file") formData.set("file", selectedDocument!.file);
     else formData.set("text", documentText.trim());
 
@@ -373,6 +374,12 @@ export default function Home() {
 
       if (!response.ok || !payload?.result) {
         const limit = payload?.error;
+        if (limit?.code === "captcha_required" || limit?.code === "captcha_failed" || limit?.code === "captcha_unavailable") {
+          setCaptchaError(limit.code === "captcha_required" ? null : limit.code === "captcha_failed" ? t.errorCaptchaFailed : t.errorCaptchaUnavailable);
+          setCaptchaChallengeOpen(true);
+          setCaptchaResetKey((current) => current + 1);
+          return;
+        }
         if (
           limit?.code === "user_limit_reached"
           && (limit.scope === "user_24h" || limit.scope === "user_7d")
@@ -415,8 +422,6 @@ export default function Home() {
     } finally {
       window.clearTimeout(timeout);
       setIsAnalyzing(false);
-      setCaptchaToken(null);
-      setCaptchaResetKey((current) => current + 1);
     }
   };
 
@@ -611,14 +616,7 @@ export default function Home() {
             </div>
           )}
 
-          <div className={`captcha-box${captchaError ? " has-error" : ""}`}>
-            <div><strong>{t.captchaTitle}</strong><small>{captchaError || (captchaToken ? t.captchaReady : t.captchaWaiting)}</small></div>
-            <TurnstileWidget action="analyze" language={language} theme={theme} resetKey={captchaResetKey}
-              onToken={(token) => { setCaptchaToken(token); if (token) setCaptchaError(null); }}
-              onError={() => setCaptchaError(t.errorCaptchaUnavailable)} />
-          </div>
-
-          <button className="primary-button" type="button" onClick={analyzeDocument} disabled={isAnalyzing || !captchaToken}>
+          <button className="primary-button" type="button" onClick={() => void analyzeDocument()} disabled={isAnalyzing}>
             {isAnalyzing
               ? t.analyzing
               : inputMode === "file"
@@ -638,6 +636,10 @@ export default function Home() {
       {account && <UserHub open={userHubOpen} locale={language} preferences={preferences} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
       {account && <SupportPanel open={supportOpen} locale={language} onClose={() => setSupportOpen(false)} />}
       <InfoPanel open={infoOpen} locale={language} t={t} onClose={() => setInfoOpen(false)} />
+      {captchaChallengeOpen && <SecurityChallenge locale={language} theme={theme} resetKey={captchaResetKey} error={captchaError}
+        onClose={() => { setCaptchaChallengeOpen(false); setCaptchaError(null); }}
+        onVerified={(token) => { setCaptchaChallengeOpen(false); setCaptchaError(null); void analyzeDocument(token); }}
+        onError={() => setCaptchaError(t.errorCaptchaUnavailable)} />}
 
       <footer>
         <a className="brand footer-brand" href="#top"><img className="brand-mark" src="/whatnow-logo.jpg" alt="" /><span>WhatNow?</span></a>
@@ -645,6 +647,37 @@ export default function Home() {
       </footer>
     </main>
   );
+}
+
+function SecurityChallenge({ locale, theme, resetKey, error, onClose, onVerified, onError }: {
+  locale: SupportedLanguage;
+  theme: ColorTheme;
+  resetKey: number;
+  error: string | null;
+  onClose: () => void;
+  onVerified: (token: string) => void;
+  onError: () => void;
+}) {
+  const copy = challengeCopy[locale];
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+  return <div className="security-challenge-backdrop" role="presentation">
+    <section className="security-challenge-dialog" role="dialog" aria-modal="true" aria-labelledby="security-challenge-title">
+      <button className="icon-button security-challenge-close" type="button" aria-label={copy.close} onClick={onClose}>×</button>
+      <img className="auth-mark" src="/whatnow-logo.jpg" alt="" />
+      <p className="eyebrow">{copy.eyebrow}</p>
+      <h2 id="security-challenge-title">{copy.title}</h2>
+      <p>{copy.body}</p>
+      <div className={`captcha-box compact${error ? " has-error" : ""}`}>
+        <TurnstileWidget action="analyze" language={locale} theme={theme} resetKey={resetKey}
+          onToken={(token) => { if (token) onVerified(token); }} onError={onError} />
+        <small aria-live="polite">{error ?? translations[locale].captchaWaiting}</small>
+      </div>
+    </section>
+  </div>;
 }
 
 function InfoPanel({ open, locale, t, onClose }: { open: boolean; locale: SupportedLanguage; t: UiCopy; onClose: () => void }) {

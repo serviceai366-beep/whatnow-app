@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { POST } from "../app/api/analyze/route.ts";
+import { resetAnalysisChallengeStateForTests } from "../app/analysis-challenge.ts";
 import { validAnalysisResult } from "./analysis-fixture.mjs";
 
 let requestSequence = 0;
@@ -122,22 +123,35 @@ test("requires a verified Supabase account before OpenAI", async () => withServe
   } finally { globalThis.fetch = previousFetch; }
 }));
 
-test("requires a fresh server-validated Turnstile token before quota or OpenAI", async () => withServerKey(async () => {
+test("allows ordinary analyses without CAPTCHA and challenges only a rapid burst", async () => withServerKey(async () => {
   const previousFetch = globalThis.fetch;
   let openaiCalls = 0;
   try {
+    resetAnalysisChallengeStateForTests();
     globalThis.fetch = routedFetch(() => { openaiCalls += 1; return successfulOpenAI(); });
-    const missing = await POST(requestWithText("ru", "text", { withoutCaptcha: true }));
-    assert.equal(missing.status, 400);
-    assert.equal((await missing.json()).error.code, "captcha_required");
+    const first = await POST(requestWithText("ru", "Первый документ", { withoutCaptcha: true, userId: "adaptive-user" }));
+    const second = await POST(requestWithText("ru", "Второй документ", { withoutCaptcha: true, userId: "adaptive-user" }));
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+
+    const challenged = await POST(requestWithText("ru", "Третий документ", { withoutCaptcha: true, userId: "adaptive-user" }));
+    assert.equal(challenged.status, 403);
+    assert.equal((await challenged.json()).error.code, "captcha_required");
 
     globalThis.fetch = routedFetch(() => { openaiCalls += 1; return successfulOpenAI(); }, {
       captchaResponse: { success: false, hostname: "localhost", action: "analyze" },
     });
-    const rejected = await POST(requestWithText());
+    const rejected = await POST(requestWithText("ru", "Третий документ", { userId: "adaptive-user" }));
     assert.equal(rejected.status, 400);
     assert.equal((await rejected.json()).error.code, "captcha_failed");
-    assert.equal(openaiCalls, 0);
+
+    globalThis.fetch = routedFetch(() => { openaiCalls += 1; return successfulOpenAI(); });
+    const verified = await POST(requestWithText("ru", "Третий документ", { userId: "adaptive-user" }));
+    assert.equal(verified.status, 200);
+    const cleared = await POST(requestWithText("ru", "Повтор после проверки", { withoutCaptcha: true, userId: "adaptive-user" }));
+    assert.equal(cleared.status, 429);
+    assert.equal((await cleared.json()).error.code, "user_limit_reached");
+    assert.equal(openaiCalls, 3);
   } finally { globalThis.fetch = previousFetch; }
 }));
 

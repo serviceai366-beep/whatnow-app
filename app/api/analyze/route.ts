@@ -27,7 +27,7 @@ import {
   type AnalysisTokenUsage,
 } from "../../analysis-cost.ts";
 import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
-import { verifyTurnstileToken } from "../../turnstile-server.ts";
+import { checkAnalysisChallenge } from "../../analysis-challenge.ts";
 import { activePlanForUser } from "../../subscription-store.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
@@ -302,15 +302,21 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  const captcha = await verifyTurnstileToken({
-    request,
-    token: formData.get("turnstileToken"),
-    action: "analyze",
-  });
-  if (!captcha.ok) {
-    if (captcha.code === "captcha_unavailable") {
+  let challenge;
+  try {
+    challenge = await checkAnalysisChallenge({
+      request,
+      userKey: auth.user.id,
+      token: formData.get("turnstileToken"),
+    });
+  } catch (error) {
+    console.error("[analyze] Adaptive protection error", { name: error instanceof Error ? error.name : "unknown" });
+    challenge = { ok: true as const, challenged: false };
+  }
+  if (!challenge.ok) {
+    if (challenge.code === "captcha_unavailable") {
       return errorResponse(
-        captcha.code,
+        challenge.code,
         "Проверка защиты от ботов временно недоступна. Попробуйте через минуту.",
         503,
         true,
@@ -318,11 +324,11 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
     return errorResponse(
-      captcha.code,
-      captcha.code === "captcha_required"
-        ? "Завершите проверку защиты от ботов перед анализом."
+      challenge.code,
+      challenge.code === "captcha_required"
+        ? "Система заметила необычно быстрые действия. Пройдите разовую проверку, чтобы продолжить."
         : "Проверка защиты от ботов не пройдена. Обновите её и попробуйте снова.",
-      400,
+      challenge.code === "captcha_required" ? 403 : 400,
       true,
     );
   }

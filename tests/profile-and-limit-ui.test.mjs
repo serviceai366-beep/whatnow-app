@@ -17,8 +17,11 @@ test("analysis is gated by a verified account and sends the fresh bearer token",
   assert.match(page, /open=\{authOpen\} onOpenChange=\{setAuthOpen\}/);
   assert.match(widget, /open: boolean/);
   assert.match(widget, /onOpenChange: \(open: boolean\) => void/);
-  assert.match(page, /formData\.set\("turnstileToken", captchaToken\)/);
-  assert.match(page, /disabled=\{isAnalyzing \|\| !captchaToken\}/);
+  assert.match(page, /if \(challengeToken\) formData\.set\("turnstileToken", challengeToken\)/);
+  assert.match(page, /disabled=\{isAnalyzing\}/);
+  assert.doesNotMatch(page, /disabled=\{isAnalyzing \|\| !captchaToken\}/);
+  assert.match(page, /captchaChallengeOpen/);
+  assert.match(page, /<SecurityChallenge/);
 });
 
 test("successful analyses are saved automatically and the UI offers a retry on failure", async () => {
@@ -75,4 +78,15 @@ test("rich text files use a safe non-iframe preview", async () => {
   assert.match(page, /document\.kind === "pdf" \? \(/);
   assert.match(page, /document-preview-message/);
   assert.match(page, /t\.officePreviewNote/);
+});
+
+test("adaptive CAPTCHA and every modal stay inside small dynamic viewports", async () => {
+  const [page, , css] = await files;
+  assert.doesNotMatch(page, /className=\{`captcha-box\$\{captchaError/);
+  assert.match(page, /security-challenge-backdrop/);
+  assert.match(css, /height: 100dvh/);
+  assert.match(css, /overscroll-behavior: contain/);
+  assert.match(css, /max-height: 96dvh/);
+  assert.match(css, /\.brand > span \{ display: none; \}/);
+  assert.match(css, /\.storage-toast[\s\S]*bottom:/);
 });
