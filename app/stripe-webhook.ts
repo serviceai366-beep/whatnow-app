@@ -62,33 +62,55 @@ function json(body: unknown, status: number): Response {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 
+async function retrieveTestEvent(eventId: string, secretKey: string, fetchImpl: typeof fetch): Promise<StripeEvent | null> {
+  if (!/^evt_[A-Za-z0-9]+$/.test(eventId)) return null;
+  try {
+    const response = await fetchImpl(`https://api.stripe.com/v1/events/${eventId}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+    if (!response.ok) return null;
+    const event = await response.json().catch(() => null) as unknown;
+    return validEvent(event) ? event : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function handleStripeWebhook(
   request: Request,
-  options: { environment?: WebhookEnvironment; store?: SubscriptionStore | null; now?: number } = {},
+  options: { environment?: WebhookEnvironment; store?: SubscriptionStore | null; now?: number; fetchImpl?: typeof fetch } = {},
 ): Promise<Response> {
   const environment = options.environment ?? process.env;
   const configuration = stripeConfiguration(environment);
   if (!configuration) return json({ error: "webhook_unavailable" }, 503);
   const secret = environment.STRIPE_WEBHOOK_SECRET?.trim() ?? "";
-  if (!secret.startsWith("whsec_")) return json({ error: "webhook_unavailable" }, 503);
+  const hasSigningSecret = secret.startsWith("whsec_");
+  if (!hasSigningSecret && configuration.mode !== "test") return json({ error: "webhook_unavailable" }, 503);
   const contentType = request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
   if (contentType !== "application/json") return json({ error: "invalid_request" }, 415);
   const length = Number(request.headers.get("content-length") ?? 0);
   if (!Number.isFinite(length) || length > MAX_WEBHOOK_BYTES) return json({ error: "invalid_request" }, 413);
   const payload = await request.text();
   if (!payload || payload.length > MAX_WEBHOOK_BYTES) return json({ error: "invalid_request" }, 413);
-  const verified = await verifyStripeWebhookSignature({
-    payload,
-    signatureHeader: request.headers.get("stripe-signature") ?? "",
-    secret,
-    now: options.now,
-  });
-  if (!verified) return json({ error: "invalid_signature" }, 400);
   let event: unknown;
   try {
     event = JSON.parse(payload) as unknown;
   } catch {
     return json({ error: "invalid_event" }, 400);
+  }
+  if (hasSigningSecret) {
+    const verified = await verifyStripeWebhookSignature({
+      payload,
+      signatureHeader: request.headers.get("stripe-signature") ?? "",
+      secret,
+      now: options.now,
+    });
+    if (!verified) return json({ error: "invalid_signature" }, 400);
+  } else {
+    const eventId = event && typeof event === "object" ? (event as Record<string, unknown>).id : null;
+    event = typeof eventId === "string"
+      ? await retrieveTestEvent(eventId, configuration.secretKey, options.fetchImpl ?? fetch)
+      : null;
   }
   if (!validEvent(event) || event.livemode !== (configuration.mode === "live")) return json({ error: "invalid_event" }, 400);
   const store = options.store === undefined ? await getSubscriptionStore() : options.store;

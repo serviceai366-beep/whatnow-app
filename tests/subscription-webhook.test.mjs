@@ -158,6 +158,41 @@ test("valid signed webhook is accepted once processing storage is available", as
   assert.equal(received.id, event.id);
 });
 
+test("test webhooks without a signing secret are reconciled against Stripe before activation", async () => {
+  const incoming = checkoutEvent("evt_reconcile1");
+  const canonical = { ...incoming, data: { object: { ...incoming.data.object } } };
+  let received = null;
+  const response = await handleStripeWebhook(new Request("https://whatnow-app.com/api/stripe/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(incoming),
+  }), {
+    environment: { ...testEnvironment, STRIPE_WEBHOOK_SECRET: "" },
+    store: { readForUser: async () => null, markCheckoutPending: async () => {}, applyStripeEvent: async (value) => { received = value; } },
+    fetchImpl: async (url) => {
+      assert.match(String(url), /\/v1\/events\/evt_reconcile1$/);
+      return Response.json(canonical);
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(received.id, canonical.id);
+});
+
+test("test webhook reconciliation rejects an event Stripe does not confirm", async () => {
+  let applied = 0;
+  const response = await handleStripeWebhook(new Request("https://whatnow-app.com/api/stripe/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(checkoutEvent("evt_missing1")),
+  }), {
+    environment: { ...testEnvironment, STRIPE_WEBHOOK_SECRET: "" },
+    store: { readForUser: async () => null, markCheckoutPending: async () => {}, applyStripeEvent: async () => { applied += 1; } },
+    fetchImpl: async () => new Response(null, { status: 404 }),
+  });
+  assert.equal(response.status, 400);
+  assert.equal(applied, 0);
+});
+
 test("webhook rejects a live event when the endpoint is configured for test mode", async () => {
   const event = { ...checkoutEvent("evt_live_mismatch"), livemode: true };
   const payload = JSON.stringify(event);
