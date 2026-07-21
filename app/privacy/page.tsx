@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
           <ul>
             <li><strong>Account information:</strong> your email address, account identifier, display name, profile image, authentication provider, account timestamps, language, theme, accessibility, and other preferences.</li>
             <li><strong>Documents and input:</strong> text you paste and files you upload, including images, PDFs, Word-compatible documents, and plain-text files. Documents may contain personal or sensitive information chosen by you.</li>
-            <li><strong>Analysis information:</strong> generated explanations, extracted dates, action plans, evidence passages, uncertainties, and related result metadata.</li>
+            <li><strong>Analysis and document-creation information:</strong> generated explanations, drafts, review notes, extracted dates, action plans, evidence passages, assumptions, uncertainties, and related result metadata.</li>
             <li><strong>Saved content:</strong> your latest analysis history, files you choose or configure the service to save, calendar events, reminder settings, timezone, and reminder delivery status.</li>
             <li><strong>Technical, usage, and security information:</strong> IP address, browser and device information, request timestamps, authentication and security events, rate-limit records, bot-protection results, AI token counts, model name, document category, estimated processing cost, and diagnostic information needed to keep the service reliable and price the service sustainably. Cost records use a hashed account identifier and do not contain document text.</li>
             <li><strong>Communications:</strong> messages and optional screenshots you send to support, plus delivery information for service emails and reminders.</li>
@@ -48,7 +48,7 @@ export default function PrivacyPolicy() {
         </section>
 
         <section><h2>4. AI document analysis</h2>
-          <p>When you request an analysis, the relevant text or file content is sent to OpenAI&apos;s API to generate a plain-language explanation. WhatNow? does not use the result to make decisions that produce legal or similarly significant effects about you. AI output can be incomplete or wrong, so important dates, obligations, amounts, and contact details must be checked against the original document.</p>
+          <p>When you request an analysis, creation, improvement, or review, the relevant instructions and document content are sent to OpenAI&apos;s API. Legal drafting may also use web search to consult official sources. WhatNow? does not use the result to make decisions that produce legal or similarly significant effects about you. AI output can be incomplete or wrong, so important facts and rules must be checked independently.</p>
           <p>Please remove information that is not needed before uploading a document. Only upload personal data about another person when you have a lawful reason and permission to do so.</p>
         </section>
 
@@ -69,7 +69,7 @@ export default function PrivacyPolicy() {
           <ul>
             <li>Your account and profile are kept until you delete the account or ask us to close it, subject to limited legal and security retention.</li>
             <li>Support messages and screenshots are kept only while reasonably needed to answer, investigate, and maintain the service, then deleted or anonymised.</li>
-            <li>The service keeps no more than the latest 10 analyses in account history. Older history entries are removed automatically.</li>
+            <li>The service keeps no more than the latest 10 analyses and the latest 10 generated or reviewed documents in their respective account histories. Older entries are removed automatically.</li>
             <li>Saved files are kept until you delete them or close the account, subject to the storage limits shown in the application.</li>
             <li>Calendar events and reminders are kept until you delete them, they are no longer needed for delivery, or the account is closed. Limited delivery and security records may be kept for troubleshooting and abuse prevention.</li>
             <li>Usage-limit records are kept only as long as needed to enforce the applicable daily and weekly windows and investigate abuse. Per-analysis cost records contain no document text and are automatically removed after 90 days.</li>

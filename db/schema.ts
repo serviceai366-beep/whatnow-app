@@ -175,3 +175,11 @@ export const documentFollowups = sqliteTable("document_followups", {
   index("document_followups_owner_created_idx").on(table.userId, table.createdAt),
   check("document_followups_status_valid", sql`${table.status} in ('pending', 'completed')`),
 ]);
+
+export const generatedDocuments = sqliteTable("generated_documents", {
+  id: text("id").primaryKey().notNull(), userId: text("user_id").notNull(), resultJson: text("result_json").notNull(), createdAt: integer("created_at").notNull(),
+}, (table) => [index("generated_documents_owner_idx").on(table.userId, table.createdAt)]);
+
+export const documentStudioUsage = sqliteTable("document_studio_usage", {
+  id: text("id").primaryKey().notNull(), userId: text("user_id").notNull(), status: text("status").notNull().default("pending"), createdAt: integer("created_at").notNull(), updatedAt: integer("updated_at").notNull(),
+}, (table) => [index("studio_usage_owner_idx").on(table.userId, table.createdAt), check("studio_usage_status_valid", sql`${table.status} in ('pending', 'completed')`)]);

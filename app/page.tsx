@@ -25,6 +25,7 @@ import type { ProfileLanguage } from "./profile-types";
 import { FileClientError, uploadStoredFile } from "./file-client";
 import { interfaceCopyFallback, languageOption, responseLanguageOptions } from "./language-options";
 import { DocumentChat } from "./document-chat";
+import { DocumentStudioPrototype } from "./document-studio-prototype";
 
 const workspaceCopy = {
   en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
@@ -102,6 +103,7 @@ function resolvedProfileTheme(preferences: UserProfilePreferences): ColorTheme {
 }
 
 export default function Home() {
+  const [productMode, setProductMode] = useState<"understand" | "create">("understand");
   const [language, setLanguage] = useState<ProfileLanguage>("en");
   const [analysisLanguage, setAnalysisLanguage] = useState<SupportedLanguage>("en");
   const [preferences, setPreferences] = useState<UserProfilePreferences>({ ...DEFAULT_PROFILE_PREFERENCES });
@@ -488,6 +490,7 @@ export default function Home() {
     setUserHubOpen(false);
     setHistoryOpen(false);
     setAuthOpen(false);
+    setProductMode("understand");
   };
 
   const openHistoryItem = (item: AnalysisHistoryItem) => {
@@ -514,6 +517,7 @@ export default function Home() {
         <a className="brand" href="#top" aria-label={t.homeAria} onClick={goHome}>
           <img className="brand-mark" src="/whatnow-logo.jpg" alt="" />
           <span>WhatNow?</span>
+          <span className="beta-badge" title="Beta testing — some features may still change">Beta</span>
         </a>
         <div className="header-actions">
           <button className="header-tool-button" type="button" aria-label={w.info} data-tooltip={w.info} onClick={() => setInfoOpen(true)}><ToolIcon kind="about" />{w.info}</button>
@@ -529,9 +533,16 @@ export default function Home() {
       {limitNotice && <LimitToast key={`${limitNotice.scope}:${limitNotice.observedAt}`} data={limitNotice} locale={language} onClose={() => setLimitNotice(null)} />}
       {fileSaveNotice && <div className={`storage-toast ${fileSaveNotice.kind}`} role="status"><span>{fileSaveNotice.kind === "success" ? "✓" : "!"}</span><p>{fileSaveNotice.text}</p><button type="button" aria-label="Close" onClick={() => setFileSaveNotice(null)}>×</button></div>}
 
+      {!showResult && <nav className="product-mode-switch" aria-label="WhatNow? modes">
+        <button type="button" className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? "Понять документ" : interfaceCopyLanguage === "lv" ? "Saprast dokumentu" : "Understand"}</strong></button>
+        <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => setProductMode("create")}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong></button>
+      </nav>}
+
       {showResult && analysis ? (
         <AnalysisResultView key={`${savedHistoryId ?? "unsaved"}:${analysis.summary}`} result={analysis} onRestart={resetAnalysis} t={t} locale={language}
           account={account} analysisId={savedHistoryId} preferences={preferences} onSave={() => void persistAnalysisHistory(analysis, inputMode, analysisLanguage)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
+      ) : productMode === "create" ? (
+        <DocumentStudioPrototype locale={language} account={account} onRequireAccount={() => setAuthOpen(true)} />
       ) : (
         <>
       <section className="hero" id="top">

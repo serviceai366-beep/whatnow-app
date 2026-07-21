@@ -1,0 +1,6 @@
+import { documentDocx } from "../../../document-export.ts";
+import { getDocumentStudioStore } from "../../../document-studio-store.ts";
+import { isSameOriginRequest } from "../../../security.ts";
+import { verifySupabaseRequest } from "../../../supabase-server-auth.ts";
+export const dynamic="force-dynamic";
+export async function GET(request:Request){if(!isSameOriginRequest(request))return Response.json({error:{code:"forbidden"}},{status:403});const auth=await verifySupabaseRequest(request);if(!auth.ok)return Response.json({error:{code:auth.code}},{status:auth.status});const u=new URL(request.url),id=u.searchParams.get("id")??"",format=u.searchParams.get("format");if(!/^[0-9a-f-]{36}$/i.test(id)||format!=="docx")return Response.json({error:{code:"invalid_request"}},{status:400});const store=await getDocumentStudioStore(),doc=store?await store.get(auth.user.id,id):null;if(!doc)return Response.json({error:{code:"not_found"}},{status:404});const bytes=documentDocx(doc.result);const title=doc.result.title.replace(/[^a-zA-Z0-9_-]+/g,"-").slice(0,60)||"whatnow-document";return new Response(bytes as BodyInit,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.wordprocessingml.document","Content-Disposition":`attachment; filename="${title}.docx"`,"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}})}

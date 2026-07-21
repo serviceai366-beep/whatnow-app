@@ -22,7 +22,7 @@ export default function TermsOfService() {
         </header>
 
         <section><h2>1. About WhatNow?</h2>
-          <p>WhatNow? is an AI-assisted service that explains documents in plain language, identifies possible actions and dates, helps prepare draft replies, stores selected content, and supports calendar events and email reminders. The service is operated from Latvia. Contact: <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.</p>
+          <p>WhatNow? is an AI-assisted service that explains, creates, improves, and reviews documents, identifies possible actions and dates, helps prepare draft replies, stores selected content, and supports calendar events and email reminders. The service is operated from Latvia. Contact: <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.</p>
         </section>
 
         <section><h2>2. Eligibility and acceptance</h2>
@@ -36,6 +36,7 @@ export default function TermsOfService() {
         <section><h2>4. AI output and important limitations</h2>
           <p>WhatNow? provides informational assistance, not legal, medical, financial, tax, immigration, or other professional advice. AI can misunderstand text, miss pages, confuse dates, make incorrect assumptions, or generate inaccurate statements. You remain responsible for checking the original document and deciding what to do.</p>
           <p>Do not rely on WhatNow? as the only source for urgent deadlines, emergencies, legal proceedings, medical decisions, financial transactions, or official submissions. Contact the sender or a qualified professional when the document is unclear or the consequences may be serious. WhatNow? does not determine whether a document is authentic, lawful, safe, or enforceable.</p>
+          <p>Selecting a country or consulting an official source does not guarantee that a generated document complies with every national, regional, filing, signature, registration, or case-specific requirement. Generated drafts must be reviewed before signing, sending, filing, or relying on them.</p>
         </section>
 
         <section><h2>5. Your content</h2>
