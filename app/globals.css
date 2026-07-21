@@ -265,6 +265,7 @@ h1 { margin: 0; max-width: 740px; font-size: clamp(36px, 5vw, 58px); line-height
 .text-panel textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .text-meta { display: flex; justify-content: space-between; gap: 14px; }
 .text-meta small:last-child { flex: 0 0 auto; }
+.clipboard-image-hint { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
 .input-error { margin: 9px 0 0; color: #a6322d; font-size: 13px; font-weight: 650; }
 .file-preview { margin-top: 14px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #fbfdfc; }
 .file-preview-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px; border-bottom: 1px solid var(--border); background: #fff; }

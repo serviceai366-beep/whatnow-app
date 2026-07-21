@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChangeEvent, DragEvent, MouseEvent } from "react";
+import type { ChangeEvent, ClipboardEvent, DragEvent, MouseEvent } from "react";
 import {
   formatFileSize,
   MAX_TEXT_LENGTH,
@@ -287,6 +287,25 @@ export default function Home() {
     setIsDragging(false);
     const file = event.dataTransfer.files?.[0];
     if (file) selectDocument(file);
+  };
+
+  const handleTextPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageItem = Array.from(event.clipboardData.items).find((item) => (
+      item.kind === "file" && ["image/jpeg", "image/png", "image/webp"].includes(item.type)
+    ));
+    const pastedImage = imageItem?.getAsFile();
+    if (!pastedImage) return;
+
+    event.preventDefault();
+    const extension = pastedImage.type === "image/jpeg" ? "jpg" : pastedImage.type === "image/png" ? "png" : "webp";
+    const file = new File(
+      [pastedImage],
+      `screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`,
+      { type: pastedImage.type, lastModified: Date.now() },
+    );
+    setInputMode("file");
+    setTextError(null);
+    selectDocument(file);
   };
 
   const clearSelectedDocument = () => {
@@ -660,11 +679,13 @@ export default function Home() {
                   setAnalysisError(null);
                   setShowResult(false);
                 }}
+                onPaste={handleTextPaste}
               />
               <div className="text-meta">
                 <small id="text-help">{t.textPrivacy}</small>
                 <small id="text-counter">{documentText.length.toLocaleString(localeTag(language))} / 50 000</small>
               </div>
+              <small className="clipboard-image-hint">{t.pasteScreenshotHint}</small>
               {textError && <p className="input-error" id="text-error" role="alert">{textError}</p>}
             </div>
           )}
