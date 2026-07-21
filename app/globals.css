@@ -1442,6 +1442,22 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 }
 .tool-icon { border-radius: 13px; background: color-mix(in srgb, var(--glass-strong) 76%, var(--accent-soft)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 72%), 0 5px 14px rgb(9 88 78 / 13%); }
 
+/* Keep primary actions readable after the shared glass treatment. */
+.primary-mini,
+.history-item-actions button:not(.danger) {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--glass-line));
+  color: #fff;
+  background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%), 0 8px 20px rgb(8 105 89 / 16%);
+}
+.primary-mini:hover:not(:disabled),
+.history-item-actions button:not(.danger):hover:not(:disabled) {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 88%, #fff), var(--accent-dark));
+  transform: translateY(-1px);
+}
+.primary-mini:disabled,
+.history-item-actions button:not(.danger):disabled { color: rgb(255 255 255 / 92%); }
+
 .hero { padding-top: clamp(66px, 10vh, 104px); }
 .hero-copy { animation: liquid-enter .7s var(--liquid-ease) both; }
 .hero-copy h1 { text-wrap: balance; text-shadow: 0 1px 0 rgb(255 255 255 / 40%); }
