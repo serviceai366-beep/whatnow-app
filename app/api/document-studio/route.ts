@@ -10,6 +10,9 @@ export const dynamic = "force-dynamic";
 const URL = "https://api.openai.com/v1/responses";
 const MODEL = "gpt-5.6-luna";
 const MAX_BODY = 80 * 1024;
+// Jurisdiction-aware generation may include a web lookup; allow it to finish
+// before reporting a false timeout to the user.
+const STUDIO_REQUEST_TIMEOUT_MS = 75_000;
 const languageNames:Record<string,string>={en:"English",ru:"Russian",lv:"Latvian",es:"Spanish",pt:"Portuguese",fr:"French",de:"German",it:"Italian",pl:"Polish",uk:"Ukrainian",nl:"Dutch",ro:"Romanian",sv:"Swedish",cs:"Czech"};
 
 function reply(body:unknown,status=200,headers:HeadersInit={}){return Response.json(body,{status,headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow","Referrer-Policy":"no-referrer",...Object.fromEntries(new Headers(headers))}})}
@@ -63,7 +66,7 @@ export async function POST(request:Request){
   const store=await getDocumentStudioStore();if(!store)return storeFailure(null);let reservation:string|null=null;
   try{
     const plan=await activePlanForUser(auth.user.id);reservation=await store.reserve(auth.user.id,plan);
-    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),45_000);
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),STUDIO_REQUEST_TIMEOUT_MS);
     const legalTemplate=["lease","service","nda","loan","power","complaint","request","termination"].includes(input.templateId);
     userContent.unshift({type:"input_text",text:JSON.stringify({request:input,readiness,maximumWords:STUDIO_LIMITS[plan].words})});
     let upstream:Response;try{upstream=await fetch(URL,{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,reasoning:{effort:"low"},instructions:instructions(input),input:[{role:"user",content:userContent}],...(legalTemplate?{tools:[{type:"web_search",search_context_size:"low"}]}:{}),text:{format:{type:"json_schema",name:"whatnow_generated_document",strict:true,schema:generatedDocumentJsonSchema}},max_output_tokens:plan==="pro"?18_000:6_000,store:false}),signal:controller.signal})}finally{clearTimeout(timeout)}
