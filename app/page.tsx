@@ -516,11 +516,6 @@ export default function Home() {
       ) : (
         <>
       <section className="hero" id="top">
-        <div className="hero-copy">
-          <h1>{t.heroTitle}</h1>
-          <p className="hero-lead">{t.heroLead}</p>
-        </div>
-
         <div className="analyzer-card" aria-labelledby="analyzer-title">
           <div className="card-heading">
             <h2 id="analyzer-title">{t.addDocument}</h2>

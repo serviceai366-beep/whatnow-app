@@ -202,18 +202,16 @@ a { color: inherit; text-decoration: none; }
 
 .hero {
   width: min(820px, calc(100% - 32px));
-  min-height: calc(100vh - 200px);
+  min-height: 0;
   margin: 0 auto 48px;
-  padding: clamp(54px, 9vh, 92px) 0 32px;
+  padding: clamp(20px, 4vh, 36px) 0 32px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
 }
-.hero-copy { max-width: 720px; margin: 0 auto 32px; padding: 0 16px; text-align: center; }
 .eyebrow { margin: 0 0 12px; color: var(--accent-dark); text-transform: uppercase; letter-spacing: 0.1em; font-size: 12px; font-weight: 800; }
 h1, h2, h3, p, strong, small, dt, dd, li, blockquote, figcaption, button { overflow-wrap: anywhere; }
 h1 { margin: 0; max-width: 740px; font-size: clamp(36px, 5vw, 58px); line-height: 1.06; letter-spacing: -0.05em; font-weight: 760; }
-.hero-lead { max-width: 610px; margin: 17px auto 0; color: var(--muted); font-size: clamp(16px, 2vw, 19px); line-height: 1.5; }
 .trust-row { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 26px; color: #41504a; font-size: 14px; font-weight: 650; }
 .check { display: inline-grid; width: 20px; height: 20px; place-items: center; margin-right: 7px; border-radius: 50%; color: var(--accent-dark); background: var(--accent-soft); }
 
@@ -1082,8 +1080,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 }
 
 @media (max-width: 900px) {
-  .hero { min-height: auto; padding-top: 58px; }
-  .hero-copy { padding: 0; }
+  .hero { min-height: auto; padding-top: 22px; }
   h1 { max-width: 760px; }
   .analyzer-card { max-width: 640px; width: 100%; }
   .benefit-grid { grid-template-columns: 1fr 1fr; }
@@ -1111,9 +1108,8 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .account-sign-out { display: none; }
   .auth-backdrop { padding: 10px; align-items: end; }
   .auth-dialog { width: 100%; max-height: calc(100dvh - 20px); padding: 26px 20px 22px; border-radius: 22px 22px 14px 14px; }
-  .hero { width: min(100% - 20px, 820px); margin: 0 auto 34px; padding-top: 42px; }
+  .hero { width: min(100% - 20px, 820px); margin: 0 auto 34px; padding-top: 16px; }
   h1 { font-size: clamp(33px, 10vw, 44px); }
-  .hero-lead { margin-top: 14px; font-size: 16px; }
   .trust-row { display: grid; gap: 9px; margin-top: 21px; }
   .analyzer-card { margin: 0; border-radius: 19px; }
   .card-heading { display: block; }
@@ -1458,10 +1454,7 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 .primary-mini:disabled,
 .history-item-actions button:not(.danger):disabled { color: rgb(255 255 255 / 92%); }
 
-.hero { padding-top: clamp(66px, 10vh, 104px); }
-.hero-copy { animation: liquid-enter .7s var(--liquid-ease) both; }
-.hero-copy h1 { text-wrap: balance; text-shadow: 0 1px 0 rgb(255 255 255 / 40%); }
-.hero-lead { text-wrap: pretty; }
+.hero { padding-top: clamp(20px, 4vh, 36px); }
 .analyzer-card {
   position: relative;
   overflow: visible;
@@ -1661,9 +1654,7 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   .hub-tabs, .calendar-toolbar { top: 0; }
   .hub-tabs { gap: 6px; }
   .hub-tabs button { min-height: 42px; border-radius: 999px; }
-  .hero { width: min(100% - 16px, 820px); padding-top: 56px; }
-  .hero-copy { padding-inline: 8px; }
-  .hero-copy h1 { font-size: clamp(36px, 10.6vw, 48px); line-height: 1.01; }
+  .hero { width: min(100% - 16px, 820px); padding-top: 16px; }
   .analyzer-card { padding: 22px 18px; border-radius: 30px; }
   .language-picker-trigger { min-height: 62px; border-radius: 19px; }
   .source-tabs { border-radius: 18px; }
@@ -1699,6 +1690,6 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-copy, .analyzer-card, .auth-dialog, .user-hub, .calendar-panel, .support-panel, .info-panel, .security-challenge-dialog, .history-panel, .language-picker-menu, .storage-toast, .limit-toast { animation: none; }
+  .analyzer-card, .auth-dialog, .user-hub, .calendar-panel, .support-panel, .info-panel, .security-challenge-dialog, .history-panel, .language-picker-menu, .storage-toast, .limit-toast { animation: none; }
   button, a, input, select, textarea, .result-card, .subscription-card, .file-list li { transition: none; }
 }
