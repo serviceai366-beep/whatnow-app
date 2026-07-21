@@ -12,7 +12,7 @@ const MODEL = "gpt-5.6-luna";
 const MAX_BODY = 80 * 1024;
 // Jurisdiction-aware generation may include a web lookup; allow it to finish
 // before reporting a false timeout to the user.
-const STUDIO_REQUEST_TIMEOUT_MS = 75_000;
+const STUDIO_REQUEST_TIMEOUT_MS = 180_000;
 const languageNames:Record<string,string>={en:"English",ru:"Russian",lv:"Latvian",es:"Spanish",pt:"Portuguese",fr:"French",de:"German",it:"Italian",pl:"Polish",uk:"Ukrainian",nl:"Dutch",ro:"Romanian",sv:"Swedish",cs:"Czech"};
 
 function reply(body:unknown,status=200,headers:HeadersInit={}){return Response.json(body,{status,headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow","Referrer-Policy":"no-referrer",...Object.fromEntries(new Headers(headers))}})}
