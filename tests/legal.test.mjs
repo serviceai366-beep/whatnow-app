@@ -14,6 +14,8 @@ test("legal pages describe the real service and are linked from registration", a
   }
   assert.match(privacy, /latest 10 analyses/);
   assert.match(privacy, /Latvian Data State Inspectorate/);
+  assert.match(privacy, /not responsible or liable for decisions, losses, disputes/);
+  assert.match(privacy, /created, edited, reviewed, or explained by the service/);
   assert.match(terms, /informational assistance, not legal, medical, financial/);
   assert.match(terms, /Reminders are a convenience and are not guaranteed/);
   assert.match(widget, /create-account/);

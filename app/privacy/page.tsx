@@ -50,6 +50,8 @@ export default function PrivacyPolicy() {
         <section><h2>4. AI document analysis</h2>
           <p>When you request an analysis, creation, improvement, or review, the relevant instructions and document content are sent to OpenAI&apos;s API. Legal drafting may also use web search to consult official sources. WhatNow? does not use the result to make decisions that produce legal or similarly significant effects about you. AI output can be incomplete or wrong, so important facts and rules must be checked independently.</p>
           <p>Please remove information that is not needed before uploading a document. Only upload personal data about another person when you have a lawful reason and permission to do so.</p>
+          <h3>Responsibility for generated and edited documents</h3>
+          <p>WhatNow? does not guarantee that any document created, edited, reviewed, or explained by the service is accurate, complete, legally valid, enforceable, or suitable for your situation. To the extent permitted by law, WhatNow? is not responsible or liable for decisions, losses, disputes, missed obligations, or any other consequences arising from your use of these documents or from relying on AI output. You are responsible for checking the original sources and obtaining qualified professional advice before signing, sending, filing, or otherwise relying on a document.</p>
         </section>
 
         <section><h2>5. Service providers and recipients</h2>
