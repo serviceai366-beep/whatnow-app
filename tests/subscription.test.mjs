@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { GET, POST } from "../app/api/subscription/route.ts";
-import { checkoutForm, privateSubscriptionReference, stripeTestConfiguration } from "../app/stripe-server.ts";
+import { checkoutForm, privateSubscriptionReference, stripeConfiguration, testCheckoutAllowed } from "../app/stripe-server.ts";
 
 const token = "test.subscription-user.signature";
 
@@ -18,10 +18,13 @@ function authResponse() {
   return Response.json({ id: "subscription-user", email: "owner@example.com", email_confirmed_at: "2026-07-10T00:00:00Z" });
 }
 
-test("Stripe configuration is disabled by default and rejects live secrets", () => {
-  assert.equal(stripeTestConfiguration({}), null);
-  assert.equal(stripeTestConfiguration({ STRIPE_TEST_CHECKOUT_ENABLED: "true", STRIPE_SECRET_KEY: "sk_live_secret", STRIPE_PRO_PRICE_ID: "price_123" }), null);
-  assert.deepEqual(stripeTestConfiguration({ STRIPE_TEST_CHECKOUT_ENABLED: "true", STRIPE_SECRET_KEY: "sk_test_secret", STRIPE_PRO_PRICE_ID: "price_123" }), { secretKey: "sk_test_secret", priceId: "price_123" });
+test("Stripe configuration requires an explicit mode and matching secret", () => {
+  assert.equal(stripeConfiguration({}), null);
+  assert.equal(stripeConfiguration({ STRIPE_CHECKOUT_MODE: "test", STRIPE_SECRET_KEY: "sk_live_secret", STRIPE_PRO_PRICE_ID: "price_123" }), null);
+  assert.deepEqual(stripeConfiguration({ STRIPE_CHECKOUT_MODE: "test", STRIPE_SECRET_KEY: "sk_test_secret", STRIPE_PRO_PRICE_ID: "price_123" }), { secretKey: "sk_test_secret", priceId: "price_123", mode: "test" });
+  assert.deepEqual(stripeConfiguration({ STRIPE_CHECKOUT_MODE: "live", STRIPE_SECRET_KEY: "sk_live_secret", STRIPE_PRO_PRICE_ID: "price_live123" }), { secretKey: "sk_live_secret", priceId: "price_live123", mode: "live" });
+  assert.equal(testCheckoutAllowed("Owner@Example.com", { STRIPE_TEST_ALLOWED_EMAILS: "other@example.com, owner@example.com" }), true);
+  assert.equal(testCheckoutAllowed("visitor@example.com", { STRIPE_TEST_ALLOWED_EMAILS: "owner@example.com" }), false);
 });
 
 test("checkout form uses one fixed recurring price and a private account reference", async () => {
@@ -39,8 +42,8 @@ test("checkout form uses one fixed recurring price and a private account referen
 
 test("subscription endpoint reports Free and cannot charge without test configuration", async () => {
   const previousFetch = globalThis.fetch;
-  const previousEnabled = process.env.STRIPE_TEST_CHECKOUT_ENABLED;
-  delete process.env.STRIPE_TEST_CHECKOUT_ENABLED;
+  const previousMode = process.env.STRIPE_CHECKOUT_MODE;
+  delete process.env.STRIPE_CHECKOUT_MODE;
   globalThis.fetch = async (url) => String(url).includes("/auth/v1/user") ? authResponse() : (() => { throw new Error("Stripe must not be called"); })();
   try {
     const snapshot = await GET(request());
@@ -58,30 +61,34 @@ test("subscription endpoint reports Free and cannot charge without test configur
     assert.equal((await checkout.json()).error.code, "checkout_unavailable");
   } finally {
     globalThis.fetch = previousFetch;
-    if (previousEnabled === undefined) delete process.env.STRIPE_TEST_CHECKOUT_ENABLED;
-    else process.env.STRIPE_TEST_CHECKOUT_ENABLED = previousEnabled;
+    if (previousMode === undefined) delete process.env.STRIPE_CHECKOUT_MODE;
+    else process.env.STRIPE_CHECKOUT_MODE = previousMode;
   }
 });
 
-test("coming-soon gate blocks checkout even when Stripe test configuration exists", async () => {
+test("private test checkout blocks accounts outside the allowlist", async () => {
   const previousFetch = globalThis.fetch;
   const previousEnvironment = {
-    enabled: process.env.STRIPE_TEST_CHECKOUT_ENABLED,
+    mode: process.env.STRIPE_CHECKOUT_MODE,
+    allowed: process.env.STRIPE_TEST_ALLOWED_EMAILS,
     secret: process.env.STRIPE_SECRET_KEY,
     price: process.env.STRIPE_PRO_PRICE_ID,
   };
-  process.env.STRIPE_TEST_CHECKOUT_ENABLED = "true";
-  process.env.STRIPE_SECRET_KEY = "sk_test_configured_but_closed";
-  process.env.STRIPE_PRO_PRICE_ID = "price_configured_but_closed";
-  globalThis.fetch = async (url) => String(url).includes("/auth/v1/user") ? authResponse() : (() => { throw new Error("Stripe must not be called while subscriptions are coming soon"); })();
+  process.env.STRIPE_CHECKOUT_MODE = "test";
+  process.env.STRIPE_TEST_ALLOWED_EMAILS = "someone-else@example.com";
+  process.env.STRIPE_SECRET_KEY = "sk_test_configuredbutclosed";
+  process.env.STRIPE_PRO_PRICE_ID = "price_configuredbutclosed";
+  globalThis.fetch = async (url) => String(url).includes("/auth/v1/user") ? authResponse() : (() => { throw new Error("Stripe must not be called for a non-allowlisted account"); })();
   try {
     const checkout = await POST(request("POST", {}, JSON.stringify({ action: "checkout" })));
-    assert.equal(checkout.status, 503);
+    assert.equal(checkout.status, 403);
     assert.equal((await checkout.json()).error.code, "checkout_unavailable");
   } finally {
     globalThis.fetch = previousFetch;
-    if (previousEnvironment.enabled === undefined) delete process.env.STRIPE_TEST_CHECKOUT_ENABLED;
-    else process.env.STRIPE_TEST_CHECKOUT_ENABLED = previousEnvironment.enabled;
+    if (previousEnvironment.mode === undefined) delete process.env.STRIPE_CHECKOUT_MODE;
+    else process.env.STRIPE_CHECKOUT_MODE = previousEnvironment.mode;
+    if (previousEnvironment.allowed === undefined) delete process.env.STRIPE_TEST_ALLOWED_EMAILS;
+    else process.env.STRIPE_TEST_ALLOWED_EMAILS = previousEnvironment.allowed;
     if (previousEnvironment.secret === undefined) delete process.env.STRIPE_SECRET_KEY;
     else process.env.STRIPE_SECRET_KEY = previousEnvironment.secret;
     if (previousEnvironment.price === undefined) delete process.env.STRIPE_PRO_PRICE_ID;
@@ -95,16 +102,16 @@ test("subscription endpoint rejects cross-site checkout before authentication", 
   assert.equal((await response.json()).error.code, "forbidden");
 });
 
-test("plan UI is localized and explicitly labels the non-chargeable test state", async () => {
+test("plan UI is localized for private test and live checkout states", async () => {
   const [panel, hub, env] = await Promise.all([
     readFile(new URL("../app/subscription-panel.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/user-hub.tsx", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
   ]);
-  for (const phrase of ["Payments are not open yet", "Списание с карты невозможно", "No kartes neko nevar iekasēt"]) assert.match(panel, new RegExp(phrase));
+  for (const phrase of ["Subscribe securely", "Оформить безопасно", "Abonēt droši"]) assert.match(panel, new RegExp(phrase));
   assert.match(panel, /\$9\.99/);
-  assert.match(panel, /const subscriptionsOpen = Boolean\(payload\?\.subscription\.checkoutAvailable \|\| payload\?\.subscription\.managementAvailable\)/);
   assert.match(hub, /<SubscriptionPanel locale=\{locale\}/);
-  assert.match(env, /STRIPE_TEST_CHECKOUT_ENABLED=false/);
+  assert.match(env, /STRIPE_CHECKOUT_MODE=disabled/);
+  assert.match(env, /STRIPE_TEST_ALLOWED_EMAILS=/);
   assert.doesNotMatch(panel, /sk_test_|sk_live_/);
 });

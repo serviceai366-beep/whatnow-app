@@ -311,10 +311,10 @@ function configuredLimits(planCode: SubscriptionPlanCode): QuotaLimits {
   return {
     planCode,
     daily: pro
-      ? cappedSetting("WHATNOW_PRO_24H_LIMIT", SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling24HourSafetyThreshold)
+      ? cappedSetting("WHATNOW_PRO_24H_LIMIT", SUBSCRIPTION_PRICING_DRAFT.fairUse.rolling24HourSafetyThreshold)
       : cappedSetting("WHATNOW_USER_24H_LIMIT", FREE_PLAN_ENTITLEMENTS.rolling24HourAnalyses),
     weekly: pro
-      ? cappedSetting("WHATNOW_PRO_30D_LIMIT", SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling30DaySafetyThreshold)
+      ? cappedSetting("WHATNOW_PRO_30D_LIMIT", SUBSCRIPTION_PRICING_DRAFT.fairUse.rolling30DaySafetyThreshold)
       : cappedSetting("WHATNOW_USER_7D_LIMIT", FREE_PLAN_ENTITLEMENTS.rolling7DayAnalyses),
     userWindowMs: pro ? PRO_WINDOW_MS : FREE_WINDOW_MS,
     secondaryWindowDays: pro ? 30 : 7,

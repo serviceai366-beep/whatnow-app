@@ -31,7 +31,7 @@ export async function loadSubscription(): Promise<SubscriptionPublicPayload> {
   return payload;
 }
 
-export async function startTestCheckout(): Promise<string> {
+export async function startSubscriptionCheckout(): Promise<string> {
   const response = await fetch("/api/subscription", {
     method: "POST",
     cache: "no-store",
@@ -46,7 +46,7 @@ export async function startTestCheckout(): Promise<string> {
   return payload.checkoutUrl;
 }
 
-export async function openTestSubscriptionPortal(): Promise<string> {
+export async function openSubscriptionPortal(): Promise<string> {
   const response = await fetch("/api/subscription", {
     method: "POST",
     cache: "no-store",

@@ -42,7 +42,7 @@ export type StripeEvent = {
 
 export type SubscriptionStore = {
   readForUser(userId: string): Promise<StoredSubscription | null>;
-  markCheckoutPending(userId: string, accountReference: string, now?: number): Promise<void>;
+  markCheckoutPending(userId: string, accountReference: string, testMode?: boolean, now?: number): Promise<void>;
   applyStripeEvent(event: StripeEvent, now?: number): Promise<void>;
 };
 
@@ -124,7 +124,7 @@ function createStore(db: SubscriptionD1Database): SubscriptionStore {
         .bind(userId).first<SubscriptionRow>();
       return row ? rowToSubscription(row) : null;
     },
-    async markCheckoutPending(userId, reference, now = Date.now()) {
+    async markCheckoutPending(userId, reference, testMode = true, now = Date.now()) {
       await initialize();
       await db.prepare(`INSERT INTO user_subscriptions
         (user_id, account_reference, plan_code, state, test_mode, updated_at)
@@ -134,10 +134,12 @@ function createStore(db: SubscriptionD1Database): SubscriptionStore {
           state = CASE WHEN user_subscriptions.state = 'active' THEN user_subscriptions.state ELSE 'test_checkout_pending' END,
           updated_at = excluded.updated_at`)
         .bind(userId, reference, now).run();
+      await db.prepare("UPDATE user_subscriptions SET test_mode = ? WHERE user_id = ?")
+        .bind(testMode ? 1 : 0, userId).run();
     },
     async applyStripeEvent(event, now = Date.now()) {
       await initialize();
-      if (!/^evt_[A-Za-z0-9]+$/.test(event.id) || event.livemode) throw new Error("Invalid Stripe test event");
+      if (!/^evt_[A-Za-z0-9]+$/.test(event.id)) throw new Error("Invalid Stripe event");
       const object = event.data.object;
       const statements: SubscriptionD1Statement[] = [
         db.prepare("INSERT OR IGNORE INTO stripe_webhook_events (id, type, received_at) VALUES (?, ?, ?)").bind(event.id, event.type, now),
@@ -150,9 +152,9 @@ function createStore(db: SubscriptionD1Database): SubscriptionStore {
         const paid = object.payment_status === "paid" || object.payment_status === "no_payment_required";
         if (reference && customer && subscription && paid) {
           statements.push(db.prepare(`UPDATE user_subscriptions SET plan_code = 'pro', state = 'active',
-            stripe_customer_id = ?, stripe_subscription_id = ?, test_mode = 1, last_stripe_event_created = ?, updated_at = ?
+            stripe_customer_id = ?, stripe_subscription_id = ?, test_mode = ?, last_stripe_event_created = ?, updated_at = ?
             WHERE account_reference = ? AND last_stripe_event_created <= ?`)
-            .bind(customer, subscription, event.created, now, reference, event.created));
+            .bind(customer, subscription, event.livemode ? 0 : 1, event.created, now, reference, event.created));
         }
       } else if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
         const reference = accountReference(object);
@@ -161,11 +163,11 @@ function createStore(db: SubscriptionD1Database): SubscriptionStore {
         const state = event.type === "customer.subscription.deleted" ? "canceled" : subscriptionState(object.status);
         if (reference && subscription && customer) {
           statements.push(db.prepare(`UPDATE user_subscriptions SET plan_code = ?, state = ?, stripe_customer_id = ?,
-            stripe_subscription_id = ?, current_period_end = ?, cancel_at_period_end = ?, test_mode = 1,
+            stripe_subscription_id = ?, current_period_end = ?, cancel_at_period_end = ?, test_mode = ?,
             last_stripe_event_created = ?, updated_at = ?
             WHERE account_reference = ? AND last_stripe_event_created <= ?`).bind(
               state === "active" ? "pro" : "free", state, customer, subscription, periodEnd(object.current_period_end),
-              object.cancel_at_period_end === true ? 1 : 0, event.created, now, reference, event.created,
+              object.cancel_at_period_end === true ? 1 : 0, event.livemode ? 0 : 1, event.created, now, reference, event.created,
             ));
         }
       } else if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {

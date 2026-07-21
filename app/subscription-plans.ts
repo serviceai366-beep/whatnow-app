@@ -1,7 +1,7 @@
 export type SubscriptionPlanCode = "free" | "pro";
 
-export const SUBSCRIPTION_PRICING_DRAFT = Object.freeze({
-  status: "draft_not_for_sale" as const,
+export const SUBSCRIPTION_PLAN = Object.freeze({
+  status: "available_when_configured" as const,
   planCode: "pro" as const,
   productName: "WhatNow? Pro",
   currency: "USD" as const,
@@ -9,14 +9,16 @@ export const SUBSCRIPTION_PRICING_DRAFT = Object.freeze({
   annualGrossCents: 9_990,
   vatPlanningRateBasisPoints: 2_100,
   positioning: "High-use personal access",
-  checkoutEnabled: false,
-  fairUseDraft: Object.freeze({
+  fairUse: Object.freeze({
     rolling24HourSafetyThreshold: 30,
     rolling30DaySafetyThreshold: 300,
     followupQuestionsPerDocument: 30,
     largeDocumentReviewRequired: true,
   }),
 });
+
+// Kept temporarily for imports from older builds. New code should use SUBSCRIPTION_PLAN.
+export const SUBSCRIPTION_PRICING_DRAFT = SUBSCRIPTION_PLAN;
 
 export const FREE_PLAN_ENTITLEMENTS = Object.freeze({
   planCode: "free" as const,

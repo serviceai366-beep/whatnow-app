@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { handleStripeWebhook, verifyStripeWebhookSignature } from "../app/stripe-webhook.ts";
 import { activePlanForUser, createSubscriptionStoreForTests } from "../app/subscription-store.ts";
-import { createStripeTestPortal } from "../app/stripe-server.ts";
+import { createStripePortal } from "../app/stripe-server.ts";
 
 class Statement {
   constructor(statement, bindings = []) { this.statement = statement; this.bindings = bindings; }
@@ -44,11 +44,18 @@ function checkoutEvent(id = "evt_checkout1") {
   };
 }
 
+const testEnvironment = {
+  STRIPE_CHECKOUT_MODE: "test",
+  STRIPE_SECRET_KEY: "sk_test_secret",
+  STRIPE_PRO_PRICE_ID: "price_test1",
+  STRIPE_WEBHOOK_SECRET: "whsec_test_secret",
+};
+
 test("subscription storage activates and cancels only the linked test account", async () => {
   const database = new DatabaseSync(":memory:");
   try {
     const store = createSubscriptionStoreForTests(new Database(database));
-    await store.markCheckoutPending("user-1", "a".repeat(40), 1_000);
+    await store.markCheckoutPending("user-1", "a".repeat(40), true, 1_000);
     assert.equal((await store.readForUser("user-1")).state, "test_checkout_pending");
     await store.applyStripeEvent(checkoutEvent(), 2_000);
     assert.equal(await activePlanForUser("user-1", store), "pro");
@@ -83,10 +90,10 @@ test("subscription storage activates and cancels only the linked test account", 
 
 test("customer portal accepts only Stripe's HTTPS billing host", async () => {
   let body = null;
-  const result = await createStripeTestPortal({
+  const result = await createStripePortal({
     request: new Request("https://whatnow-app.com/api/subscription"),
     customerId: "cus_test1",
-    configuration: { secretKey: "sk_test_secret", priceId: "price_test1" },
+    configuration: { secretKey: "sk_test_secret", priceId: "price_test1", mode: "test" },
     fetchImpl: async (_url, init) => {
       body = init.body;
       return Response.json({ url: "https://billing.stripe.com/p/session/test" });
@@ -96,10 +103,10 @@ test("customer portal accepts only Stripe's HTTPS billing host", async () => {
   assert.equal(body.get("customer"), "cus_test1");
   assert.equal(body.get("return_url"), "https://whatnow-app.com/?subscription=managed");
 
-  const rejected = await createStripeTestPortal({
+  const rejected = await createStripePortal({
     request: new Request("https://whatnow-app.com/api/subscription"),
     customerId: "cus_test1",
-    configuration: { secretKey: "sk_test_secret", priceId: "price_test1" },
+    configuration: { secretKey: "sk_test_secret", priceId: "price_test1", mode: "test" },
     fetchImpl: async () => Response.json({ url: "https://attacker.example/session" }),
   });
   assert.deepEqual(rejected, { ok: false, code: "invalid_response" });
@@ -123,7 +130,7 @@ test("webhook rejects invalid signatures before changing subscription state", as
     headers: { "content-type": "application/json", "stripe-signature": "t=1,v1=bad" },
     body: JSON.stringify(checkoutEvent()),
   }), {
-    environment: { STRIPE_TEST_CHECKOUT_ENABLED: "true", STRIPE_WEBHOOK_SECRET: "whsec_test_secret" },
+    environment: testEnvironment,
     store: { readForUser: async () => null, markCheckoutPending: async () => {}, applyStripeEvent: async () => { applied += 1; } },
     now: Date.UTC(2026, 6, 17, 12),
   });
@@ -143,10 +150,47 @@ test("valid signed webhook is accepted once processing storage is available", as
     headers: { "content-type": "application/json", "stripe-signature": header },
     body: payload,
   }), {
-    environment: { STRIPE_TEST_CHECKOUT_ENABLED: "true", STRIPE_WEBHOOK_SECRET: secret },
+    environment: { ...testEnvironment, STRIPE_WEBHOOK_SECRET: secret },
     store: { readForUser: async () => null, markCheckoutPending: async () => {}, applyStripeEvent: async (value) => { received = value; } },
     now,
   });
   assert.equal(response.status, 200);
   assert.equal(received.id, event.id);
+});
+
+test("webhook rejects a live event when the endpoint is configured for test mode", async () => {
+  const event = { ...checkoutEvent("evt_live_mismatch"), livemode: true };
+  const payload = JSON.stringify(event);
+  const now = Date.UTC(2026, 6, 17, 12);
+  const header = await signature(payload, testEnvironment.STRIPE_WEBHOOK_SECRET, Math.floor(now / 1000));
+  let applied = 0;
+  const response = await handleStripeWebhook(new Request("https://whatnow-app.com/api/stripe/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "stripe-signature": header },
+    body: payload,
+  }), {
+    environment: testEnvironment,
+    store: { readForUser: async () => null, markCheckoutPending: async () => {}, applyStripeEvent: async () => { applied += 1; } },
+    now,
+  });
+  assert.equal(response.status, 400);
+  assert.equal(applied, 0);
+});
+
+test("subscription storage accepts live Stripe events and records live mode", async () => {
+  const database = new DatabaseSync(":memory:");
+  try {
+    const store = createSubscriptionStoreForTests(new Database(database));
+    await store.markCheckoutPending("live-user", "b".repeat(40), false, 1_000);
+    const event = checkoutEvent("evt_live1");
+    event.livemode = true;
+    event.data.object.client_reference_id = "b".repeat(40);
+    event.data.object.metadata.whatnow_account = "b".repeat(40);
+    await store.applyStripeEvent(event, 2_000);
+    const subscription = await store.readForUser("live-user");
+    assert.equal(subscription.planCode, "pro");
+    assert.equal(subscription.testMode, false);
+  } finally {
+    database.close();
+  }
 });

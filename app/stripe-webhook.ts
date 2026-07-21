@@ -1,4 +1,5 @@
 import { getSubscriptionStore, type StripeEvent, type SubscriptionStore } from "./subscription-store.ts";
+import { stripeConfiguration } from "./stripe-server.ts";
 
 const MAX_WEBHOOK_BYTES = 256 * 1024;
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
@@ -66,7 +67,8 @@ export async function handleStripeWebhook(
   options: { environment?: WebhookEnvironment; store?: SubscriptionStore | null; now?: number } = {},
 ): Promise<Response> {
   const environment = options.environment ?? process.env;
-  if (environment.STRIPE_TEST_CHECKOUT_ENABLED !== "true") return json({ error: "webhook_unavailable" }, 503);
+  const configuration = stripeConfiguration(environment);
+  if (!configuration) return json({ error: "webhook_unavailable" }, 503);
   const secret = environment.STRIPE_WEBHOOK_SECRET?.trim() ?? "";
   if (!secret.startsWith("whsec_")) return json({ error: "webhook_unavailable" }, 503);
   const contentType = request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
@@ -88,7 +90,7 @@ export async function handleStripeWebhook(
   } catch {
     return json({ error: "invalid_event" }, 400);
   }
-  if (!validEvent(event) || event.livemode) return json({ error: "invalid_event" }, 400);
+  if (!validEvent(event) || event.livemode !== (configuration.mode === "live")) return json({ error: "invalid_event" }, 400);
   const store = options.store === undefined ? await getSubscriptionStore() : options.store;
   if (!store) return json({ error: "storage_unavailable" }, 503);
   await store.applyStripeEvent(event, options.now);

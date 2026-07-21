@@ -6,21 +6,37 @@ const STRIPE_REQUEST_TIMEOUT_MS = 10_000;
 
 type StripeEnvironment = Record<string, string | undefined>;
 
-export type StripeTestConfiguration = {
+export type StripeMode = "test" | "live";
+
+export type StripeConfiguration = {
   secretKey: string;
   priceId: string;
+  mode: StripeMode;
 };
 
 export type StripeCheckoutResult =
   | { ok: true; url: string }
   | { ok: false; code: "not_configured" | "stripe_error" | "invalid_response" | "timeout" };
 
-export function stripeTestConfiguration(environment: StripeEnvironment = process.env): StripeTestConfiguration | null {
-  if (environment.STRIPE_TEST_CHECKOUT_ENABLED !== "true") return null;
+export function stripeConfiguration(environment: StripeEnvironment = process.env): StripeConfiguration | null {
+  const configuredMode = environment.STRIPE_CHECKOUT_MODE?.trim().toLowerCase();
+  const mode: StripeMode | null = configuredMode === "test" || configuredMode === "live"
+    ? configuredMode
+    : environment.STRIPE_TEST_CHECKOUT_ENABLED === "true" ? "test" : null;
+  if (!mode) return null;
   const secretKey = environment.STRIPE_SECRET_KEY?.trim() ?? "";
   const priceId = environment.STRIPE_PRO_PRICE_ID?.trim() ?? "";
-  if (!secretKey.startsWith("sk_test_") || !/^price_[A-Za-z0-9]+$/.test(priceId)) return null;
-  return { secretKey, priceId };
+  const expectedPrefix = mode === "live" ? "sk_live_" : "sk_test_";
+  if (!secretKey.startsWith(expectedPrefix) || !/^price_[A-Za-z0-9]+$/.test(priceId)) return null;
+  return { secretKey, priceId, mode };
+}
+
+export function testCheckoutAllowed(email: string, environment: StripeEnvironment = process.env): boolean {
+  const allowed = (environment.STRIPE_TEST_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(email.trim().toLowerCase());
 }
 
 export async function privateSubscriptionReference(userId: string): Promise<string> {
@@ -108,7 +124,7 @@ async function stripeFormRequest({
   }
 }
 
-export async function createStripeTestCheckout({
+export async function createStripeCheckout({
   request,
   user,
   configuration,
@@ -116,7 +132,7 @@ export async function createStripeTestCheckout({
 }: {
   request: Request;
   user: VerifiedSupabaseUser;
-  configuration: StripeTestConfiguration;
+  configuration: StripeConfiguration;
   fetchImpl?: typeof fetch;
 }): Promise<StripeCheckoutResult> {
   return stripeFormRequest({
@@ -133,7 +149,7 @@ export async function createStripeTestCheckout({
   });
 }
 
-export async function createStripeTestPortal({
+export async function createStripePortal({
   request,
   customerId,
   configuration,
@@ -141,7 +157,7 @@ export async function createStripeTestPortal({
 }: {
   request: Request;
   customerId: string;
-  configuration: StripeTestConfiguration;
+  configuration: StripeConfiguration;
   fetchImpl?: typeof fetch;
 }): Promise<StripeCheckoutResult> {
   if (!/^cus_[A-Za-z0-9]+$/.test(customerId)) return { ok: false, code: "invalid_response" };

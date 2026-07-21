@@ -8,7 +8,7 @@ import {
 } from "../app/analysis-cost.ts";
 import {
   FREE_PLAN_ENTITLEMENTS,
-  SUBSCRIPTION_PRICING_DRAFT,
+  SUBSCRIPTION_PLAN,
 } from "../app/subscription-plans.ts";
 
 test("GPT-5.6 Luna cost estimate uses the approved model price inputs", () => {
@@ -32,15 +32,14 @@ test("cost estimation clamps malformed usage instead of producing negative spend
   }), 10);
 });
 
-test("subscription pricing remains a non-purchasable draft", () => {
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.currency, "USD");
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.monthlyGrossCents, 999);
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.annualGrossCents, 9_990);
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling24HourSafetyThreshold, 30);
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling30DaySafetyThreshold, 300);
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.followupQuestionsPerDocument, 30);
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.status, "draft_not_for_sale");
-  assert.equal(SUBSCRIPTION_PRICING_DRAFT.checkoutEnabled, false);
+test("subscription pricing exposes the approved Pro offer", () => {
+  assert.equal(SUBSCRIPTION_PLAN.currency, "USD");
+  assert.equal(SUBSCRIPTION_PLAN.monthlyGrossCents, 999);
+  assert.equal(SUBSCRIPTION_PLAN.annualGrossCents, 9_990);
+  assert.equal(SUBSCRIPTION_PLAN.fairUse.rolling24HourSafetyThreshold, 30);
+  assert.equal(SUBSCRIPTION_PLAN.fairUse.rolling30DaySafetyThreshold, 300);
+  assert.equal(SUBSCRIPTION_PLAN.fairUse.followupQuestionsPerDocument, 30);
+  assert.equal(SUBSCRIPTION_PLAN.status, "available_when_configured");
   assert.deepEqual(FREE_PLAN_ENTITLEMENTS, {
     planCode: "free",
     rolling24HourAnalyses: 3,

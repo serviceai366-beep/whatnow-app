@@ -1,6 +1,6 @@
 import { isSameOriginRequest } from "../../security.ts";
-import { SUBSCRIPTION_PRICING_DRAFT } from "../../subscription-plans.ts";
-import { createStripeTestCheckout, createStripeTestPortal, privateSubscriptionReference, stripeTestConfiguration } from "../../stripe-server.ts";
+import { SUBSCRIPTION_PLAN } from "../../subscription-plans.ts";
+import { createStripeCheckout, createStripePortal, privateSubscriptionReference, stripeConfiguration, testCheckoutAllowed } from "../../stripe-server.ts";
 import { getSubscriptionStore } from "../../subscription-store.ts";
 import type { SubscriptionPublicPayload } from "../../subscription-types.ts";
 import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
@@ -38,6 +38,7 @@ function error(code: SubscriptionApiError, message: string, status: number): Res
 
 function publicPayload(
   checkoutAvailable: boolean,
+  testMode: boolean,
   subscription?: SubscriptionPublicPayload["subscription"],
 ): SubscriptionPublicPayload {
   return {
@@ -46,16 +47,16 @@ function publicPayload(
       state: "free",
       checkoutAvailable,
       managementAvailable: false,
-      testMode: true,
+      testMode,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
     },
     pricing: {
-      productName: SUBSCRIPTION_PRICING_DRAFT.productName,
-      currency: SUBSCRIPTION_PRICING_DRAFT.currency,
-      monthlyGrossCents: SUBSCRIPTION_PRICING_DRAFT.monthlyGrossCents,
-      rolling24HourSafetyThreshold: SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling24HourSafetyThreshold,
-      rolling30DaySafetyThreshold: SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling30DaySafetyThreshold,
+      productName: SUBSCRIPTION_PLAN.productName,
+      currency: SUBSCRIPTION_PLAN.currency,
+      monthlyGrossCents: SUBSCRIPTION_PLAN.monthlyGrossCents,
+      rolling24HourSafetyThreshold: SUBSCRIPTION_PLAN.fairUse.rolling24HourSafetyThreshold,
+      rolling30DaySafetyThreshold: SUBSCRIPTION_PLAN.fairUse.rolling30DaySafetyThreshold,
     },
   };
 }
@@ -67,7 +68,9 @@ function authenticationError(auth: Exclude<Awaited<ReturnType<typeof verifySupab
 export async function GET(request: Request): Promise<Response> {
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return authenticationError(auth);
-  const checkoutConfigured = SUBSCRIPTION_PRICING_DRAFT.checkoutEnabled && Boolean(stripeTestConfiguration());
+  const configuration = stripeConfiguration();
+  const checkoutConfigured = Boolean(configuration)
+    && (configuration?.mode === "live" || testCheckoutAllowed(auth.user.email));
   const store = await getSubscriptionStore();
   const stored = store ? await store.readForUser(auth.user.id) : null;
   const subscription = stored ? {
@@ -79,7 +82,7 @@ export async function GET(request: Request): Promise<Response> {
     currentPeriodEnd: stored.currentPeriodEnd,
     cancelAtPeriodEnd: stored.cancelAtPeriodEnd,
   } : undefined;
-  return response(publicPayload(checkoutConfigured, subscription));
+  return response(publicPayload(checkoutConfigured, configuration?.mode === "test", subscription));
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -103,12 +106,12 @@ export async function POST(request: Request): Promise<Response> {
       ? "checkout"
       : null;
   if (!action) return error("invalid_request", "Unknown subscription action.", 400);
-  if (!SUBSCRIPTION_PRICING_DRAFT.checkoutEnabled) {
-    return error("checkout_unavailable", "Subscriptions are coming soon and checkout is not open.", 503);
-  }
-  const configuration = stripeTestConfiguration();
+  const configuration = stripeConfiguration();
   if (!configuration) {
-    return error("checkout_unavailable", "Test checkout is not configured and no payment can be taken.", 503);
+    return error("checkout_unavailable", "Subscription checkout is not configured.", 503);
+  }
+  if (configuration.mode === "test" && !testCheckoutAllowed(auth.user.email)) {
+    return error("checkout_unavailable", "Subscription checkout is not open for this account yet.", 403);
   }
   const store = await getSubscriptionStore();
   if (!store) return error("storage_unavailable", "Subscription storage is unavailable.", 503);
@@ -117,16 +120,16 @@ export async function POST(request: Request): Promise<Response> {
     if (existing?.state !== "active" || existing.planCode !== "pro" || !existing.stripeCustomerId) {
       return error("portal_unavailable", "No active test subscription is available to manage.", 409);
     }
-    const portal = await createStripeTestPortal({ request, customerId: existing.stripeCustomerId, configuration });
-    if (!portal.ok) return error("checkout_failed", "Stripe test portal could not be created.", 502);
-    return response({ portalUrl: portal.url, testMode: true });
+    const portal = await createStripePortal({ request, customerId: existing.stripeCustomerId, configuration });
+    if (!portal.ok) return error("checkout_failed", "Stripe subscription portal could not be created.", 502);
+    return response({ portalUrl: portal.url, testMode: configuration.mode === "test" });
   }
   if (existing?.state === "active" && existing.planCode === "pro") {
-    return error("already_subscribed", "This account already has an active test subscription.", 409);
+    return error("already_subscribed", "This account already has an active subscription.", 409);
   }
   const accountReference = await privateSubscriptionReference(auth.user.id);
-  await store.markCheckoutPending(auth.user.id, accountReference);
-  const checkout = await createStripeTestCheckout({ request, user: auth.user, configuration });
-  if (!checkout.ok) return error("checkout_failed", "Stripe test checkout could not be created.", 502);
-  return response({ checkoutUrl: checkout.url, testMode: true });
+  await store.markCheckoutPending(auth.user.id, accountReference, configuration.mode === "test");
+  const checkout = await createStripeCheckout({ request, user: auth.user, configuration });
+  if (!checkout.ok) return error("checkout_failed", "Stripe checkout could not be created.", 502);
+  return response({ checkoutUrl: checkout.url, testMode: configuration.mode === "test" });
 }
