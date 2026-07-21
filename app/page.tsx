@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChangeEvent, DragEvent } from "react";
+import type { ChangeEvent, DragEvent, MouseEvent } from "react";
 import {
   formatFileSize,
   MAX_TEXT_LENGTH,
@@ -460,6 +460,17 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const goHome = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    resetAnalysis();
+    setInfoOpen(false);
+    setSupportOpen(false);
+    setCalendarOpen(false);
+    setUserHubOpen(false);
+    setHistoryOpen(false);
+    setAuthOpen(false);
+  };
+
   const openHistoryItem = (item: AnalysisHistoryItem) => {
     setAnalysisLanguage(item.language);
     setInputMode(item.sourceKind);
@@ -481,7 +492,7 @@ export default function Home() {
   return (
     <main>
       <header className="site-header">
-        <a className="brand" href="#top" aria-label={t.homeAria}>
+        <a className="brand" href="#top" aria-label={t.homeAria} onClick={goHome}>
           <img className="brand-mark" src="/whatnow-logo.jpg" alt="" />
           <span>WhatNow?</span>
         </a>
