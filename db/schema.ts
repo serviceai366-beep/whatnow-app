@@ -183,3 +183,14 @@ export const generatedDocuments = sqliteTable("generated_documents", {
 export const documentStudioUsage = sqliteTable("document_studio_usage", {
   id: text("id").primaryKey().notNull(), userId: text("user_id").notNull(), status: text("status").notNull().default("pending"), createdAt: integer("created_at").notNull(), updatedAt: integer("updated_at").notNull(),
 }, (table) => [index("studio_usage_owner_idx").on(table.userId, table.createdAt), check("studio_usage_status_valid", sql`${table.status} in ('pending', 'completed')`)]);
+
+export const documentStudioAssistantUsage = sqliteTable("document_studio_assistant_usage", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("studio_assistant_usage_owner_idx").on(table.userId, table.createdAt),
+  check("studio_assistant_usage_status_valid", sql`${table.status} in ('pending', 'completed')`),
+]);

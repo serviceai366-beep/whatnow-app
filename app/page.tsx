@@ -131,6 +131,7 @@ export default function Home() {
   const [quotaRefreshKey, setQuotaRefreshKey] = useState(0);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [userHubOpen, setUserHubOpen] = useState(false);
+  const [userHubInitialTab, setUserHubInitialTab] = useState<"files" | "plan">("files");
   const [supportOpen, setSupportOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
@@ -522,7 +523,7 @@ export default function Home() {
           <button className="header-tool-button" type="button" aria-label={w.info} data-tooltip={w.info} onClick={() => setInfoOpen(true)}><ToolIcon kind="about" />{w.info}</button>
           <button className="header-tool-button" type="button" aria-label={w.support} data-tooltip={w.support} onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><ToolIcon kind="support" />{w.support}</button>
           {account && <button className="header-tool-button" type="button" aria-label={w.calendar} data-tooltip={w.calendar} onClick={() => setCalendarOpen(true)}><ToolIcon kind="calendar" />{w.calendar}</button>}
-          {account && <button className="header-tool-button" type="button" aria-label={w.space} data-tooltip={w.space} onClick={() => setUserHubOpen(true)}><ToolIcon kind="space" />{w.space}</button>}
+          {account && <button className="header-tool-button" type="button" aria-label={w.space} data-tooltip={w.space} onClick={() => { setUserHubInitialTab("files"); setUserHubOpen(true); }}><ToolIcon kind="space" />{w.space}</button>}
           <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
             onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={changeTheme} open={authOpen} onOpenChange={setAuthOpen}
             quotaRefreshKey={quotaRefreshKey} />
@@ -541,7 +542,7 @@ export default function Home() {
         <AnalysisResultView key={`${savedHistoryId ?? "unsaved"}:${analysis.summary}`} result={analysis} onRestart={resetAnalysis} t={t} locale={language}
           account={account} analysisId={savedHistoryId} preferences={preferences} onSave={() => void persistAnalysisHistory(analysis, inputMode, analysisLanguage)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : productMode === "create" ? (
-        <DocumentStudioPrototype locale={language} account={account} onRequireAccount={() => setAuthOpen(true)} />
+        <DocumentStudioPrototype locale={language} account={account} onRequireAccount={() => setAuthOpen(true)} onOpenPlan={() => { setUserHubInitialTab("plan"); setUserHubOpen(true); }} />
       ) : (
         <>
       <section className="hero" id="top">
@@ -717,7 +718,7 @@ export default function Home() {
       )}
       {historyOpen && account && <HistoryPanel locale={language} onClose={closeHistory} onOpen={openHistoryItem} />}
       {account && <CalendarPanel open={calendarOpen} locale={language} preferences={preferences} onClose={() => setCalendarOpen(false)} />}
-      {account && <UserHub open={userHubOpen} locale={language} preferences={preferences} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
+      {account && <UserHub open={userHubOpen} initialTab={userHubInitialTab} locale={language} preferences={preferences} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
       {account && <SupportPanel open={supportOpen} locale={language} onClose={() => setSupportOpen(false)} />}
       <InfoPanel open={infoOpen} locale={language} t={t} onClose={() => setInfoOpen(false)} />
       {captchaChallengeOpen && <SecurityChallenge locale={language} theme={theme} resetKey={captchaResetKey} error={captchaError}

@@ -1,4 +1,5 @@
 import { supportedLanguages, type SupportedLanguage } from "./analysis-schema.ts";
+import { guideFor, requiredRegionFor } from "./document-studio-guides.ts";
 
 export type StudioMode = "create" | "improve" | "review";
 export type StudioReadinessLevel = "red" | "yellow" | "green";
@@ -9,8 +10,11 @@ export const studioTemplateIds = [
 ] as const;
 
 export const studioCountries = [
-  "Latvia", "Estonia", "Lithuania", "Germany", "France", "Spain", "Portugal", "Italy", "Poland",
-  "Netherlands", "Ireland", "United Kingdom", "United States", "Canada", "Brazil", "Argentina",
+  "Latvia", "Estonia", "Lithuania", "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia",
+  "Denmark", "Finland", "France", "Germany", "Greece", "Hungary", "Ireland", "Italy", "Luxembourg",
+  "Malta", "Netherlands", "Norway", "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain",
+  "Sweden", "Switzerland", "United Kingdom", "United States", "Canada", "Australia", "Brazil", "Argentina",
+  "Chile", "Colombia", "Mexico",
 ] as const;
 
 export type StudioRequest = {
@@ -40,8 +44,11 @@ export type GeneratedDocument = {
   legalSources: { title: string; url: string; accessedAt: string; claim: string }[];
   reviewChecklist: string[];
   confidence: "low" | "medium" | "high";
+  annotations?: { sectionHeading: string; excerpt: string; reason: string; kind: "missing" | "uncertain"; question: string }[];
   safetyNotice: string;
 };
+
+export type StudioRevisionResult = { message: string; changed: boolean; document: GeneratedDocument };
 
 const text = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
@@ -70,23 +77,20 @@ export function parseStudioRequest(value: unknown): StudioRequest | null {
 export function assessStudioReadiness(input: StudioRequest): GeneratedDocument["readiness"] {
   const critical: string[] = [];
   const helpful: string[] = [];
+  if (requiredRegionFor(input.country) && !input.region) critical.push("region_or_state");
   if (input.mode !== "create") {
     if (!input.details.existing?.trim()) critical.push("existing_document");
     if (!input.details.goal?.trim()) critical.push("requested_changes");
-  } else if (input.templateId === "lease") {
-    if (!input.details.landlord || !input.details.tenant) critical.push("parties");
-    if (!input.details.property) critical.push("property_address");
-    if (!input.details.start) critical.push("start_date");
-    if (!input.details.rent) critical.push("rent_amount");
-    if (!input.details.end) helpful.push("end_date");
-    if (!input.details.notes) helpful.push("deposit_utilities_and_notice_terms");
   } else {
-    const goal = input.details.goal?.trim() ?? "";
-    if (goal.length < 20) critical.push("purpose_and_key_facts");
-    else if (goal.length < 80) helpful.push("more_specific_details");
+    for (const field of guideFor(input.templateId).fields) {
+      if (input.details[field.key]?.trim()) continue;
+      (field.required ? critical : helpful).push(field.key);
+    }
   }
-  const level: StudioReadinessLevel = critical.length >= 3 ? "red" : critical.length > 0 || helpful.length > 1 ? "yellow" : "green";
-  return { level, score: level === "green" ? 100 : level === "yellow" ? 62 : 28, missingCritical: critical, missingHelpful: helpful };
+  const total = critical.length + helpful.length;
+  const level: StudioReadinessLevel = critical.length >= 3 ? "red" : critical.length > 0 || helpful.length > 2 ? "yellow" : "green";
+  const score = level === "green" ? Math.max(88, 100 - total * 3) : level === "yellow" ? Math.max(48, 78 - critical.length * 10 - helpful.length * 3) : Math.max(15, 45 - critical.length * 6);
+  return { level, score, missingCritical: critical, missingHelpful: helpful };
 }
 
 const stringArray = (v: unknown, max = 30) => Array.isArray(v) && v.length <= max && v.every((x) => typeof x === "string" && x.length <= 8_000);
@@ -99,6 +103,7 @@ export function validateGeneratedDocument(value: unknown): value is GeneratedDoc
   if (!Array.isArray(value.changes) || !value.changes.every((x) => record(x) && typeof x.summary === "string" && typeof x.reason === "string")) return false;
   if (!Array.isArray(value.unresolvedIssues) || !value.unresolvedIssues.every((x) => record(x) && typeof x.issue === "string" && ["low", "medium", "high"].includes(String(x.severity)) && typeof x.recommendation === "string")) return false;
   if (!Array.isArray(value.legalSources) || !value.legalSources.every((x) => record(x) && typeof x.title === "string" && typeof x.url === "string" && /^https:\/\//.test(x.url) && typeof x.accessedAt === "string" && typeof x.claim === "string")) return false;
+  if (!(value.annotations === undefined || Array.isArray(value.annotations) && value.annotations.length <= 80 && value.annotations.every((x) => record(x) && typeof x.sectionHeading === "string" && typeof x.excerpt === "string" && typeof x.reason === "string" && ["missing", "uncertain"].includes(String(x.kind)) && typeof x.question === "string"))) return false;
   return record(value.readiness) && ["red", "yellow", "green"].includes(String(value.readiness.level)) && Number.isInteger(value.readiness.score) && Number(value.readiness.score) >= 0 && Number(value.readiness.score) <= 100
     && stringArray(value.readiness.missingCritical) && stringArray(value.readiness.missingHelpful)
     && ["low", "medium", "high"].includes(String(value.confidence)) && typeof value.safetyNotice === "string";
@@ -118,7 +123,19 @@ export const generatedDocumentJsonSchema = {
     changes: { type: "array", items: { type: "object", additionalProperties: false, properties: { summary: str, reason: str }, required: ["summary", "reason"] } },
     unresolvedIssues: { type: "array", items: { type: "object", additionalProperties: false, properties: { issue: str, severity: { type: "string", enum: ["low", "medium", "high"] }, recommendation: str }, required: ["issue", "severity", "recommendation"] } },
     legalSources: { type: "array", items: { type: "object", additionalProperties: false, properties: { title: str, url: str, accessedAt: str, claim: str }, required: ["title", "url", "accessedAt", "claim"] } },
+    annotations: { type: "array", items: { type: "object", additionalProperties: false, properties: { sectionHeading: str, excerpt: str, reason: str, kind: { type: "string", enum: ["missing", "uncertain"] }, question: str }, required: ["sectionHeading", "excerpt", "reason", "kind", "question"] } },
     reviewChecklist: strings, confidence: { type: "string", enum: ["low", "medium", "high"] }, safetyNotice: str,
   },
-  required: ["schemaVersion", "title", "mode", "templateId", "country", "region", "outputLanguage", "readiness", "sections", "plainText", "assumptions", "changes", "unresolvedIssues", "legalSources", "reviewChecklist", "confidence", "safetyNotice"],
+  required: ["schemaVersion", "title", "mode", "templateId", "country", "region", "outputLanguage", "readiness", "sections", "plainText", "assumptions", "changes", "unresolvedIssues", "legalSources", "annotations", "reviewChecklist", "confidence", "safetyNotice"],
 };
+
+export const studioRevisionJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: { message: str, changed: { type: "boolean" }, document: generatedDocumentJsonSchema },
+  required: ["message", "changed", "document"],
+};
+
+export function validateStudioRevision(value: unknown): value is StudioRevisionResult {
+  return record(value) && typeof value.message === "string" && typeof value.changed === "boolean" && validateGeneratedDocument(value.document);
+}
