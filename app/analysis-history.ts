@@ -2,6 +2,7 @@ import type { AnalysisResult, SupportedLanguage } from "./analysis-schema";
 import { supportedLanguages, validateAnalysisResult } from "./analysis-schema";
 import { getAccessToken } from "./supabase-auth";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-config";
+import { deleteFollowupsForAnalysis } from "./followup-client";
 
 export const ANALYSIS_HISTORY_LIMIT = 10;
 
@@ -77,6 +78,8 @@ async function trimAnalysisHistory(suppliedAccessToken?: string): Promise<void> 
     : [];
   if (ids.length === 0) return;
 
+  await Promise.all(ids.map((id) => deleteFollowupsForAnalysis(id, suppliedAccessToken)));
+
   const deletion = await authenticatedRequest(
     `document_analyses?id=in.(${ids.join(",")})`,
     { method: "DELETE" },
@@ -128,6 +131,7 @@ export async function saveAnalysisToHistory(input: {
 
 export async function deleteAnalysisFromHistory(id: string, suppliedAccessToken?: string): Promise<void> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("history_invalid_id");
+  await deleteFollowupsForAnalysis(id, suppliedAccessToken);
   const response = await authenticatedRequest(`document_analyses?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
   }, suppliedAccessToken);

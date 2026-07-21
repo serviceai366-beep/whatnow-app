@@ -38,6 +38,7 @@ test("subscription pricing remains a non-purchasable draft", () => {
   assert.equal(SUBSCRIPTION_PRICING_DRAFT.annualGrossCents, 9_990);
   assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling24HourSafetyThreshold, 30);
   assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.rolling30DaySafetyThreshold, 300);
+  assert.equal(SUBSCRIPTION_PRICING_DRAFT.fairUseDraft.followupQuestionsPerDocument, 30);
   assert.equal(SUBSCRIPTION_PRICING_DRAFT.status, "draft_not_for_sale");
   assert.equal(SUBSCRIPTION_PRICING_DRAFT.checkoutEnabled, false);
   assert.deepEqual(FREE_PLAN_ENTITLEMENTS, {
@@ -47,5 +48,6 @@ test("subscription pricing remains a non-purchasable draft", () => {
     savedFiles: 10,
     activeReminders: 3,
     weeklyReminderCreations: 10,
+    followupQuestionsPerDocument: 3,
   });
 });

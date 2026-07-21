@@ -24,6 +24,7 @@ import { DEFAULT_PROFILE_PREFERENCES, type UserProfilePatch, type UserProfilePre
 import type { ProfileLanguage } from "./profile-types";
 import { FileClientError, uploadStoredFile } from "./file-client";
 import { interfaceCopyFallback, languageOption, responseLanguageOptions } from "./language-options";
+import { DocumentChat } from "./document-chat";
 
 const workspaceCopy = {
   en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
@@ -499,7 +500,7 @@ export default function Home() {
       {fileSaveNotice && <div className={`storage-toast ${fileSaveNotice.kind}`} role="status"><span>{fileSaveNotice.kind === "success" ? "✓" : "!"}</span><p>{fileSaveNotice.text}</p><button type="button" aria-label="Close" onClick={() => setFileSaveNotice(null)}>×</button></div>}
 
       {showResult && analysis ? (
-        <AnalysisResultView result={analysis} onRestart={resetAnalysis} t={t} locale={language}
+        <AnalysisResultView key={`${savedHistoryId ?? "unsaved"}:${analysis.summary}`} result={analysis} onRestart={resetAnalysis} t={t} locale={language}
           account={account} analysisId={savedHistoryId} preferences={preferences} onSave={() => void persistAnalysisHistory(analysis, inputMode, analysisLanguage)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : (
         <>
@@ -921,6 +922,8 @@ function AnalysisResultView({
   h: (typeof historyCopy)[keyof typeof historyCopy];
 }) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+  const [selectedResultText, setSelectedResultText] = useState<string | null>(null);
+  const resultSectionRef = useRef<HTMLElement>(null);
   const primaryDeadline = result.deadlines.find((item) => item.status === "found") || result.deadlines[0];
   const remainingDays = daysUntil(primaryDeadline?.normalizedDate);
   const isOverdue = remainingDays !== null && remainingDays < 0;
@@ -940,8 +943,25 @@ function AnalysisResultView({
     }
   };
 
+  const captureGeneratedSelection = () => {
+    window.setTimeout(() => {
+      const selection = window.getSelection();
+      const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      const section = resultSectionRef.current;
+      const ancestor = range?.commonAncestorContainer ?? null;
+      const ancestorElement = ancestor instanceof Element ? ancestor : ancestor?.parentElement;
+      const text = selection?.toString().replace(/\s+/g, " ").trim() ?? "";
+      if (!section || !ancestor || !section.contains(ancestor) || ancestorElement?.closest(".document-chat-cta,.document-chat-backdrop,.result-actions") || text.length < 3) {
+        setSelectedResultText(null);
+        return;
+      }
+      setSelectedResultText(text.slice(0, 1_600));
+    }, 0);
+  };
+
   return (
-    <section className="result-section" id="analysis-result" aria-labelledby="result-title">
+    <section className="result-section" id="analysis-result" aria-labelledby="result-title" ref={resultSectionRef}
+      onMouseUp={captureGeneratedSelection} onTouchEnd={captureGeneratedSelection}>
       <div className="result-topbar">
         <button className="back-button" type="button" onClick={onRestart}><span aria-hidden="true">←</span> {t.newDocument}</button>
         <span className="analysis-complete"><span aria-hidden="true">✓</span> {t.analysisComplete}</span>
@@ -984,6 +1004,9 @@ function AnalysisResultView({
           <p>{primaryDeadline?.dateText ? `${t.linkedDeadline}: ${primaryDeadline.dateText}` : t.ambiguousContact}</p>
         </div>
       </article>
+
+      <DocumentChat analysisId={analysisId} locale={locale} selectedText={selectedResultText}
+        onSelectionConsumed={() => { window.getSelection()?.removeAllRanges(); setSelectedResultText(null); }} />
 
       {account && <EventSuggestions key={analysisId ?? `${result.summary}:${result.outputLanguage}`} result={result} analysisId={analysisId} locale={locale} preferences={preferences} />}
 

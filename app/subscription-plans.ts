@@ -13,6 +13,7 @@ export const SUBSCRIPTION_PRICING_DRAFT = Object.freeze({
   fairUseDraft: Object.freeze({
     rolling24HourSafetyThreshold: 30,
     rolling30DaySafetyThreshold: 300,
+    followupQuestionsPerDocument: 30,
     largeDocumentReviewRequired: true,
   }),
 });
@@ -24,4 +25,5 @@ export const FREE_PLAN_ENTITLEMENTS = Object.freeze({
   savedFiles: 10,
   activeReminders: 3,
   weeklyReminderCreations: 10,
+  followupQuestionsPerDocument: 3,
 });

@@ -155,3 +155,23 @@ export const supportAttachmentDeletions = sqliteTable("support_attachment_deleti
   objectKey: text("object_key").primaryKey().notNull(),
   createdAt: integer("created_at").notNull(),
 });
+
+export const documentFollowups = sqliteTable("document_followups", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id").notNull(),
+  analysisId: text("analysis_id").notNull(),
+  question: text("question").notNull(),
+  selectedText: text("selected_text"),
+  answer: text("answer"),
+  evidenceIds: text("evidence_ids"),
+  uncertain: integer("uncertain", { mode: "boolean" }),
+  safetyNotice: text("safety_notice"),
+  status: text("status").notNull().default("pending"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("document_followups_owner_analysis_idx").on(table.userId, table.analysisId, table.createdAt),
+  index("document_followups_created_idx").on(table.createdAt),
+  index("document_followups_owner_created_idx").on(table.userId, table.createdAt),
+  check("document_followups_status_valid", sql`${table.status} in ('pending', 'completed')`),
+]);
