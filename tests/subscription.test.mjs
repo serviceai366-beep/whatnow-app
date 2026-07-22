@@ -23,6 +23,7 @@ test("Stripe configuration requires an explicit mode and matching secret", () =>
   assert.equal(stripeConfiguration({ STRIPE_CHECKOUT_MODE: "test", STRIPE_SECRET_KEY: "sk_live_secret", STRIPE_PRO_PRICE_ID: "price_123" }), null);
   assert.deepEqual(stripeConfiguration({ STRIPE_CHECKOUT_MODE: "test", STRIPE_SECRET_KEY: "sk_test_secret", STRIPE_PRO_PRICE_ID: "price_123" }), { secretKey: "sk_test_secret", priceId: "price_123", mode: "test" });
   assert.deepEqual(stripeConfiguration({ STRIPE_CHECKOUT_MODE: "live", STRIPE_SECRET_KEY: "sk_live_secret", STRIPE_PRO_PRICE_ID: "price_live123" }), { secretKey: "sk_live_secret", priceId: "price_live123", mode: "live" });
+  assert.deepEqual(stripeConfiguration({ STRIPE_CHECKOUT_MODE: "live", STRIPE_SECRET_KEY: "rk_live_limited", STRIPE_PRO_PRICE_ID: "price_live123" }), { secretKey: "rk_live_limited", priceId: "price_live123", mode: "live" });
   assert.equal(testCheckoutAllowed("Owner@Example.com", { STRIPE_TEST_ALLOWED_EMAILS: "other@example.com, owner@example.com" }), true);
   assert.equal(testCheckoutAllowed("visitor@example.com", { STRIPE_TEST_ALLOWED_EMAILS: "owner@example.com" }), false);
 });

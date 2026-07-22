@@ -26,8 +26,13 @@ export function stripeConfiguration(environment: StripeEnvironment = process.env
   if (!mode) return null;
   const secretKey = environment.STRIPE_SECRET_KEY?.trim() ?? "";
   const priceId = environment.STRIPE_PRO_PRICE_ID?.trim() ?? "";
-  const expectedPrefix = mode === "live" ? "sk_live_" : "sk_test_";
-  if (!secretKey.startsWith(expectedPrefix) || !/^price_[A-Za-z0-9]+$/.test(priceId)) return null;
+  // Live traffic can use either Stripe's full server key or a scoped restricted
+  // key. WhatNow only needs Checkout and Customer Portal session creation, so
+  // production should prefer an `rk_live_` key with just those permissions.
+  const validSecretKey = mode === "live"
+    ? /^(?:sk_live_|rk_live_)/.test(secretKey)
+    : secretKey.startsWith("sk_test_");
+  if (!validSecretKey || !/^price_[A-Za-z0-9]+$/.test(priceId)) return null;
   return { secretKey, priceId, mode };
 }
 
