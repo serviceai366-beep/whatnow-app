@@ -88,6 +88,25 @@ test("subscription storage activates and cancels only the linked test account", 
   }
 });
 
+test("a sandbox subscription is reset before a live checkout begins", async () => {
+  const database = new DatabaseSync(":memory:");
+  try {
+    const store = createSubscriptionStoreForTests(new Database(database));
+    await store.markCheckoutPending("user-1", "a".repeat(40), true, 1_000);
+    await store.applyStripeEvent(checkoutEvent(), 2_000);
+    assert.equal((await store.readForUser("user-1")).testMode, true);
+
+    await store.markCheckoutPending("user-1", "b".repeat(40), false, 3_000);
+    const reset = await store.readForUser("user-1");
+    assert.equal(reset.planCode, "free");
+    assert.equal(reset.state, "test_checkout_pending");
+    assert.equal(reset.testMode, false);
+    assert.equal(reset.stripeCustomerId, null);
+  } finally {
+    database.close();
+  }
+});
+
 test("customer portal accepts only Stripe's HTTPS billing host", async () => {
   let body = null;
   const result = await createStripePortal({
