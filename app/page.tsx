@@ -28,9 +28,9 @@ import { DocumentChat } from "./document-chat";
 import { DocumentStudioPrototype } from "./document-studio-prototype";
 
 const workspaceCopy = {
-  en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately." },
-  ru: { info: "О сервисе", calendar: "Календарь", space: "Моё пространство", support: "Поддержка", privateHint: "Приватная обработка · Важные решения нужно проверять", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось." },
-  lv: { info: "Par servisu", calendar: "Kalendārs", space: "Mana telpa", support: "Atbalsts", privateHint: "Privāta apstrāde · Svarīgus lēmumus pārbaudiet", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt." },
+  en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately.", studioUnavailable: "Create & edit is temporarily unavailable. Please try again later." },
+  ru: { info: "О сервисе", calendar: "Календарь", space: "Моё пространство", support: "Поддержка", privateHint: "Приватная обработка · Важные решения нужно проверять", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось.", studioUnavailable: "Режим «Создать и изменить» временно недоступен. Попробуйте позже." },
+  lv: { info: "Par servisu", calendar: "Kalendārs", space: "Mana telpa", support: "Atbalsts", privateHint: "Privāta apstrāde · Svarīgus lēmumus pārbaudiet", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Analīze ir gatava, bet failu neizdevās privāti saglabāt.", studioUnavailable: "Režīms “Izveidot un rediģēt” īslaicīgi nav pieejams. Mēģiniet vēlāk." },
 } as const;
 
 const challengeCopy = {
@@ -134,6 +134,7 @@ export default function Home() {
   const [userHubInitialTab, setUserHubInitialTab] = useState<"files" | "plan">("files");
   const [supportOpen, setSupportOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [studioUnavailableNotice, setStudioUnavailableNotice] = useState(false);
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
@@ -532,10 +533,11 @@ export default function Home() {
 
       {limitNotice && <LimitToast key={`${limitNotice.scope}:${limitNotice.observedAt}`} data={limitNotice} locale={language} onClose={() => setLimitNotice(null)} />}
       {fileSaveNotice && <div className={`storage-toast ${fileSaveNotice.kind}`} role="status"><span>{fileSaveNotice.kind === "success" ? "✓" : "!"}</span><p>{fileSaveNotice.text}</p><button type="button" aria-label="Close" onClick={() => setFileSaveNotice(null)}>×</button></div>}
+      {studioUnavailableNotice && <div className="storage-toast warning" role="status"><span>!</span><p>{w.studioUnavailable}</p><button type="button" aria-label={interfaceCopyLanguage === "ru" ? "Закрыть уведомление" : interfaceCopyLanguage === "lv" ? "Aizvērt paziņojumu" : "Close notification"} onClick={() => setStudioUnavailableNotice(false)}>×</button></div>}
 
       {!showResult && <nav className="product-mode-switch" aria-label="WhatNow? modes">
         <button type="button" className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? "Понять документ" : interfaceCopyLanguage === "lv" ? "Saprast dokumentu" : "Understand"}</strong></button>
-        <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => setProductMode("create")}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong><small className="mode-beta">Beta</small></button>
+        <button type="button" className="" aria-disabled="true" onClick={() => setStudioUnavailableNotice(true)}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong><small className="mode-beta">Beta</small></button>
       </nav>}
 
       {showResult && analysis ? (
