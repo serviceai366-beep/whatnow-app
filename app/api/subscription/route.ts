@@ -73,14 +73,20 @@ export async function GET(request: Request): Promise<Response> {
     && (configuration?.mode === "live" || testCheckoutAllowed(auth.user.email));
   const store = await getSubscriptionStore();
   const stored = store ? await store.readForUser(auth.user.id) : null;
-  const subscription = stored ? {
-    planCode: stored.planCode,
-    state: stored.state,
-    checkoutAvailable: checkoutConfigured && stored.state !== "active",
-    managementAvailable: checkoutConfigured && stored.state === "active" && stored.managementAvailable,
-    testMode: stored.testMode,
-    currentPeriodEnd: stored.currentPeriodEnd,
-    cancelAtPeriodEnd: stored.cancelAtPeriodEnd,
+  // A previous sandbox purchase must never be treated as a paid live plan.
+  // It stays in storage for auditability, but the account can start a live
+  // checkout as soon as the site switches to production billing.
+  const storedForCurrentMode = stored && configuration && stored.testMode === (configuration.mode === "test")
+    ? stored
+    : null;
+  const subscription = storedForCurrentMode ? {
+    planCode: storedForCurrentMode.planCode,
+    state: storedForCurrentMode.state,
+    checkoutAvailable: checkoutConfigured && storedForCurrentMode.state !== "active",
+    managementAvailable: checkoutConfigured && storedForCurrentMode.state === "active" && storedForCurrentMode.managementAvailable,
+    testMode: storedForCurrentMode.testMode,
+    currentPeriodEnd: storedForCurrentMode.currentPeriodEnd,
+    cancelAtPeriodEnd: storedForCurrentMode.cancelAtPeriodEnd,
   } : undefined;
   return response(publicPayload(checkoutConfigured, configuration?.mode === "test", subscription));
 }
@@ -115,7 +121,10 @@ export async function POST(request: Request): Promise<Response> {
   }
   const store = await getSubscriptionStore();
   if (!store) return error("storage_unavailable", "Subscription storage is unavailable.", 503);
-  const existing = await store.readForUser(auth.user.id);
+  const storedExisting = await store.readForUser(auth.user.id);
+  const existing = storedExisting && storedExisting.testMode === (configuration.mode === "test")
+    ? storedExisting
+    : null;
   if (action === "portal") {
     if (existing?.state !== "active" || existing.planCode !== "pro" || !existing.stripeCustomerId) {
       return error("portal_unavailable", "No active test subscription is available to manage.", 409);

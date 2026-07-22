@@ -128,14 +128,22 @@ function createStore(db: SubscriptionD1Database): SubscriptionStore {
       await initialize();
       await db.prepare(`INSERT INTO user_subscriptions
         (user_id, account_reference, plan_code, state, test_mode, updated_at)
-        VALUES (?, ?, 'free', 'test_checkout_pending', 1, ?)
+        VALUES (?, ?, 'free', 'test_checkout_pending', ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
           account_reference = excluded.account_reference,
-          state = CASE WHEN user_subscriptions.state = 'active' THEN user_subscriptions.state ELSE 'test_checkout_pending' END,
+          plan_code = CASE WHEN user_subscriptions.test_mode != excluded.test_mode THEN 'free' ELSE user_subscriptions.plan_code END,
+          state = CASE
+            WHEN user_subscriptions.test_mode != excluded.test_mode THEN 'test_checkout_pending'
+            WHEN user_subscriptions.state = 'active' THEN user_subscriptions.state
+            ELSE 'test_checkout_pending'
+          END,
+          stripe_customer_id = CASE WHEN user_subscriptions.test_mode != excluded.test_mode THEN NULL ELSE user_subscriptions.stripe_customer_id END,
+          stripe_subscription_id = CASE WHEN user_subscriptions.test_mode != excluded.test_mode THEN NULL ELSE user_subscriptions.stripe_subscription_id END,
+          current_period_end = CASE WHEN user_subscriptions.test_mode != excluded.test_mode THEN NULL ELSE user_subscriptions.current_period_end END,
+          cancel_at_period_end = CASE WHEN user_subscriptions.test_mode != excluded.test_mode THEN 0 ELSE user_subscriptions.cancel_at_period_end END,
+          test_mode = excluded.test_mode,
           updated_at = excluded.updated_at`)
-        .bind(userId, reference, now).run();
-      await db.prepare("UPDATE user_subscriptions SET test_mode = ? WHERE user_id = ?")
-        .bind(testMode ? 1 : 0, userId).run();
+        .bind(userId, reference, testMode ? 1 : 0, now).run();
     },
     async applyStripeEvent(event, now = Date.now()) {
       await initialize();
@@ -204,7 +212,12 @@ export async function activePlanForUser(userId: string, store?: SubscriptionStor
   const resolved = store ?? await getSubscriptionStore();
   if (!resolved) return "free";
   const subscription = await resolved.readForUser(userId);
-  return subscription?.state === "active" && subscription.planCode === "pro" ? "pro" : "free";
+  const configuredMode = process.env.STRIPE_CHECKOUT_MODE?.trim().toLowerCase();
+  const expectedTestMode = configuredMode === "test" ? true : configuredMode === "live" ? false : null;
+  return subscription?.state === "active" && subscription.planCode === "pro"
+    && (expectedTestMode === null || subscription.testMode === expectedTestMode)
+    ? "pro"
+    : "free";
 }
 
 export function createSubscriptionStoreForTests(db: SubscriptionD1Database): SubscriptionStore {
