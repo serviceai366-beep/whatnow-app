@@ -46,6 +46,17 @@ export type SubscriptionStore = {
   applyStripeEvent(event: StripeEvent, now?: number): Promise<void>;
 };
 
+function configuredProGrantEmails(environment: Record<string, string | undefined> = process.env): Set<string> {
+  return new Set((environment.WHATNOW_PRO_GRANT_EMAILS ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean));
+}
+
+export function isProGrantEmail(email: string, environment: Record<string, string | undefined> = process.env): boolean {
+  return configuredProGrantEmails(environment).has(email.trim().toLowerCase());
+}
+
 const SUBSCRIPTION_COLUMNS = `user_id, account_reference, plan_code, state, stripe_customer_id,
   stripe_subscription_id, current_period_end, cancel_at_period_end, test_mode, last_stripe_event_created, updated_at`;
 
@@ -208,7 +219,8 @@ export async function getSubscriptionStore(): Promise<SubscriptionStore | null> 
   return storePromise;
 }
 
-export async function activePlanForUser(userId: string, store?: SubscriptionStore): Promise<SubscriptionPlanCode> {
+export async function activePlanForUser(userId: string, store?: SubscriptionStore, email?: string): Promise<SubscriptionPlanCode> {
+  if (email && isProGrantEmail(email)) return "pro";
   const resolved = store ?? await getSubscriptionStore();
   if (!resolved) return "free";
   const subscription = await resolved.readForUser(userId);

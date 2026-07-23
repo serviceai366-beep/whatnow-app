@@ -24,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
   if (!auth.ok) return response({ error: { code: auth.code } }, auth.status);
 
   try {
-    const planCode = await activePlanForUser(auth.user.id);
+    const planCode = await activePlanForUser(auth.user.id, undefined, auth.user.email);
     const quota = await readAnalysisQuota({ userKey: auth.user.id, planCode });
     if (quota.backend === "unavailable") {
       return response({ error: { code: "usage_control_unavailable" } }, 503);

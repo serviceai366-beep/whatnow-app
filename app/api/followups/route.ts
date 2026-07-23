@@ -145,7 +145,7 @@ export async function GET(request: Request): Promise<Response> {
     if (!analysis) return error("analysis_not_found", "This analysis is unavailable.", 404);
     const store = await getFollowupStore();
     if (!store) return error("followup_storage_unavailable", "The document chat is temporarily unavailable.", 503);
-    const planCode = await activePlanForUser(auth.user.id);
+    const planCode = await activePlanForUser(auth.user.id, undefined, auth.user.email);
     const [messages, quota] = await Promise.all([store.list(auth.user.id, analysisId), store.quota(auth.user.id, analysisId, planCode)]);
     return response({ conversation: { analysisId, messages, quota } });
   } catch (cause) {
@@ -188,7 +188,7 @@ export async function POST(request: Request): Promise<Response> {
     if (!analysis) return error("analysis_not_found", "This analysis is unavailable.", 404);
     store = await getFollowupStore();
     if (!store) return error("followup_storage_unavailable", "The document chat is temporarily unavailable.", 503);
-    const planCode = await activePlanForUser(auth.user.id);
+    const planCode = await activePlanForUser(auth.user.id, undefined, auth.user.email);
     reservedId = await store.reserve({ userId: auth.user.id, ...input, planCode });
     const previous = (await store.list(auth.user.id, input.analysisId)).slice(-8).map((message) => ({
       question: message.question,

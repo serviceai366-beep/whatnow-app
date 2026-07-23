@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { handleStripeWebhook, verifyStripeWebhookSignature } from "../app/stripe-webhook.ts";
-import { activePlanForUser, createSubscriptionStoreForTests } from "../app/subscription-store.ts";
+import { activePlanForUser, createSubscriptionStoreForTests, isProGrantEmail } from "../app/subscription-store.ts";
 import { createStripePortal } from "../app/stripe-server.ts";
 
 class Statement {
@@ -50,6 +50,20 @@ const testEnvironment = {
   STRIPE_PRO_PRICE_ID: "price_test1",
   STRIPE_WEBHOOK_SECRET: "whsec_test_secret",
 };
+
+test("an explicitly configured pilot email receives server-side Pro access without Stripe checkout", async () => {
+  assert.equal(isProGrantEmail("Owner@Example.com", { WHATNOW_PRO_GRANT_EMAILS: "other@example.com, owner@example.com" }), true);
+  assert.equal(isProGrantEmail("visitor@example.com", { WHATNOW_PRO_GRANT_EMAILS: "owner@example.com" }), false);
+  const previous = process.env.WHATNOW_PRO_GRANT_EMAILS;
+  process.env.WHATNOW_PRO_GRANT_EMAILS = "owner@example.com";
+  try {
+    assert.equal(await activePlanForUser("owner-id", undefined, "owner@example.com"), "pro");
+    assert.equal(await activePlanForUser("visitor-id", undefined, "visitor@example.com"), "free");
+  } finally {
+    if (previous === undefined) delete process.env.WHATNOW_PRO_GRANT_EMAILS;
+    else process.env.WHATNOW_PRO_GRANT_EMAILS = previous;
+  }
+});
 
 test("subscription storage activates and cancels only the linked test account", async () => {
   const database = new DatabaseSync(":memory:");

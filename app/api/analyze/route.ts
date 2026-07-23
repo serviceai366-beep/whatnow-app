@@ -346,7 +346,7 @@ export async function POST(request: Request): Promise<Response> {
 
   let quota;
   try {
-    const planCode = await activePlanForUser(auth.user.id);
+    const planCode = await activePlanForUser(auth.user.id, undefined, auth.user.email);
     quota = await checkAnalysisQuota({ userKey: auth.user.id, costKind, planCode });
   } catch (error) {
     console.error("[analyze] Usage control error", { name: error instanceof Error ? error.name : "unknown" });

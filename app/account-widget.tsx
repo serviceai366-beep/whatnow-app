@@ -36,7 +36,7 @@ const copy = {
     light: "Светлая", dark: "Тёмная", quota: "Ваши лимиты", dailyQuota: "За 24 часа", weeklyQuota: "За 7 дней", monthlyQuota: "За 30 дней",
     quotaLoading: "Считаем доступные анализы…", quotaUnavailable: "Не удалось обновить остаток. Ограничения продолжают действовать на сервере.",
     quotaRemaining: "Осталось {remaining} из {limit}", quotaReset: "Обновится {time}",
-    accountActions: "Управление аккаунтом",
+    accountActions: "Управление аккаунтом", proAccount: "WhatNow Pro",
     captchaWaiting: "Проверка защиты от ботов выполняется автоматически.",
     captchaReady: "Защита подтверждена.", captchaError: "Не удалось выполнить защитную проверку. Обновите её и попробуйте снова.",
     legalAgree: "Я принимаю Условия использования и подтверждаю, что прочитал(а) Политику конфиденциальности.",
@@ -59,7 +59,7 @@ const copy = {
     light: "Gaišs", dark: "Tumšs", quota: "Jūsu limiti", dailyQuota: "24 stundās", weeklyQuota: "7 dienās", monthlyQuota: "30 dienās",
     quotaLoading: "Aprēķinām pieejamās analīzes…", quotaUnavailable: "Neizdevās atjaunināt atlikumu. Limiti joprojām darbojas serverī.",
     quotaRemaining: "Atlikušas {remaining} no {limit}", quotaReset: "Atjaunosies {time}",
-    accountActions: "Konta pārvaldība",
+    accountActions: "Konta pārvaldība", proAccount: "WhatNow Pro",
     captchaWaiting: "Aizsardzības pārbaude pret robotiem notiek automātiski.",
     captchaReady: "Aizsardzība apstiprināta.", captchaError: "Neizdevās veikt aizsardzības pārbaudi. Atjaunojiet to un mēģiniet vēlreiz.",
     legalAgree: "Es piekrītu Lietošanas noteikumiem un apliecinu, ka esmu izlasījis Privātuma politiku.",
@@ -82,7 +82,7 @@ const copy = {
     light: "Light", dark: "Dark", quota: "Your limits", dailyQuota: "Per 24 hours", weeklyQuota: "Per 7 days", monthlyQuota: "Per 30 days",
     quotaLoading: "Checking available analyses…", quotaUnavailable: "The remaining allowance could not be refreshed. Server limits are still enforced.",
     quotaRemaining: "{remaining} of {limit} remaining", quotaReset: "Refreshes {time}",
-    accountActions: "Account management",
+    accountActions: "Account management", proAccount: "WhatNow Pro",
     captchaWaiting: "The bot-protection check runs automatically.",
     captchaReady: "Protection verified.", captchaError: "The protection check could not be completed. Refresh it and try again.",
     legalAgree: "I agree to the Terms of Service and acknowledge that I have read the Privacy Policy.",
@@ -141,6 +141,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   const [quota, setQuota] = useState<QuotaSnapshot | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [quotaError, setQuotaError] = useState(false);
+  const isPro = quota?.planCode === "pro";
 
   useEffect(() => {
     let active = true;
@@ -220,9 +221,9 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   return (
     <>
       {account ? (
-        <button className="account-control" type="button" aria-label={`${accountAria}: ${account.displayName}`} onClick={() => onOpenChange(true)}>
+        <button className={`account-control${isPro ? " account-control-pro" : ""}`} type="button" aria-label={`${accountAria}: ${account.displayName}${isPro ? `, ${t.proAccount}` : ""}`} onClick={() => onOpenChange(true)}>
           <Avatar account={account} />
-          <span className="account-details"><strong>{account.displayName}</strong><small>{t.profile}</small></span>
+          <span className="account-details"><strong>{account.displayName}</strong><small>{isPro ? <span className="account-plan-badge">✦ {t.proAccount}</span> : t.profile}</small></span>
           <span className="account-chevron" aria-hidden="true">⌄</span>
         </button>
       ) : (

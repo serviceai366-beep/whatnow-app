@@ -1,7 +1,7 @@
 import { isSameOriginRequest } from "../../security.ts";
 import { SUBSCRIPTION_PLAN } from "../../subscription-plans.ts";
 import { createStripeCheckout, createStripePortal, privateSubscriptionReference, stripeConfiguration, testCheckoutAllowed } from "../../stripe-server.ts";
-import { getSubscriptionStore } from "../../subscription-store.ts";
+import { getSubscriptionStore, isProGrantEmail } from "../../subscription-store.ts";
 import type { SubscriptionPublicPayload } from "../../subscription-types.ts";
 import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
 
@@ -69,6 +69,7 @@ export async function GET(request: Request): Promise<Response> {
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return authenticationError(auth);
   const configuration = stripeConfiguration();
+  const proGrant = isProGrantEmail(auth.user.email);
   const checkoutConfigured = Boolean(configuration)
     && (configuration?.mode === "live" || testCheckoutAllowed(auth.user.email));
   const store = await getSubscriptionStore();
@@ -79,7 +80,15 @@ export async function GET(request: Request): Promise<Response> {
   const storedForCurrentMode = stored && configuration && stored.testMode === (configuration.mode === "test")
     ? stored
     : null;
-  const subscription = storedForCurrentMode ? {
+  const subscription = proGrant ? {
+    planCode: "pro" as const,
+    state: "active" as const,
+    checkoutAvailable: false,
+    managementAvailable: false,
+    testMode: false,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+  } : storedForCurrentMode ? {
     planCode: storedForCurrentMode.planCode,
     state: storedForCurrentMode.state,
     checkoutAvailable: checkoutConfigured && storedForCurrentMode.state !== "active",
@@ -112,6 +121,9 @@ export async function POST(request: Request): Promise<Response> {
       ? "checkout"
       : null;
   if (!action) return error("invalid_request", "Unknown subscription action.", 400);
+  if (action === "checkout" && isProGrantEmail(auth.user.email)) {
+    return error("already_subscribed", "This account already has an active Pro access grant.", 409);
+  }
   const configuration = stripeConfiguration();
   if (!configuration) {
     return error("checkout_unavailable", "Subscription checkout is not configured.", 503);
