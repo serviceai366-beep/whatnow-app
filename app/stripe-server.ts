@@ -100,12 +100,14 @@ async function stripeFormRequest({
   endpoint,
   secretKey,
   form,
+  idempotencyKey,
   validUrl,
   fetchImpl,
 }: {
   endpoint: string;
   secretKey: string;
   form: URLSearchParams;
+  idempotencyKey?: string;
   validUrl: (value: unknown) => value is string;
   fetchImpl: typeof fetch;
 }): Promise<StripeCheckoutResult> {
@@ -114,7 +116,11 @@ async function stripeFormRequest({
   try {
     const response = await fetchImpl(endpoint, {
       method: "POST",
-      headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+      },
       body: form,
       signal: controller.signal,
     });
@@ -140,13 +146,18 @@ export async function createStripeCheckout({
   configuration: StripeConfiguration;
   fetchImpl?: typeof fetch;
 }): Promise<StripeCheckoutResult> {
+  const userReference = await privateSubscriptionReference(user.id);
+  // Stripe replays the same Checkout Session for this key if a browser retry
+  // happens after a timeout. This prevents duplicate subscriptions/charges.
+  const idempotencyKey = `whatnow-checkout-${userReference}-${Math.floor(Date.now() / 3_600_000)}`;
   return stripeFormRequest({
     endpoint: STRIPE_CHECKOUT_URL,
     secretKey: configuration.secretKey,
+    idempotencyKey,
     form: checkoutForm({
         priceId: configuration.priceId,
         user,
-        userReference: await privateSubscriptionReference(user.id),
+        userReference,
         origin: new URL(request.url).origin,
       }),
     validUrl: isStripeCheckoutUrl,

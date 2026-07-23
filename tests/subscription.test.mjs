@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { GET, POST } from "../app/api/subscription/route.ts";
-import { checkoutForm, privateSubscriptionReference, stripeConfiguration, testCheckoutAllowed } from "../app/stripe-server.ts";
+import { checkoutForm, createStripeCheckout, privateSubscriptionReference, stripeConfiguration, testCheckoutAllowed } from "../app/stripe-server.ts";
 
 const token = "test.subscription-user.signature";
 
@@ -39,6 +39,22 @@ test("checkout form uses one fixed recurring price and a private account referen
   assert.equal(form.get("client_reference_id"), reference);
   assert.equal(form.get("customer_email"), "owner@example.com");
   assert.equal(form.get("success_url"), "https://whatnow-app.com/?subscription=success");
+});
+
+test("checkout creation sends a stable Stripe idempotency key for browser retries", async () => {
+  let capturedHeaders;
+  const result = await createStripeCheckout({
+    request: new Request("https://whatnow-app.com/api/subscription"),
+    user: { id: "user-1", email: "owner@example.com" },
+    configuration: { secretKey: "sk_live_secret", priceId: "price_live123", mode: "live" },
+    fetchImpl: async (_url, init) => {
+      capturedHeaders = init?.headers;
+      return Response.json({ url: "https://checkout.stripe.com/c/pay/cs_test" });
+    },
+  });
+  assert.equal(result.ok, true);
+  const idempotencyKey = capturedHeaders?.["Idempotency-Key"];
+  assert.match(idempotencyKey, /^whatnow-checkout-[a-f0-9]{40}-\d+$/);
 });
 
 test("subscription endpoint reports Free and cannot charge without test configuration", async () => {
