@@ -134,7 +134,6 @@ export default function Home() {
   const [userHubInitialTab, setUserHubInitialTab] = useState<"files" | "plan">("files");
   const [supportOpen, setSupportOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [studioUnavailableNotice, setStudioUnavailableNotice] = useState(false);
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
@@ -533,11 +532,10 @@ export default function Home() {
 
       {limitNotice && <LimitToast key={`${limitNotice.scope}:${limitNotice.observedAt}`} data={limitNotice} locale={language} onClose={() => setLimitNotice(null)} />}
       {fileSaveNotice && <div className={`storage-toast ${fileSaveNotice.kind}`} role="status"><span>{fileSaveNotice.kind === "success" ? "✓" : "!"}</span><p>{fileSaveNotice.text}</p><button type="button" aria-label="Close" onClick={() => setFileSaveNotice(null)}>×</button></div>}
-      {studioUnavailableNotice && <div className="storage-toast warning" role="status"><span>!</span><p>{w.studioUnavailable}</p><button type="button" aria-label={interfaceCopyLanguage === "ru" ? "Закрыть уведомление" : interfaceCopyLanguage === "lv" ? "Aizvērt paziņojumu" : "Close notification"} onClick={() => setStudioUnavailableNotice(false)}>×</button></div>}
 
       {!showResult && <nav className="product-mode-switch" aria-label="WhatNow? modes">
         <button type="button" className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? "Понять документ" : interfaceCopyLanguage === "lv" ? "Saprast dokumentu" : "Understand"}</strong></button>
-        <button type="button" className="" aria-disabled="true" onClick={() => setStudioUnavailableNotice(true)}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong><small className="mode-beta">Beta</small></button>
+        <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => setProductMode("create")}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong><small className="mode-beta">Beta</small></button>
       </nav>}
 
       {showResult && analysis ? (
