@@ -28,8 +28,6 @@ Country/jurisdiction: ${input.country}${input.region?`, ${input.region}`:""}. Tr
 Produce the most complete usable document possible from verified user facts. Do not leave a placeholder merely because a standard neutral clause can be drafted safely. Never invent a personal fact, monetary term, date, consent, legal status, or user decision. Every placeholder or uncertain passage must appear in annotations with its exact section heading, a short exact excerpt, the reason, kind, and a concrete question that would resolve it. Set confidence honestly; if it is low, identify every material area needing verification.
 For review mode, explain problems and recommendations; do not silently rewrite facts. For improve mode, provide the improved full document and list changes. For create mode, provide a near-final structured document. PlainText must contain the complete document, not commentary. Keep the result within the requested word limit. Safety notice must say this AI draft is informational and should be checked by a qualified professional for important legal, financial, medical, employment, housing, or government matters.`}
 function storeFailure(cause:unknown){if(cause instanceof StudioStoreError){const message=cause.code==="studio_limit_reached"?"Your document creation limit has been reached.":"Document Studio is temporarily unavailable.";return fail(cause.code,message,cause.status,cause.status===429?{"Retry-After":"3600"}:{})}return fail("studio_storage_unavailable","Document Studio is temporarily unavailable.",503)}
-function proRequired(){return fail("pro_required","Create & edit is available only with an active WhatNow? Pro subscription.",403)}
-
 export async function GET(request:Request){if(!isSameOriginRequest(request))return fail("forbidden","Request origin was rejected.",403);const auth=await verifySupabaseRequest(request);if(!auth.ok)return fail(auth.code,"A confirmed account is required.",auth.status);const store=await getDocumentStudioStore();if(!store)return storeFailure(null);try{const plan=await activePlanForUser(auth.user.id);const [documents,quota]=await Promise.all([store.list(auth.user.id),store.quota(auth.user.id,plan)]);return reply({documents,quota})}catch(c){return storeFailure(c)}}
 
 export async function DELETE(request:Request){if(!isSameOriginRequest(request))return fail("forbidden","Request origin was rejected.",403);const auth=await verifySupabaseRequest(request);if(!auth.ok)return fail(auth.code,"A confirmed account is required.",auth.status);const id=new URL(request.url).searchParams.get("id")??"";if(!/^[0-9a-f-]{36}$/i.test(id))return fail("invalid_request","Choose a valid document.",400);const store=await getDocumentStudioStore();if(!store)return storeFailure(null);try{return (await store.remove(auth.user.id,id))?reply({ok:true}):fail("studio_not_found","Document not found.",404)}catch(c){return storeFailure(c)}}
@@ -38,7 +36,7 @@ export async function POST(request:Request){
   if(!isSameOriginRequest(request))return fail("forbidden","Request origin was rejected.",403);
   if(!isRequestBodySizeAllowed(request))return fail("invalid_request","The request is too large.",413);
   const auth=await verifySupabaseRequest(request);if(!auth.ok)return fail(auth.code,"A confirmed account is required.",auth.status);
-  const plan=await activePlanForUser(auth.user.id);if(plan!=="pro")return proRequired();
+  const plan=await activePlanForUser(auth.user.id);
   const contentType=request.headers.get("content-type")?.toLowerCase()??"";
   let value:unknown=null,uploaded:File|null=null;
   if(contentType.startsWith("application/json")){
@@ -89,7 +87,7 @@ export async function POST(request:Request){
 export async function PUT(request:Request){
   if(!isSameOriginRequest(request))return fail("forbidden","Request origin was rejected.",403);
   const auth=await verifySupabaseRequest(request);if(!auth.ok)return fail(auth.code,"A confirmed account is required.",auth.status);
-  const plan=await activePlanForUser(auth.user.id);if(plan!=="pro")return proRequired();
+  const plan=await activePlanForUser(auth.user.id);
   if(!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))return fail("invalid_request","Expected JSON.",415);
   const raw=await request.text();if(new TextEncoder().encode(raw).byteLength>MAX_BODY)return fail("invalid_request","The request is too large.",413);
   let value:unknown=null;try{value=JSON.parse(raw)}catch{}
@@ -99,7 +97,7 @@ export async function PUT(request:Request){
   const key=process.env.OPENAI_API_KEY;if(!key)return fail("not_configured","Document Studio is not configured.",503);
   const store=await getDocumentStudioStore();if(!store)return storeFailure(null);let reservation:string|null=null;
   try{
-    reservation=await store.reserveAssistant(auth.user.id);
+    reservation=await store.reserveAssistant(auth.user.id,plan);
     const readiness=assessStudioReadiness(input),controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),60_000);request.signal.addEventListener("abort",()=>controller.abort(),{once:true});
     let upstream:Response;try{upstream=await fetch(OPENAI_RESPONSES_URL,{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,reasoning:{effort:"low"},instructions:`You are the concise WhatNow? document-preparation assistant. Reply in ${languageNames[input.outputLanguage]??"English"}. Help the user complete the questionnaire before generation. Answer the question directly, then ask at most three concrete follow-up questions that would reduce missing facts. Never invent facts or give a final legal conclusion. Jurisdiction: ${input.country}${input.region?`, ${input.region}`:""}.`,input:JSON.stringify({question,request:input,readiness}),max_output_tokens:1200,store:false}),signal:controller.signal})}finally{clearTimeout(timeout)}
     const payload=await upstream.json().catch(()=>null) as unknown;if(!upstream.ok)throw new Error(upstream.status===429?"rate_limited":"upstream_error");const answer=outputText(payload)?.trim();if(!answer)throw new Error("invalid_model_response");
@@ -110,7 +108,7 @@ export async function PUT(request:Request){
 export async function PATCH(request:Request){
   if(!isSameOriginRequest(request))return fail("forbidden","Request origin was rejected.",403);
   const auth=await verifySupabaseRequest(request);if(!auth.ok)return fail(auth.code,"A confirmed account is required.",auth.status);
-  const plan=await activePlanForUser(auth.user.id);if(plan!=="pro")return proRequired();
+  const plan=await activePlanForUser(auth.user.id);
   if(!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))return fail("invalid_request","Expected JSON.",415);
   const raw=await request.text();if(new TextEncoder().encode(raw).byteLength>16*1024)return fail("invalid_request","The instruction is too large.",413);
   let value:unknown=null;try{value=JSON.parse(raw)}catch{}
