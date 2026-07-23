@@ -21,7 +21,7 @@ const text = {
     generate: "Create near-final document", generating: "Creating your document…", signin: "Sign in to continue", stop: "Stop generation", stopped: "Generation stopped. Your answers are still here.", warning: "Review the missing information", warningBody: "The AI can continue with visible placeholders, but the result will need more manual checking.", add: "Add information", continue: "Continue with placeholders",
     back: "Back to details", draft: "Working document", copy: "Copy", docx: "DOCX", pdf: "PDF", history: "Recent documents", historyButton: "Document history", empty: "Your latest 10 generated documents will appear here.", limit: "Usage", delete: "Delete", sources: "Official sources consulted", issues: "Check before use", error: "The document could not be generated. Try again.",
     disclaimer: "AI-generated document for informational purposes only. Completeness, legal validity, enforceability, and suitability are not guaranteed. Verify all facts and local rules before signing, sending, filing, or relying on it.",
-    proTitle: "Document Studio is a Pro feature", proBody: "Creating, reviewing, and live-editing documents can use significantly more AI processing. It is available only to accounts with an active WhatNow? Pro subscription.", proButton: "View Pro plan", proBadge: "PRO ONLY", loadingPlan: "Checking your plan…",
+    proTitle: "Document Studio", proBody: "Create, review, and edit documents with guided AI assistance.", proButton: "View plan", proBadge: "BETA", loadingPlan: "Checking your plan…", planError: "We could not load your workspace. Please try again.", retryPlan: "Try again",
     assistantTitle: "Preparation assistant", assistantIntro: "Ask what information is missing, why a detail matters, or how to answer a question before generation.", assistantPlaceholder: "Ask about this document brief…", ask: "Ask", suggested: "Suggested questions", suggestion1: "What important information is still missing?", suggestion2: "Which answers matter most in my jurisdiction?", suggestion3: "Explain the questions in simpler words.",
     selected: "Selected passage", clearSelection: "Clear", documentAssistant: "Work with AI", documentAssistantIntro: "Select a passage or tap a highlighted uncertainty. Ask why it is needed or request an exact change.", editPlaceholder: "Ask a question or describe the change…", send: "Send", expand: "Expand", collapse: "Exit full screen", uncertain: "Needs clarification", missingInfo: "Missing information", confidence: "AI confidence", lowConfidence: "Low confidence — review the highlighted passages before use.", noIssues: "No unresolved passages were identified, but important documents still need review.",
     upload: "Or attach the existing document", chooseFile: "Choose document", removeFile: "Remove", fileHint: "PDF, image, TXT, RTF, DOCX, or ODT. Maximum size depends on format.", reasoningTime: "Reasoning time", reasoningEstimate: "Usually about 2–3 minutes, with a 3-minute maximum.",
@@ -36,7 +36,7 @@ const text = {
     generate: "Создать почти готовый документ", generating: "Создаём документ…", signin: "Войдите, чтобы продолжить", stop: "Остановить создание", stopped: "Создание остановлено. Все ваши ответы сохранены на экране.", warning: "Проверьте недостающую информацию", warningBody: "ИИ может продолжить с заметными заполнителями, но такой результат потребует дополнительной ручной проверки.", add: "Добавить данные", continue: "Продолжить с заполнителями",
     back: "Вернуться к данным", draft: "Рабочий документ", copy: "Копировать", docx: "DOCX", pdf: "PDF", history: "Последние документы", historyButton: "История документов", empty: "Здесь будут последние 10 созданных документов.", limit: "Использование", delete: "Удалить", sources: "Проверенные официальные источники", issues: "Проверить перед использованием", error: "Не удалось создать документ. Попробуйте снова.",
     disclaimer: "Документ создан ИИ только в информационных целях. Полнота, юридическая сила, исполнимость и пригодность не гарантируются. Проверьте факты и местные правила до подписания, отправки или подачи.",
-    proTitle: "Мастерская документов доступна в Pro", proBody: "Создание, проверка и интерактивное редактирование требуют значительно больше ресурсов ИИ. Режим доступен только аккаунтам с активной подпиской WhatNow? Pro.", proButton: "Посмотреть Pro-тариф", proBadge: "ТОЛЬКО PRO", loadingPlan: "Проверяем ваш тариф…",
+    proTitle: "Мастерская документов", proBody: "Создавайте, проверяйте и редактируйте документы с подсказками ИИ.", proButton: "Посмотреть тариф", proBadge: "БЕТА", loadingPlan: "Проверяем ваш тариф…", planError: "Не удалось загрузить мастерскую. Попробуйте ещё раз.", retryPlan: "Попробовать снова",
     assistantTitle: "Помощник по подготовке", assistantIntro: "Спросите, каких данных не хватает, зачем нужен определённый пункт или как правильно ответить ещё до создания документа.", assistantPlaceholder: "Задайте вопрос об этой анкете…", ask: "Спросить", suggested: "Готовые вопросы", suggestion1: "Какой важной информации всё ещё не хватает?", suggestion2: "Какие ответы особенно важны в моей юрисдикции?", suggestion3: "Объясни эти вопросы простыми словами.",
     selected: "Выбранный фрагмент", clearSelection: "Убрать", documentAssistant: "Работа с ИИ", documentAssistantIntro: "Выделите фрагмент или нажмите на подсвеченное место. Спросите, зачем оно нужно, или попросите точно изменить его.", editPlaceholder: "Задайте вопрос или опишите изменение…", send: "Отправить", expand: "Развернуть", collapse: "Свернуть", uncertain: "Нужно уточнить", missingInfo: "Не хватает данных", confidence: "Уверенность ИИ", lowConfidence: "Низкая уверенность — проверьте подсвеченные места перед использованием.", noIssues: "Неясные фрагменты не найдены, но важный документ всё равно нужно проверить.",
     upload: "Или прикрепите готовый документ", chooseFile: "Выбрать документ", removeFile: "Удалить", fileHint: "PDF, изображение, TXT, RTF, DOCX или ODT. Максимальный размер зависит от формата.", reasoningTime: "Время рассуждения", reasoningEstimate: "Обычно около 2–3 минут, максимум — 3 минуты.",
@@ -51,7 +51,7 @@ const text = {
     generate: "Izveidot gandrīz gatavu dokumentu", generating: "Veidojam dokumentu…", signin: "Pierakstieties, lai turpinātu", stop: "Apturēt izveidi", stopped: "Izveide apturēta. Jūsu atbildes palika ekrānā.", warning: "Pārbaudiet trūkstošo informāciju", warningBody: "AI var turpināt ar redzamiem vietturiem, taču rezultāts būs jāpārbauda rūpīgāk.", add: "Pievienot datus", continue: "Turpināt ar vietturiem",
     back: "Atpakaļ pie datiem", draft: "Darba dokuments", copy: "Kopēt", docx: "DOCX", pdf: "PDF", history: "Jaunākie dokumenti", historyButton: "Dokumentu vēsture", empty: "Šeit būs pēdējie 10 dokumenti.", limit: "Lietojums", delete: "Dzēst", sources: "Pārbaudītie oficiālie avoti", issues: "Pārbaudīt pirms lietošanas", error: "Dokumentu neizdevās izveidot. Mēģiniet vēlreiz.",
     disclaimer: "AI dokuments ir tikai informatīvs. Pilnība, juridiskais spēks, izpildāmība un piemērotība netiek garantēta. Pirms parakstīšanas, nosūtīšanas vai iesniegšanas pārbaudiet faktus un vietējos noteikumus.",
-    proTitle: "Dokumentu darbnīca ir Pro funkcija", proBody: "Dokumentu veidošana, pārbaude un interaktīva rediģēšana izmanto ievērojami vairāk AI resursu. Režīms pieejams tikai ar aktīvu WhatNow? Pro abonementu.", proButton: "Apskatīt Pro plānu", proBadge: "TIKAI PRO", loadingPlan: "Pārbaudām jūsu plānu…",
+    proTitle: "Dokumentu darbnīca", proBody: "Veidojiet, pārbaudiet un rediģējiet dokumentus ar AI norādēm.", proButton: "Skatīt plānu", proBadge: "BETA", loadingPlan: "Pārbaudām jūsu plānu…", planError: "Neizdevās ielādēt darbnīcu. Mēģiniet vēlreiz.", retryPlan: "Mēģināt vēlreiz",
     assistantTitle: "Sagatavošanas palīgs", assistantIntro: "Jautājiet, kādas informācijas trūkst, kāpēc detaļa ir vajadzīga vai kā atbildēt pirms ģenerēšanas.", assistantPlaceholder: "Jautājiet par šo anketu…", ask: "Jautāt", suggested: "Ieteiktie jautājumi", suggestion1: "Kādas svarīgas informācijas vēl trūkst?", suggestion2: "Kuras atbildes ir īpaši svarīgas manā jurisdikcijā?", suggestion3: "Izskaidro jautājumus vienkāršāk.",
     selected: "Izvēlētais fragments", clearSelection: "Notīrīt", documentAssistant: "Darbs ar AI", documentAssistantIntro: "Iezīmējiet fragmentu vai pieskarieties izceltai neskaidrībai. Jautājiet, kāpēc tā vajadzīga, vai lūdziet konkrētu labojumu.", editPlaceholder: "Uzdodiet jautājumu vai aprakstiet izmaiņu…", send: "Sūtīt", expand: "Izvērst", collapse: "Sakļaut", uncertain: "Jāprecizē", missingInfo: "Trūkst informācijas", confidence: "AI pārliecība", lowConfidence: "Zema pārliecība — pārbaudiet izceltās vietas.", noIssues: "Neatrisināti fragmenti nav atrasti, taču svarīgs dokuments joprojām jāpārbauda.",
     upload: "Vai pievienojiet esošo dokumentu", chooseFile: "Izvēlēties dokumentu", removeFile: "Noņemt", fileHint: "PDF, attēls, TXT, RTF, DOCX vai ODT. Maksimālais izmērs atkarīgs no formāta.", reasoningTime: "Spriešanas laiks", reasoningEstimate: "Parasti ap 2–3 minūtēm, maksimums 3 minūtes.",
@@ -87,6 +87,7 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
   const [history, setHistory] = useState<Saved[]>([]);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [planLoaded, setPlanLoaded] = useState(false);
+  const [planError, setPlanError] = useState(false);
   const [assistantQuestion, setAssistantQuestion] = useState("");
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
   const [assistantBusy, setAssistantBusy] = useState(false);
@@ -115,16 +116,19 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
   const requestData = (confirmedInsufficient = false) => ({ mode, templateId: template, country, region, outputLanguage: language, details: fields, confirmedInsufficient });
   const load = async () => {
     if (!account) { setPlanLoaded(true); return; }
-    const token = await getAccessToken(); if (!token) { setPlanLoaded(true); return; }
+    const token = await getAccessToken(); if (!token) { setPlanError(true); setPlanLoaded(true); return; }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12_000);
     try {
-      const response = await fetch("/api/document-studio", { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch("/api/document-studio", { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: "no-store" });
       if (response.ok) {
         const data = await response.json() as { documents: Saved[]; quota: Quota };
         setHistory(data.documents); setQuota(data.quota);
-      }
-    } finally { setPlanLoaded(true); }
+      } else setPlanError(true);
+    } catch { setPlanError(true); }
+    finally { window.clearTimeout(timeout); setPlanLoaded(true); }
   };
-  useEffect(() => { setPlanLoaded(false); setQuota(null); void load(); }, [account]);
+  useEffect(() => { setPlanLoaded(false); setPlanError(false); setQuota(null); void load(); }, [account]);
   useEffect(() => {
     if (!busy) { setElapsed(0); return; }
     const started = Date.now();
@@ -187,6 +191,7 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
 
   if (!account) return <StudioGate t={t} signedIn={false} onAction={onRequireAccount} />;
   if (!planLoaded) return <section className="studio-shell"><div className="studio-plan-loading" role="status"><span className="studio-beta-badge">Beta</span><p>{t.loadingPlan}</p></div></section>;
+  if (planError) return <section className="studio-shell"><div className="studio-plan-loading" role="alert"><p>{t.planError}</p><button type="button" onClick={() => { setPlanLoaded(false); setPlanError(false); void load(); }}>{t.retryPlan}</button></div></section>;
   if (!quota) return <section className="studio-shell"><div className="studio-plan-loading" role="status"><p>{t.loadingPlan}</p></div></section>;
 
   return <section className="studio-shell" aria-labelledby="studio-title">
