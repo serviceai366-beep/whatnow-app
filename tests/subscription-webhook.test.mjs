@@ -77,6 +77,21 @@ test("subscription storage activates and cancels only the linked test account", 
     assert.equal(active.stripeCustomerId, "cus_test1");
     assert.equal(active.stripeSubscriptionId, "sub_test1");
 
+    await store.applyStripeEvent({
+      id: "evt_cancelscheduled",
+      type: "customer.subscription.updated",
+      created: 1_700_000_050,
+      livemode: false,
+      data: { object: {
+        id: "sub_test1", customer: "cus_test1", status: "active", cancel_at_period_end: true,
+        current_period_end: 1_800_000_000, metadata: { whatnow_account: "a".repeat(40) },
+      } },
+    }, 2_250);
+    const scheduled = await store.readForUser("user-1");
+    assert.equal(await activePlanForUser("user-1", store), "pro", "scheduled cancellation keeps Pro through the paid period");
+    assert.equal(scheduled.cancelAtPeriodEnd, true);
+    assert.equal(scheduled.currentPeriodEnd, new Date(1_800_000_000_000).toISOString());
+
     await store.applyStripeEvent(checkoutEvent(), 2_500);
     assert.equal(await activePlanForUser("user-1", store), "pro");
     await store.applyStripeEvent({

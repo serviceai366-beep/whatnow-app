@@ -128,6 +128,9 @@ test("plan UI is localized for private test and live checkout states", async () 
   for (const phrase of ["Subscribe securely", "Оформить безопасно", "Abonēt droši"]) assert.match(panel, new RegExp(phrase));
   assert.match(panel, /\$9\.99/);
   assert.match(hub, /<SubscriptionPanel locale=\{locale\}/);
+  assert.match(panel, /cancelAtPeriodEnd/);
+  assert.match(panel, /Cancellation scheduled/);
+  assert.match(panel, /renews automatically/);
   assert.match(env, /STRIPE_CHECKOUT_MODE=disabled/);
   assert.match(env, /STRIPE_TEST_ALLOWED_EMAILS=/);
   assert.doesNotMatch(panel, /sk_test_|sk_live_/);

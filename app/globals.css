@@ -943,6 +943,9 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 .subscription-card ul { display: grid; gap: 8px; margin: 18px 0; padding: 0; list-style: none; }
 .subscription-card li { position: relative; padding-left: 23px; }
 .subscription-card li::before { position: absolute; left: 0; color: var(--accent-dark); font-weight: 900; content: "✓"; }
+.subscription-renewal-notice, .subscription-cancel-notice { margin: -5px 0 14px; font-size: 13px; line-height: 1.45; }
+.subscription-renewal-notice { color: var(--muted); }
+.subscription-cancel-notice { padding: 10px 12px; border: 1px solid color-mix(in srgb, #b37b00 32%, var(--border)); border-radius: 12px; color: #765300; background: color-mix(in srgb, #fff1c7 62%, var(--surface)); }
 .subscription-card button { width: 100%; min-height: 44px; border: 0; border-radius: 12px; color: white; background: var(--accent); font-weight: 850; }
 .subscription-card button:disabled { cursor: not-allowed; color: var(--muted); background: var(--border); }
 .subscription-active { margin-top: 18px; padding: 11px 13px; border-radius: 11px; color: var(--accent-dark) !important; background: var(--accent-soft); font-weight: 800; }
