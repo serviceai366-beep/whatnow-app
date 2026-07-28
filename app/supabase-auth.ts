@@ -37,7 +37,10 @@ function getClient(): SupabaseClient {
       flowType: "pkce",
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      // Email magic links use a one-time PKCE code. We exchange it explicitly
+      // in loadAccount() before checking local storage, so the code cannot be
+      // removed by an initial unauthenticated render.
+      detectSessionInUrl: false,
       storage: window.localStorage,
     },
   });
@@ -112,9 +115,26 @@ function cleanAuthUrl(): void {
   window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
 }
 
+async function exchangeEmailCodeIfPresent(auth: SupabaseClient["auth"]): Promise<boolean> {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get("code");
+  if (!code) return true;
+
+  // A passwordless email callback must be completed before getSession().
+  // Otherwise a first render can see no saved session and erase the code from
+  // the URL before Supabase has had a chance to exchange it.
+  const { error } = await auth.exchangeCodeForSession(code);
+  cleanAuthUrl();
+  if (!error) return true;
+
+  await auth.signOut({ scope: "local" }).catch(() => undefined);
+  return false;
+}
+
 export async function loadAccount(): Promise<SupabaseAccount | null> {
   if (!isSupabaseConfigured() || typeof window === "undefined") return null;
   const auth = getClient().auth;
+  if (!await exchangeEmailCodeIfPresent(auth)) return null;
   const { data: sessionData, error: sessionError } = await auth.getSession();
   if (sessionError || !sessionData.session) {
     if (sessionError) {

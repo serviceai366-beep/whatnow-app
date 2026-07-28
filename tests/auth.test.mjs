@@ -27,6 +27,7 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   assert.match(widget, /startGoogleSignIn/);
   assert.match(widget, /sendEmailSignInLink/);
   assert.match(auth, /flowType:\s*"pkce"/);
+  assert.match(auth, /detectSessionInUrl:\s*false/);
   assert.match(auth, /signInWithOAuth/);
   assert.match(auth, /provider:\s*"google"/);
   assert.match(auth, /scopes:\s*"openid email profile"/);
@@ -36,6 +37,8 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   assert.match(turnstile, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?render=explicit&onload=/);
   assert.match(turnstile, /SCRIPT_TIMEOUT_MS = 12_000/);
   assert.match(auth, /getUser\(\)/);
+  assert.match(auth, /exchangeCodeForSession\(code\)/);
+  assert.match(auth, /if \(!await exchangeEmailCodeIfPresent\(auth\)\) return null;[\s\S]*getSession\(\)/);
   assert.match(auth, /sessionError[\s\S]*signOut\(\{ scope: "local" \}\)/);
   assert.match(auth, /new URL\("\/", window\.location\.origin\)/);
   assert.match(auth, /history\.replaceState/);
