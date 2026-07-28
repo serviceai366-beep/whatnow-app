@@ -309,7 +309,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   </label>
                   <p className="legal-links"><a href="/terms" target="_blank">{t.terms}</a><span>·</span><a href="/privacy" target="_blank">{t.privacyPolicy}</a></p>
                   <div className={`captcha-box compact${authCaptchaError ? " has-error" : ""}`}>
-                    <TurnstileWidget action="account-create" language={locale} theme={theme} resetKey={authCaptchaResetKey}
+                    <TurnstileWidget action="account-create" language={locale} theme={theme} resetKey={authCaptchaResetKey} appearance="always"
                       onToken={(token) => { setAuthCaptchaToken(token); if (token) setAuthCaptchaError(false); }}
                       onError={() => setAuthCaptchaError(true)} />
                     <small>{authCaptchaError ? t.captchaError : authCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>
@@ -317,7 +317,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   {(!legalAccepted || !authCaptchaToken) && <p className="auth-requirements" role="status">{t.createRequirements}</p>}
                 </>}
                 {authMode === "sign-in" && <div className={`captcha-box compact${authCaptchaError ? " has-error" : ""}`}>
-                  <TurnstileWidget action="account-login" language={locale} theme={theme} resetKey={authCaptchaResetKey}
+                  <TurnstileWidget action="account-login" language={locale} theme={theme} resetKey={authCaptchaResetKey} appearance="always"
                     onToken={(token) => { setAuthCaptchaToken(token); if (token) setAuthCaptchaError(false); }}
                     onError={() => setAuthCaptchaError(true)} />
                   <small>{authCaptchaError ? t.captchaError : authCaptchaToken ? t.captchaReady : t.captchaWaiting}</small>

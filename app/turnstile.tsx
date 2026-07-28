@@ -75,6 +75,7 @@ export function TurnstileWidget({
   language,
   theme,
   resetKey,
+  appearance = "interaction-only",
   onToken,
   onError,
 }: {
@@ -82,6 +83,7 @@ export function TurnstileWidget({
   language: ProfileLanguage;
   theme: "light" | "dark";
   resetKey: number;
+  appearance?: "always" | "interaction-only";
   onToken: (token: string | null) => void;
   onError: () => void;
 }) {
@@ -111,7 +113,7 @@ export function TurnstileWidget({
         action,
         language,
         theme,
-        appearance: "interaction-only",
+        appearance,
         retry: "auto",
         "response-field": false,
         callback: (token: string) => { if (active) onTokenRef.current(token); },

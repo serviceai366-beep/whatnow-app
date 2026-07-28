@@ -9,6 +9,7 @@ test("new account creation requires accepted legal terms and a fresh bot-protect
   assert.match(widget, /authMode === "create-account" && \(!legalAccepted \|\| !authCaptchaToken\)/);
   assert.match(widget, /TurnstileWidget action="account-create"/);
   assert.match(widget, /TurnstileWidget action="account-login"/);
+  assert.equal((widget.match(/appearance="always"/g) ?? []).length, 2);
   assert.match(widget, /disabled=\{googleLoading \|\| !authCaptchaToken \|\| \(authMode === "create-account" && !legalAccepted\)\}/);
   assert.match(widget, /createRequirements/);
 });
