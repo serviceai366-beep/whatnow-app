@@ -520,14 +520,18 @@ export default function Home() {
           <span>WhatNow?</span>
         </a>
         <div className="header-actions">
-          <button className="header-tool-button" type="button" aria-label={w.info} data-tooltip={w.info} onClick={() => setInfoOpen(true)}><ToolIcon kind="about" />{w.info}</button>
-          <button className="header-tool-button" type="button" aria-label={w.support} data-tooltip={w.support} onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><ToolIcon kind="support" />{w.support}</button>
-          <a className="header-tool-button x-account-link" href="https://x.com/WhatNowAI" target="_blank" rel="noreferrer" aria-label="Follow WhatNow? on X: @WhatNowAI" data-tooltip="Follow @WhatNowAI on X"><span className="x-account-symbol" aria-hidden="true">𝕏</span>{w.x}</a>
-          {account && <button className="header-tool-button" type="button" aria-label={w.calendar} data-tooltip={w.calendar} onClick={() => setCalendarOpen(true)}><ToolIcon kind="calendar" />{w.calendar}</button>}
-          {account && <button className="header-tool-button" type="button" aria-label={w.space} data-tooltip={w.space} onClick={() => { setUserHubInitialTab("files"); setUserHubOpen(true); }}><ToolIcon kind="space" />{w.space}</button>}
-          <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
-            onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={changeTheme} open={authOpen} onOpenChange={setAuthOpen}
-            quotaRefreshKey={quotaRefreshKey} />
+          <div className="header-nav-actions">
+            <button className="header-tool-button" type="button" aria-label={w.info} data-tooltip={w.info} onClick={() => setInfoOpen(true)}><ToolIcon kind="about" />{w.info}</button>
+            <button className="header-tool-button" type="button" aria-label={w.support} data-tooltip={w.support} onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><ToolIcon kind="support" />{w.support}</button>
+            {account && <button className="header-tool-button" type="button" aria-label={w.calendar} data-tooltip={w.calendar} onClick={() => setCalendarOpen(true)}><ToolIcon kind="calendar" />{w.calendar}</button>}
+            {account && <button className="header-tool-button" type="button" aria-label={w.space} data-tooltip={w.space} onClick={() => { setUserHubInitialTab("files"); setUserHubOpen(true); }}><ToolIcon kind="space" />{w.space}</button>}
+          </div>
+          <div className="header-utility-actions">
+            <a className="header-tool-button x-account-link" href="https://x.com/WhatNowAI" target="_blank" rel="noreferrer" aria-label="Follow WhatNow? on X: @WhatNowAI" data-tooltip="Follow @WhatNowAI on X"><span className="x-account-symbol" aria-hidden="true">𝕏</span>{w.x}</a>
+            <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
+              onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={changeTheme} open={authOpen} onOpenChange={setAuthOpen}
+              quotaRefreshKey={quotaRefreshKey} />
+          </div>
         </div>
       </header>
 
