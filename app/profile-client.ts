@@ -6,6 +6,7 @@ import type { UserProfilePatch, UserProfilePreferences } from "./profile-types";
 
 type ProfilePayload = {
   profile?: unknown;
+  modelSelectionAvailable?: unknown;
   error?: { code?: string; message?: string };
 };
 
@@ -16,7 +17,9 @@ export class ProfileRequestError extends Error {
   }
 }
 
-async function profileRequest(method: "GET" | "PATCH", patch?: UserProfilePatch): Promise<UserProfilePreferences> {
+export type LoadedUserProfile = { preferences: UserProfilePreferences; modelSelectionAvailable: boolean };
+
+async function profileRequest(method: "GET" | "PATCH", patch?: UserProfilePatch): Promise<LoadedUserProfile> {
   const token = await getAccessToken();
   if (!token) throw new ProfileRequestError("authentication_required", "Authentication required");
 
@@ -38,13 +41,17 @@ async function profileRequest(method: "GET" | "PATCH", patch?: UserProfilePatch)
       payload?.error?.message ?? "Profile request failed",
     );
   }
-  return profile;
+  return { preferences: profile, modelSelectionAvailable: payload?.modelSelectionAvailable === true };
 }
 
 export function loadUserProfile(): Promise<UserProfilePreferences> {
+  return profileRequest("GET").then(({ preferences }) => preferences);
+}
+
+export function loadUserProfileWithAccess(): Promise<LoadedUserProfile> {
   return profileRequest("GET");
 }
 
 export function updateUserProfile(patch: UserProfilePatch): Promise<UserProfilePreferences> {
-  return profileRequest("PATCH", patch);
+  return profileRequest("PATCH", patch).then(({ preferences }) => preferences);
 }

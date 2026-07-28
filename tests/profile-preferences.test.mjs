@@ -23,6 +23,7 @@ const completeProfile = {
   timeFormat: "12",
   defaultReminderMinutes: 10_080,
   autoSaveFiles: true,
+  defaultModel: "gpt-5.6-terra",
 };
 
 test("new profiles have safe English-first defaults", () => {
@@ -30,6 +31,7 @@ test("new profiles have safe English-first defaults", () => {
   assert.equal(DEFAULT_PROFILE_PREFERENCES.analysisLanguage, "en");
   assert.equal(DEFAULT_PROFILE_PREFERENCES.theme, "system");
   assert.equal(DEFAULT_PROFILE_PREFERENCES.autoSaveFiles, true);
+  assert.equal(DEFAULT_PROFILE_PREFERENCES.defaultModel, "gpt-5.6-luna");
   assert.deepEqual(profileReminderMinutes, [60, 1_440, 10_080, 43_200]);
 });
 
@@ -81,10 +83,13 @@ test("maps only validated database fields into the public profile shape", () => 
     time_format: "12",
     default_reminder_minutes: 10_080,
     auto_save_files: true,
+    default_model: "gpt-5.6-terra",
     created_at: "2026-07-14T10:00:00.000Z",
   };
   assert.deepEqual(profilePreferencesFromDatabaseRow(row), completeProfile);
   assert.equal(profilePreferencesFromDatabaseRow({ ...row, default_reminder_minutes: 15 }), null);
+  assert.equal(profilePreferencesFromDatabaseRow({ ...row, default_model: "unknown" }), null);
+  assert.equal(profilePreferencesFromDatabaseRow({ ...row, default_model: undefined })?.defaultModel, "gpt-5.6-luna");
 });
 
 test("profile storage is account-owned and writable only through SECURITY DEFINER RPCs", async () => {
@@ -113,6 +118,10 @@ test("settings component is internally localized, responsive, and exposes access
   assert.match(component, /lv:\s*\{/);
   assert.match(component, /es:\s*\{/);
   assert.match(component, /responseLanguageOptions/);
+  assert.match(component, /modelSelectionAvailable/);
+  assert.match(component, /gpt-5\.6-luna/);
+  assert.match(component, /gpt-5\.6-terra/);
+  assert.match(component, /gpt-5\.6-sol/);
   assert.match(component, /<fieldset/);
   assert.match(component, /<legend>/);
   assert.match(component, /htmlFor=/);

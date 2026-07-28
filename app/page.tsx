@@ -19,7 +19,7 @@ import { EventSuggestions } from "./event-suggestions";
 import { CalendarPanel } from "./calendar-panel";
 import { UserHub } from "./user-hub";
 import { SupportPanel } from "./support-panel";
-import { loadUserProfile, updateUserProfile } from "./profile-client";
+import { loadUserProfileWithAccess, updateUserProfile } from "./profile-client";
 import { DEFAULT_PROFILE_PREFERENCES, type UserProfilePatch, type UserProfilePreferences } from "./profile-types";
 import type { ProfileLanguage } from "./profile-types";
 import { FileClientError, uploadStoredFile } from "./file-client";
@@ -107,6 +107,7 @@ export default function Home() {
   const [language, setLanguage] = useState<ProfileLanguage>("en");
   const [analysisLanguage, setAnalysisLanguage] = useState<SupportedLanguage>("en");
   const [preferences, setPreferences] = useState<UserProfilePreferences>({ ...DEFAULT_PROFILE_PREFERENCES });
+  const [modelSelectionAvailable, setModelSelectionAvailable] = useState(false);
   const [inputMode, setInputMode] = useState<"file" | "text">("file");
   const [showResult, setShowResult] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -181,6 +182,7 @@ export default function Home() {
       setLanguage("en");
       setAnalysisLanguage("en");
       setPreferences({ ...DEFAULT_PROFILE_PREFERENCES });
+      setModelSelectionAvailable(false);
     }
   }, []);
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
@@ -192,15 +194,17 @@ export default function Home() {
   useEffect(() => {
     if (!account) return;
     let active = true;
-    loadUserProfile().then((profile) => {
+    loadUserProfileWithAccess().then(({ preferences: profile, modelSelectionAvailable: hasModelSelection }) => {
       if (!active || accountIdRef.current !== account.id) return;
       setPreferences(profile);
+      setModelSelectionAvailable(hasModelSelection);
       setLanguage(profile.uiLanguage);
       setAnalysisLanguage(profile.analysisLanguage);
       setTheme(resolvedProfileTheme(profile));
     }).catch(() => {
       if (!active || accountIdRef.current !== account.id) return;
       setPreferences({ ...DEFAULT_PROFILE_PREFERENCES });
+      setModelSelectionAvailable(false);
       setLanguage("en");
       setAnalysisLanguage("en");
     });
@@ -723,7 +727,7 @@ export default function Home() {
       )}
       {historyOpen && account && <HistoryPanel locale={language} onClose={closeHistory} onOpen={openHistoryItem} />}
       {account && <CalendarPanel open={calendarOpen} locale={language} preferences={preferences} onClose={() => setCalendarOpen(false)} />}
-      {account && <UserHub open={userHubOpen} initialTab={userHubInitialTab} locale={language} preferences={preferences} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
+      {account && <UserHub open={userHubOpen} initialTab={userHubInitialTab} locale={language} preferences={preferences} modelSelectionAvailable={modelSelectionAvailable} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
       {account && <SupportPanel open={supportOpen} locale={language} onClose={() => setSupportOpen(false)} />}
       <InfoPanel open={infoOpen} locale={language} t={t} onClose={() => setInfoOpen(false)} />
       {captchaChallengeOpen && <SecurityChallenge locale={language} theme={theme} resetKey={captchaResetKey} error={captchaError}

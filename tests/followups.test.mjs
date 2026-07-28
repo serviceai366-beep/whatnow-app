@@ -93,8 +93,8 @@ test("follow-up API and interface preserve privacy, model choice, expansion, sel
   assert.match(route, /verifySupabaseRequest/);
   assert.match(route, /loadOwnedAnalysis/);
   assert.match(route, /activePlanForUser/);
-  assert.match(route, /model: MODEL_ID/);
-  assert.match(route, /const MODEL_ID = "gpt-5\.6-luna"/);
+  assert.match(route, /selectedModelForUser/);
+  assert.match(route, /model: selectedModel/);
   assert.match(route, /reasoning: \{ effort: "low" \}/);
   assert.match(route, /store: false/);
   assert.match(route, /Base the answer only on the supplied structured analysis/);

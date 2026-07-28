@@ -26,13 +26,13 @@ import {
   recordAnalysisCost,
   type AnalysisTokenUsage,
 } from "../../analysis-cost.ts";
-import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
 import { checkAnalysisChallenge } from "../../analysis-challenge.ts";
 import { activePlanForUser } from "../../subscription-store.ts";
+import { selectedModelForUser } from "../../model-selection.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_REQUEST_TIMEOUT_MS = 45_000;
-const MODEL_ID = "gpt-5.6-luna";
 const REASONING_EFFORT = "low";
 
 const languageNames: Record<SupportedLanguage, string> = {
@@ -345,8 +345,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let quota;
+  let planCode;
   try {
-    const planCode = await activePlanForUser(auth.user.id, undefined, auth.user.email);
+    planCode = await activePlanForUser(auth.user.id, undefined, auth.user.email);
     quota = await checkAnalysisQuota({ userKey: auth.user.id, costKind, planCode });
   } catch (error) {
     console.error("[analyze] Usage control error", { name: error instanceof Error ? error.name : "unknown" });
@@ -393,6 +394,12 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const limitHeaders = quotaHeaders(quota);
+  const selectedModel = await selectedModelForUser({
+    userId: auth.user.id,
+    email: auth.user.email,
+    token: requestBearerToken(request)!,
+    planCode,
+  });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), requestTimeoutMs());
@@ -405,7 +412,7 @@ export async function POST(request: Request): Promise<Response> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: MODEL_ID,
+        model: selectedModel,
         reasoning: { effort: REASONING_EFFORT },
         instructions: getInstructions(language),
         input: [{ role: "user", content }],
@@ -461,7 +468,7 @@ export async function POST(request: Request): Promise<Response> {
     const usage = extractTokenUsage(payload);
     await recordAnalysisCost({
       userKey: auth.user.id,
-      model: MODEL_ID,
+      model: selectedModel,
       costKind,
       usage,
     });
@@ -469,7 +476,7 @@ export async function POST(request: Request): Promise<Response> {
     return jsonResponse({
       result,
       meta: {
-        model: MODEL_ID,
+        model: selectedModel,
         reasoningEffort: REASONING_EFFORT,
         usage,
       },

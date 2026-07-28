@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import {
   profileReminderMinutes,
+  type ProfileDefaultModel,
   type ProfileDensity,
   type ProfileFontScale,
   type ProfileLanguage,
@@ -18,6 +19,7 @@ import { interfaceLanguageOptions, responseLanguageOptions } from "./language-op
 type ProfileSettingsProps = {
   locale: ProfileLanguage;
   preferences: UserProfilePreferences;
+  modelSelectionAvailable: boolean;
   onChange: (patch: UserProfilePatch) => void | Promise<void>;
   disabled?: boolean;
 };
@@ -102,12 +104,23 @@ const copy = {
   },
 } as const;
 
+const modelCopy: Record<ProfileLanguage, { title: string; label: string; help: string }> = {
+  en: { title: "AI model", label: "Default model", help: "Used automatically for analyses, document creation and editing, and follow-up questions." },
+  ru: { title: "Модель ИИ", label: "Модель по умолчанию", help: "Автоматически используется для анализа, создания и редактирования документов, а также дополнительных вопросов." },
+  lv: { title: "MI modelis", label: "Noklusējuma modelis", help: "Automātiski tiek izmantots analīzēm, dokumentu izveidei un rediģēšanai, kā arī papildjautājumiem." },
+  es: { title: "Modelo de IA", label: "Modelo predeterminado", help: "Se usa automáticamente para análisis, creación y edición de documentos y preguntas de seguimiento." },
+  pt: { title: "Modelo de IA", label: "Modelo predefinido", help: "É utilizado automaticamente para análises, criação e edição de documentos e perguntas de seguimento." },
+  fr: { title: "Modèle IA", label: "Modèle par défaut", help: "Utilisé automatiquement pour les analyses, la création et l’édition de documents et les questions de suivi." },
+  de: { title: "KI-Modell", label: "Standardmodell", help: "Wird automatisch für Analysen, die Erstellung und Bearbeitung von Dokumenten sowie Rückfragen verwendet." },
+};
+
 const languageLabels: Record<ProfileLanguage, string> = Object.fromEntries(
   interfaceLanguageOptions.map((option) => [option.code, option.nativeName]),
 ) as Record<ProfileLanguage, string>;
 
-export function ProfileSettings({ locale, preferences, onChange, disabled = false }: ProfileSettingsProps) {
+export function ProfileSettings({ locale, preferences, modelSelectionAvailable, onChange, disabled = false }: ProfileSettingsProps) {
   const t = copy[locale];
+  const modelT = modelCopy[locale];
   const id = useId();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -209,6 +222,20 @@ export function ProfileSettings({ locale, preferences, onChange, disabled = fals
         <label className="profile-settings-check"><input type="checkbox" checked={preferences.autoSaveFiles}
           onChange={(event) => void apply("autoSaveFiles", event.target.checked)} /><span className="settings-toggle" aria-hidden="true"><span /></span><span>{t.autoSaveFiles}</span></label>
       </fieldset>
+
+      {modelSelectionAvailable && <fieldset className="settings-card settings-card-model" disabled={locked}>
+        <legend>{modelT.title}</legend>
+        <div className="profile-setting-row">
+          <label htmlFor={`${id}-default-model`}>{modelT.label}</label>
+          <select id={`${id}-default-model`} value={preferences.defaultModel}
+            onChange={(event) => void apply("defaultModel", event.target.value as ProfileDefaultModel)}>
+            <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
+            <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
+            <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
+          </select>
+        </div>
+        <p className="profile-setting-help">{modelT.help}</p>
+      </fieldset>}
 
       <div className="profile-settings-status" aria-live="polite">
         {saving && <p role="status">{t.saving}</p>}

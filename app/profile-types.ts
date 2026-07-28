@@ -9,6 +9,7 @@ export const profileDensities = ["comfortable", "compact"] as const;
 export const profileWeekStarts = ["monday", "sunday"] as const;
 export const profileTimeFormats = ["12", "24"] as const;
 export const profileReminderMinutes = [60, 1_440, 10_080, 43_200] as const;
+export const profileDefaultModels = ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"] as const;
 
 export type ProfileLanguage = (typeof profileLanguages)[number];
 export type ProfileTheme = (typeof profileThemes)[number];
@@ -17,6 +18,7 @@ export type ProfileDensity = (typeof profileDensities)[number];
 export type ProfileWeekStartsOn = (typeof profileWeekStarts)[number];
 export type ProfileTimeFormat = (typeof profileTimeFormats)[number];
 export type ProfileReminderMinutes = (typeof profileReminderMinutes)[number];
+export type ProfileDefaultModel = (typeof profileDefaultModels)[number];
 
 export type UserProfilePreferences = {
   uiLanguage: ProfileLanguage;
@@ -29,6 +31,7 @@ export type UserProfilePreferences = {
   timeFormat: ProfileTimeFormat;
   defaultReminderMinutes: ProfileReminderMinutes;
   autoSaveFiles: boolean;
+  defaultModel: ProfileDefaultModel;
 };
 
 export type UserProfilePatch = Partial<UserProfilePreferences>;
@@ -44,4 +47,5 @@ export const DEFAULT_PROFILE_PREFERENCES: Readonly<UserProfilePreferences> = Obj
   timeFormat: "24",
   defaultReminderMinutes: 1_440,
   autoSaveFiles: true,
+  defaultModel: "gpt-5.6-luna",
 });

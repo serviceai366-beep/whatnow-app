@@ -1,5 +1,6 @@
 import {
   profileDensities,
+  profileDefaultModels,
   profileFontScales,
   profileLanguages,
   profileReminderMinutes,
@@ -21,6 +22,7 @@ const profileKeys = [
   "timeFormat",
   "defaultReminderMinutes",
   "autoSaveFiles",
+  "defaultModel",
 ] as const satisfies readonly (keyof UserProfilePreferences)[];
 
 type ProfileKey = (typeof profileKeys)[number];
@@ -53,6 +55,8 @@ function isValidValue(key: ProfileKey, value: unknown): boolean {
       return isAllowed(profileTimeFormats, value);
     case "defaultReminderMinutes":
       return isAllowed(profileReminderMinutes, value);
+    case "defaultModel":
+      return isAllowed(profileDefaultModels, value);
   }
 }
 
@@ -87,6 +91,9 @@ export function profilePreferencesFromDatabaseRow(value: unknown): UserProfilePr
     timeFormat: value.time_format,
     defaultReminderMinutes: value.default_reminder_minutes,
     autoSaveFiles: value.auto_save_files,
+    // Existing accounts created before model choice was introduced keep the
+    // safe default until they explicitly choose another Pro model.
+    defaultModel: value.default_model ?? "gpt-5.6-luna",
   });
 }
 
@@ -102,5 +109,6 @@ export function profilePatchToRpcPayload(patch: UserProfilePatch): Record<string
   if (patch.timeFormat !== undefined) payload.p_time_format = patch.timeFormat;
   if (patch.defaultReminderMinutes !== undefined) payload.p_default_reminder_minutes = patch.defaultReminderMinutes;
   if (patch.autoSaveFiles !== undefined) payload.p_auto_save_files = patch.autoSaveFiles;
+  if (patch.defaultModel !== undefined) payload.p_default_model = patch.defaultModel;
   return payload;
 }

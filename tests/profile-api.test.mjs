@@ -13,6 +13,7 @@ const databaseRow = {
   time_format: "24",
   default_reminder_minutes: 1_440,
   auto_save_files: false,
+  default_model: "gpt-5.6-luna",
 };
 
 function request(path = "/api/profile", init = {}) {
@@ -100,6 +101,7 @@ test("profile endpoint enforces origin, authentication, strict input, and user-s
       timeFormat: "24",
       defaultReminderMinutes: 1_440,
       autoSaveFiles: false,
+      defaultModel: "gpt-5.6-luna",
     });
     const rpc = calls.find((call) => call.url.endsWith("/rpc/update_user_profile"));
     assert.ok(rpc);

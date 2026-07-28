@@ -6,6 +6,7 @@ import {
   profilePatchToRpcPayload,
   profilePreferencesFromDatabaseRow,
 } from "../../profile-validation.ts";
+import { activePlanForUser } from "../../subscription-store.ts";
 
 const MAX_BODY_BYTES = 8 * 1024;
 
@@ -32,7 +33,7 @@ async function authenticate(request: Request) {
   if (!auth.ok) return { response: apiError(auth.code, "A confirmed account is required.", auth.status) } as const;
   const token = requestBearerToken(request);
   if (!token) return { response: apiError("authentication_required", "Sign in is required.", 401) } as const;
-  return { token } as const;
+  return { token, user: auth.user } as const;
 }
 
 async function supabaseRpc(name: "get_user_profile" | "update_user_profile", token: string, body: Record<string, unknown>): Promise<Response> {
@@ -81,7 +82,8 @@ export async function GET(request: Request): Promise<Response> {
   if ("response" in auth) return auth.response;
   try {
     const profile = await profileFromRpc(await supabaseRpc("get_user_profile", auth.token, {}));
-    return profile ? jsonResponse({ profile }) : apiError("profile_storage_unavailable", "Profile settings are unavailable.", 503);
+    const modelSelectionAvailable = await activePlanForUser(auth.user.id, undefined, auth.user.email) === "pro";
+    return profile ? jsonResponse({ profile, modelSelectionAvailable }) : apiError("profile_storage_unavailable", "Profile settings are unavailable.", 503);
   } catch {
     return apiError("profile_storage_unavailable", "Profile settings are unavailable.", 503);
   }
@@ -96,8 +98,12 @@ export async function PATCH(request: Request): Promise<Response> {
   const auth = await authenticate(request);
   if ("response" in auth) return auth.response;
   try {
+    if (patch.defaultModel !== undefined && await activePlanForUser(auth.user.id, undefined, auth.user.email) !== "pro") {
+      return apiError("pro_required", "Choosing an AI model is available with WhatNow? Pro.", 403);
+    }
     const profile = await profileFromRpc(await supabaseRpc("update_user_profile", auth.token, profilePatchToRpcPayload(patch)));
-    return profile ? jsonResponse({ profile }) : apiError("profile_storage_unavailable", "Profile settings are unavailable.", 503);
+    const modelSelectionAvailable = await activePlanForUser(auth.user.id, undefined, auth.user.email) === "pro";
+    return profile ? jsonResponse({ profile, modelSelectionAvailable }) : apiError("profile_storage_unavailable", "Profile settings are unavailable.", 503);
   } catch {
     return apiError("profile_storage_unavailable", "Profile settings are unavailable.", 503);
   }

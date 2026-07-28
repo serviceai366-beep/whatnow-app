@@ -7,11 +7,11 @@ import { isSameOriginRequest } from "../../security.ts";
 import { activePlanForUser } from "../../subscription-store.ts";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../../supabase-config.ts";
 import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { selectedModelForUser } from "../../model-selection.ts";
 
 export const dynamic = "force-dynamic";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const MODEL_ID = "gpt-5.6-luna";
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_BODY_BYTES = 8 * 1024;
 
@@ -189,6 +189,7 @@ export async function POST(request: Request): Promise<Response> {
     store = await getFollowupStore();
     if (!store) return error("followup_storage_unavailable", "The document chat is temporarily unavailable.", 503);
     const planCode = await activePlanForUser(auth.user.id, undefined, auth.user.email);
+    const selectedModel = await selectedModelForUser({ userId: auth.user.id, email: auth.user.email, token: auth.token, planCode });
     reservedId = await store.reserve({ userId: auth.user.id, ...input, planCode });
     const previous = (await store.list(auth.user.id, input.analysisId)).slice(-8).map((message) => ({
       question: message.question,
@@ -203,7 +204,7 @@ export async function POST(request: Request): Promise<Response> {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: MODEL_ID,
+          model: selectedModel,
           reasoning: { effort: "low" },
           instructions: instructions(analysis.outputLanguage),
           input: [{ role: "user", content: [{ type: "input_text", text: JSON.stringify({
@@ -230,7 +231,7 @@ export async function POST(request: Request): Promise<Response> {
     const validEvidence = new Set(analysis.evidence.map((item) => item.id));
     if (answer.evidenceIds.some((id) => !validEvidence.has(id))) throw new Error("invalid_model_response");
     await store.complete(auth.user.id, reservedId, answer);
-    await recordAnalysisCost({ userKey: auth.user.id, model: MODEL_ID, costKind: "text", usage: extractTokenUsage(payload) });
+    await recordAnalysisCost({ userKey: auth.user.id, model: selectedModel, costKind: "text", usage: extractTokenUsage(payload) });
     const [messages, quota] = await Promise.all([store.list(auth.user.id, input.analysisId), store.quota(auth.user.id, input.analysisId, planCode)]);
     return response({ conversation: { analysisId: input.analysisId, messages, quota } }, 201);
   } catch (cause) {

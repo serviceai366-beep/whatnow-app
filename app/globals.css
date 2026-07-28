@@ -856,6 +856,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 .profile-settings-check > input:checked + .settings-toggle { border-color: var(--accent); background: var(--accent); }
 .profile-settings-check > input:checked + .settings-toggle > span { transform: translateX(20px); }
 .profile-settings-check > input:focus-visible + .settings-toggle { outline: 3px solid color-mix(in srgb, var(--accent) 26%, transparent); outline-offset: 2px; }
+.profile-setting-help { margin: 0 0 12px; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .profile-settings-status { min-height: 34px; padding: 0 3px; color: var(--accent-dark); }
 .profile-settings-status p { margin: 10px 0 0; }
 
