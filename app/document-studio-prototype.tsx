@@ -252,6 +252,19 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
   const [draggedPanel, setDraggedPanel] = useState<StudioPanelId | null>(null);
   const [equalPanels, setEqualPanels] = useState(false);
   const documentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!focusedPanel) return;
+    const previousOverflow = window.document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFocusedPanel(null);
+    };
+    window.document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [focusedPanel]);
   const document = item.result;
   const annotations = document.annotations ?? [];
   const panelLabels: Record<StudioPanelId, string> = {
