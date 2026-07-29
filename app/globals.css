@@ -621,6 +621,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 .header-tool-button {
   position: relative;
   min-height: 44px;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -632,6 +633,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   background: color-mix(in srgb, var(--surface) 94%, var(--accent-soft));
   box-shadow: 0 1px 1px rgb(9 52 46 / 3%);
   font-weight: 720;
+  white-space: nowrap;
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
 .header-tool-button:hover {
@@ -1105,6 +1107,35 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .support-status-control { max-width: 180px; }
   .support-delete-confirm { width: 100%; }
   .support-message { max-width: 94%; }
+}
+
+/* At laptop widths a translated label must never be squeezed into individual
+   letters. These controls already have accessible names and hover/focus labels,
+   so they switch cleanly to their graphical form before the header gets tight. */
+@media (min-width: 721px) and (max-width: 1280px) {
+  .site-header { width: calc(100% - 24px); max-width: 1440px; }
+  .header-actions { gap: 7px; }
+  .header-nav-actions, .header-utility-actions { gap: 6px; }
+  .header-utility-actions { padding-left: 10px; }
+  .header-nav-actions .header-tool-button,
+  .x-account-link {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    justify-content: center;
+    gap: 0;
+    padding: 4px;
+    overflow: hidden;
+    border-radius: 50%;
+    font-size: 0;
+  }
+  .header-nav-actions .tool-icon,
+  .x-account-link .x-account-symbol {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    border-radius: 50%;
+  }
 }
 
 @media (max-width: 900px) {

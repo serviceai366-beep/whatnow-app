@@ -109,3 +109,10 @@ test("header tools use a unified graphical icon system instead of text symbols",
   assert.match(css, /@media \(hover: hover\) and \(min-width: 721px\)/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.tool-icon/);
 });
+
+test("translated header labels never collapse into individual letters", async () => {
+  const [, , css] = await files;
+  assert.match(css, /\.header-tool-button \{[\s\S]*white-space: nowrap/);
+  assert.match(css, /@media \(min-width: 721px\) and \(max-width: 1280px\)/);
+  assert.match(css, /\.header-nav-actions \.header-tool-button,[\s\S]*\.x-account-link/);
+});
