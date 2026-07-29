@@ -15,6 +15,7 @@ type AssistantMessage = { role: "user" | "assistant"; text: string };
 const text = {
   en: {
     live: "Secure AI workspace", title: "Create & edit documents", subtitle: "A guided workspace for near-final, jurisdiction-aware documents.",
+    guidedMode: "Detailed", guidedModeHint: "Guided questions for a more accurate result", quickMode: "Quick", quickModeHint: "One prompt for the fastest result", workflowLabel: "Choose how to work", quickTitle: "Describe the result in one prompt", quickIntro: "Write what you want to create, change, review, or correct. You can paste the document directly into the same field.", quickPrompt: "Your request", quickPlaceholder: "Example: Create a one-year apartment lease for Riga between… Include rent, deposit, utilities, notice period, and no-pets rule.", quickAccuracy: "Quick mode may be less accurate", quickAccuracyBody: "There are no guided questions, so important details can be missed. The AI will mark missing or uncertain information instead of inventing it.", quickGenerate: "Create from this prompt", quickEditPlaceholder: "Example: Correct errors in the document below, simplify unclear clauses, and mark any missing dates or amounts.\n\nPaste the document here…",
     create: "Create new", improve: "Improve existing", review: "Review & check", templates: "Choose a starting point", details: "Complete the guided brief",
     country: "Country or legal jurisdiction", countryHint: "Required. The AI uses this location when checking official rules.", region: "Region / state / province", regionRequired: "Required for this country because rules may differ locally.", regionOptional: "Add it whenever local or state rules may apply.", language: "Document language",
     goal: "What should the AI change, check, or explain?", goalHint: "Be specific: name the clauses, risks, tone, missing information, or desired result.", existing: "Paste the existing document", existingHint: "Paste the complete text, or attach the original file below.",
@@ -31,6 +32,7 @@ const text = {
   },
   ru: {
     live: "Защищённая AI-мастерская", title: "Создание и редактирование", subtitle: "Пошаговая Pro-мастерская для почти готовых документов с учётом юрисдикции.",
+    guidedMode: "Подробный", guidedModeHint: "Пошаговые вопросы для более точного результата", quickMode: "Быстрый", quickModeHint: "Один запрос для самого быстрого результата", workflowLabel: "Выберите способ работы", quickTitle: "Опишите результат одним запросом", quickIntro: "Напишите, что нужно создать, изменить, проверить или исправить. Сам документ можно вставить в это же поле.", quickPrompt: "Ваш запрос", quickPlaceholder: "Пример: Создай договор аренды квартиры в Риге на один год между… Укажи аренду, депозит, коммунальные услуги, срок уведомления и запрет животных.", quickAccuracy: "Быстрый режим может быть менее точным", quickAccuracyBody: "Здесь нет пошаговых вопросов, поэтому важные детали можно пропустить. ИИ отметит недостающие или неясные сведения, а не станет их придумывать.", quickGenerate: "Создать по этому запросу", quickEditPlaceholder: "Пример: Исправь ошибки в документе ниже, упрости непонятные пункты и отметь недостающие даты или суммы.\n\nВставьте документ сюда…",
     create: "Создать новый", improve: "Улучшить готовый", review: "Проверить документ", templates: "Выберите основу", details: "Заполните понятную анкету",
     country: "Страна или юрисдикция", countryHint: "Обязательно. ИИ использует это место при проверке официальных правил.", region: "Регион / штат / провинция", regionRequired: "Обязательно для этой страны: местные правила могут отличаться.", regionOptional: "Добавьте, если могут применяться региональные или местные правила.", language: "Язык документа",
     goal: "Что ИИ должен изменить, проверить или объяснить?", goalHint: "Укажите пункты, риски, тон, недостающие сведения или желаемый результат.", existing: "Вставьте готовый документ", existingHint: "Вставьте полный текст или прикрепите исходный файл ниже.",
@@ -47,6 +49,7 @@ const text = {
   },
   lv: {
     live: "Droša AI darbnīca", title: "Izveidot un rediģēt dokumentus", subtitle: "Vadīta Pro vide gandrīz gataviem dokumentiem ar jurisdikcijas pārbaudi.",
+    guidedMode: "Detalizēti", guidedModeHint: "Vadīti jautājumi precīzākam rezultātam", quickMode: "Ātri", quickModeHint: "Viens pieprasījums ātrākajam rezultātam", workflowLabel: "Izvēlieties darba veidu", quickTitle: "Aprakstiet rezultātu vienā pieprasījumā", quickIntro: "Uzrakstiet, ko vēlaties izveidot, mainīt, pārbaudīt vai labot. Esošo dokumentu var ielīmēt tajā pašā laukā.", quickPrompt: "Jūsu pieprasījums", quickPlaceholder: "Piemērs: Izveido viena gada dzīvokļa īres līgumu Rīgā starp… Iekļauj īres maksu, depozītu, komunālos maksājumus un uzteikuma termiņu.", quickAccuracy: "Ātrais režīms var būt mazāk precīzs", quickAccuracyBody: "Nav vadītu jautājumu, tāpēc būtiska informācija var iztrūkt. AI atzīmēs trūkstošo vai neskaidro informāciju, nevis to izdomās.", quickGenerate: "Izveidot no šī pieprasījuma", quickEditPlaceholder: "Piemērs: Izlabo kļūdas zemāk esošajā dokumentā, vienkāršo neskaidros punktus un atzīmē trūkstošos datumus vai summas.\n\nIelīmējiet dokumentu šeit…",
     create: "Izveidot jaunu", improve: "Uzlabot esošo", review: "Pārskatīt dokumentu", templates: "Izvēlieties sākumpunktu", details: "Aizpildiet vadīto informāciju",
     country: "Valsts vai jurisdikcija", countryHint: "Obligāti. AI izmanto šo vietu, pārbaudot oficiālos noteikumus.", region: "Reģions / štats / province", regionRequired: "Šai valstij obligāti, jo vietējie noteikumi var atšķirties.", regionOptional: "Pievienojiet, ja var attiekties reģionāli vai vietēji noteikumi.", language: "Dokumenta valoda",
     goal: "Ko AI jāmaina, jāpārbauda vai jāizskaidro?", goalHint: "Norādiet punktus, riskus, toni, trūkstošo informāciju vai vēlamo rezultātu.", existing: "Ielīmējiet esošo dokumentu", existingHint: "Ielīmējiet pilnu tekstu vai pievienojiet sākotnējo failu.",
@@ -76,6 +79,7 @@ function formatDuration(totalSeconds: number) {
 export function DocumentStudioPrototype({ locale, account, onRequireAccount, onOpenPlan }: { locale: ProfileLanguage; account: SupabaseAccount | null; onRequireAccount: () => void; onOpenPlan: () => void }) {
   const copyLocale: StudioGuideLocale = locale === "ru" || locale === "lv" ? locale : "en";
   const t = text[copyLocale] as Copy;
+  const [workflow, setWorkflow] = useState<"guided" | "quick">("guided");
   const [mode, setMode] = useState<StudioMode>("create");
   const [template, setTemplate] = useState("lease");
   const [country, setCountry] = useState("Latvia");
@@ -95,6 +99,7 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
   const [assistantQuestion, setAssistantQuestion] = useState("");
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
   const [assistantBusy, setAssistantBusy] = useState(false);
+  const [quickPrompt, setQuickPrompt] = useState("");
   const generationController = useRef<AbortController | null>(null);
   const guide = useMemo(() => guideFor(template), [template]);
   const jurisdictionNeedsRegion = requiredRegionFor(country);
@@ -103,6 +108,12 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
     const critical: { key: string; label: string }[] = [];
     const helpful: { key: string; label: string }[] = [];
     if (jurisdictionNeedsRegion && !region.trim()) critical.push({ key: "region", label: t.region });
+    if (workflow === "quick") {
+      if (quickPrompt.trim().length < 20) critical.push({ key: "prompt", label: t.quickPrompt });
+      else if (quickPrompt.trim().length < 100) helpful.push({ key: "prompt", label: t.quickAccuracy });
+      if (mode !== "create" && !sourceFile && !quickPrompt.trim()) helpful.push({ key: "prompt", label: t.existing });
+      return { critical, helpful };
+    }
     if (mode !== "create") {
       if (!(fields.existing?.trim() || sourceFile)) critical.push({ key: "existing", label: t.existing });
       if (!fields.goal?.trim()) critical.push({ key: "goal", label: t.goal });
@@ -113,11 +124,20 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
       }
     }
     return { critical, helpful };
-  }, [copyLocale, fields, guide.fields, jurisdictionNeedsRegion, mode, region, sourceFile, t.existing, t.goal, t.region]);
+  }, [copyLocale, fields, guide.fields, jurisdictionNeedsRegion, mode, quickPrompt, region, sourceFile, t.existing, t.goal, t.quickAccuracy, t.quickPrompt, t.region, workflow]);
   const readiness: Readiness = missingFields.critical.length >= 3 ? "red" : missingFields.critical.length || missingFields.helpful.length > 2 ? "yellow" : "green";
   const readinessScore = readiness === "green" ? Math.max(88, 100 - missingFields.helpful.length * 3) : readiness === "yellow" ? Math.max(48, 78 - missingFields.critical.length * 10 - missingFields.helpful.length * 3) : Math.max(15, 45 - missingFields.critical.length * 6);
 
-  const requestData = (confirmedInsufficient = false) => ({ mode, templateId: template, country, region, outputLanguage: language, details: fields, confirmedInsufficient });
+  const requestData = (confirmedInsufficient = false) => ({
+    mode,
+    workflow,
+    templateId: workflow === "quick" ? "custom" : template,
+    country,
+    region,
+    outputLanguage: language,
+    details: workflow === "quick" ? { prompt: quickPrompt } : fields,
+    confirmedInsufficient,
+  });
   const load = async () => {
     if (!account) { setPlanLoaded(true); return; }
     const token = await getAccessToken(); if (!token) { setPlanError(true); setPlanLoaded(true); return; }
@@ -142,7 +162,7 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
   useEffect(() => () => generationController.current?.abort(), []);
 
   const update = (key: string, value: string) => { setFields((previous) => ({ ...previous, [key]: value })); setError(""); };
-  const focusField = (key: string) => document.getElementById(`studio-field-${key}`)?.focus();
+  const focusField = (key: string) => document.getElementById(key === "prompt" ? "studio-quick-prompt" : `studio-field-${key}`)?.focus();
   const switchTemplate = (value: string) => { setTemplate(value); setFields({}); setAssistantMessages([]); setError(""); };
   const cancelGeneration = () => { generationController.current?.abort(); setError(t.stopped); };
   const generate = async (confirmed = false) => {
@@ -200,8 +220,12 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
 
   return <section className="studio-shell" aria-labelledby="studio-title">
     <div className="studio-heading"><div><div className="studio-heading-labels"><span className="studio-prototype-pill">{t.live}</span><span className="studio-beta-badge" title="Beta testing — some features may still change">Beta</span><span className="studio-pro-badge">{quota.planCode === "pro" ? "Pro" : "Free"}</span></div><h1 id="studio-title">{t.title}</h1><p>{t.subtitle}</p></div><div className="studio-heading-actions"><button className="studio-history-toggle" type="button" onClick={() => document.getElementById("studio-history")?.scrollIntoView({ behavior: "smooth", block: "start" })}>{t.historyButton}</button><div className={`readiness-orb ${readiness}`} aria-label={`${t.readiness}: ${readinessScore}%`}><span>{readinessScore}%</span></div></div></div>
+    <div className="studio-workflow-switch" role="tablist" aria-label={t.workflowLabel}>
+      <button type="button" role="tab" aria-selected={workflow === "guided"} className={workflow === "guided" ? "active" : ""} onClick={() => { setWorkflow("guided"); setWarning(false); setError(""); }}><span>☷</span><div><strong>{t.guidedMode}</strong><small>{t.guidedModeHint}</small></div></button>
+      <button type="button" role="tab" aria-selected={workflow === "quick"} className={workflow === "quick" ? "active" : ""} onClick={() => { setWorkflow("quick"); setWarning(false); setError(""); }}><span>⚡</span><div><strong>{t.quickMode}</strong><small>{t.quickModeHint}</small></div></button>
+    </div>
     <div className="studio-action-switch" role="tablist">{(["create", "improve", "review"] as StudioMode[]).map((value) => <button key={value} type="button" role="tab" aria-selected={mode === value} className={mode === value ? "active" : ""} onClick={() => { setMode(value); setFields({}); setSourceFile(null); setAssistantMessages([]); }}>{t[value]}</button>)}</div>
-    <div className="studio-workspace">
+    {workflow === "guided" ? <div className="studio-workspace">
       <aside className="template-library"><div className="template-library-heading"><h2>{t.templates}</h2></div><div className="template-grid">{templates.map(([key, icon]) => <button type="button" className={template === key ? "active" : ""} key={key} onClick={() => switchTemplate(key)}><span>{icon}</span><strong>{t[key]}</strong></button>)}</div><div className="studio-history" id="studio-history"><h3>{t.history}</h3>{quota && <p>{t.limit}: {quota.remaining} · 24h {quota.dailyUsed}/{quota.dailyLimit} · 30d {quota.monthlyUsed}/{quota.monthlyLimit}</p>}{history.length ? history.map((document) => <div key={document.id}><button type="button" onClick={() => setCurrent(document)}>{document.result.title}</button><button type="button" aria-label={t.delete} onClick={() => void remove(document.id)}>×</button></div>) : <p>{t.empty}</p>}</div></aside>
       <div className="studio-form-panel">
         <div className="studio-form-title"><span className="studio-step">2</span><div><h2>{t.details}</h2><p>{mode === "create" ? guideText(guide.intro, copyLocale) : t.goalHint}</p></div></div>
@@ -218,7 +242,23 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
         <button className="primary-button studio-generate" disabled={busy || quota.remaining === 0} type="button" onClick={() => void generate()}>{busy ? t.generating : t.generate}<span>→</span></button>
         {busy && <div className="studio-generation-progress" role="status" aria-live="polite"><p className="studio-generation-timer"><span>{t.reasoningTime}: {formatDuration(elapsed)} / 10:00</span><small>{t.reasoningEstimate}</small></p><button type="button" onClick={cancelGeneration}>{t.stop}</button></div>}
       </div>
-    </div>
+    </div> : <div className="studio-quick-workspace">
+      <div className="studio-quick-card">
+        <div className="studio-form-title"><span className="studio-step">⚡</span><div><h2>{t.quickTitle}</h2><p>{t.quickIntro}</p></div></div>
+        <div className="studio-quick-context">
+          <label><span>{t.country}</span><select value={country} onChange={(event) => setCountry(event.target.value)}>{studioCountries.map((value) => <option key={value}>{value}</option>)}</select></label>
+          {jurisdictionNeedsRegion && <label><span>{t.region} *</span><input id="studio-field-region" value={region} onChange={(event) => setRegion(event.target.value)} /></label>}
+          <label><span>{t.language}</span><select value={language} onChange={(event) => setLanguage(event.target.value)}>{languages.map((value) => <option key={value.code} value={value.code}>{value.name}</option>)}</select></label>
+        </div>
+        <label className="studio-quick-prompt"><span>{t.quickPrompt} *</span><textarea id="studio-quick-prompt" rows={12} value={quickPrompt} onChange={(event) => { setQuickPrompt(event.target.value); setError(""); }} placeholder={mode === "create" ? t.quickPlaceholder : t.quickEditPlaceholder} /></label>
+        {mode !== "create" && <StudioFileField t={t} file={sourceFile} onFile={(file) => { setSourceFile(file); setError(""); }} />}
+        <div className="studio-quick-warning"><span>!</span><div><strong>{t.quickAccuracy}</strong><p>{t.quickAccuracyBody}</p></div></div>
+        {error && <p className="studio-api-error" role="alert">{error}</p>}
+        <button className="primary-button studio-generate" disabled={busy || quota.remaining === 0 || quickPrompt.trim().length < 2} type="button" onClick={() => void generate()}>{busy ? t.generating : t.quickGenerate}<span>→</span></button>
+        {busy && <div className="studio-generation-progress" role="status" aria-live="polite"><p className="studio-generation-timer"><span>{t.reasoningTime}: {formatDuration(elapsed)} / 10:00</span><small>{t.reasoningEstimate}</small></p><button type="button" onClick={cancelGeneration}>{t.stop}</button></div>}
+      </div>
+      <aside className="studio-quick-side" id="studio-history"><div className="studio-history"><h3>{t.history}</h3><p>{t.limit}: {quota.remaining} · 24h {quota.dailyUsed}/{quota.dailyLimit} · 30d {quota.monthlyUsed}/{quota.monthlyLimit}</p>{history.length ? history.map((document) => <div key={document.id}><button type="button" onClick={() => setCurrent(document)}>{document.result.title}</button><button type="button" aria-label={t.delete} onClick={() => void remove(document.id)}>×</button></div>) : <p>{t.empty}</p>}</div></aside>
+    </div>}
     <div className="studio-legal-note"><span>i</span><p>{t.disclaimer}</p></div>
     {warning && <div className="studio-warning-backdrop"><section className="studio-warning" role="dialog" aria-modal="true"><div className={`readiness-orb ${readiness}`}><span>!</span></div><h2>{t.warning}</h2><p>{t.warningBody}</p><div className="studio-warning-summary"><MissingList title={t.critical} items={missingFields.critical} onPick={(key) => { setWarning(false); focusField(key); }} /></div><div className="studio-warning-actions"><button type="button" onClick={() => setWarning(false)}>{t.add}</button><button className="primary-button" type="button" onClick={() => { setWarning(false); void generate(true); }}>{t.continue}</button></div></section></div>}
   </section>;

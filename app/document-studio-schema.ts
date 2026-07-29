@@ -19,6 +19,7 @@ export const studioCountries = [
 
 export type StudioRequest = {
   mode: StudioMode;
+  workflow: "guided" | "quick";
   templateId: string;
   country: string;
   region: string | null;
@@ -65,6 +66,7 @@ export function parseStudioRequest(value: unknown): StudioRequest | null {
   if (!studioCountries.includes(country as (typeof studioCountries)[number]) || !studioTemplateIds.includes(templateId as (typeof studioTemplateIds)[number])) return null;
   return {
     mode: value.mode as StudioMode,
+    workflow: value.workflow === "quick" ? "quick" : "guided",
     templateId,
     country,
     region: text(value.region, 100) || null,
@@ -78,6 +80,15 @@ export function assessStudioReadiness(input: StudioRequest): GeneratedDocument["
   const critical: string[] = [];
   const helpful: string[] = [];
   if (requiredRegionFor(input.country) && !input.region) critical.push("region_or_state");
+  if (input.workflow === "quick") {
+    const promptLength = input.details.prompt?.trim().length ?? 0;
+    if (promptLength < 20) critical.push("quick_prompt");
+    else if (promptLength < 100) helpful.push("more_prompt_detail");
+    if (input.mode !== "create" && !input.details.existing?.trim()) helpful.push("existing_document_or_full_text");
+    const level: StudioReadinessLevel = critical.length ? "red" : helpful.length ? "yellow" : "green";
+    const score = level === "green" ? 88 : level === "yellow" ? 68 : 30;
+    return { level, score, missingCritical: critical, missingHelpful: helpful };
+  }
   if (input.mode !== "create") {
     if (!input.details.existing?.trim()) critical.push("existing_document");
     if (!input.details.goal?.trim()) critical.push("requested_changes");
