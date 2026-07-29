@@ -114,5 +114,7 @@ test("translated header labels never collapse into individual letters", async ()
   const [, , css] = await files;
   assert.match(css, /\.header-tool-button \{[\s\S]*white-space: nowrap/);
   assert.match(css, /@media \(min-width: 721px\) and \(max-width: 1280px\)/);
+  assert.match(css, /container-type: inline-size/);
+  assert.match(css, /@container \(max-width: 1260px\)/);
   assert.match(css, /\.header-nav-actions \.header-tool-button,[\s\S]*\.x-account-link/);
 });
