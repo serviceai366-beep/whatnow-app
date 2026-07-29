@@ -32,6 +32,7 @@ const copy = {
     light: "Светлая", dark: "Тёмная", quota: "Ваши лимиты", dailyQuota: "За 24 часа", weeklyQuota: "За 7 дней", monthlyQuota: "За 30 дней",
     quotaLoading: "Считаем доступные анализы…", quotaUnavailable: "Не удалось обновить остаток. Ограничения продолжают действовать на сервере.",
     quotaRemaining: "Осталось {remaining} из {limit}", quotaReset: "Обновится {time}",
+    quotaEstimated: "Точный остаток уточняется. Ниже показан лимит вашего тарифа.", quotaAllowance: "До {limit} анализов",
     accountActions: "Управление аккаунтом", proAccount: "WhatNow Pro",
     captchaWaiting: "Проверка защиты от ботов выполняется автоматически.",
     captchaReady: "Защита подтверждена.", captchaError: "Не удалось выполнить защитную проверку. Обновите её и попробуйте снова.",
@@ -52,6 +53,7 @@ const copy = {
     light: "Gaišs", dark: "Tumšs", quota: "Jūsu limiti", dailyQuota: "24 stundās", weeklyQuota: "7 dienās", monthlyQuota: "30 dienās",
     quotaLoading: "Aprēķinām pieejamās analīzes…", quotaUnavailable: "Neizdevās atjaunināt atlikumu. Limiti joprojām darbojas serverī.",
     quotaRemaining: "Atlikušas {remaining} no {limit}", quotaReset: "Atjaunosies {time}",
+    quotaEstimated: "Precīzs atlikums tiek precizēts. Zemāk redzams jūsu plāna limits.", quotaAllowance: "Līdz {limit} analīzēm",
     accountActions: "Konta pārvaldība", proAccount: "WhatNow Pro",
     captchaWaiting: "Aizsardzības pārbaude pret robotiem notiek automātiski.",
     captchaReady: "Aizsardzība apstiprināta.", captchaError: "Neizdevās veikt aizsardzības pārbaudi. Atjaunojiet to un mēģiniet vēlreiz.",
@@ -72,6 +74,7 @@ const copy = {
     light: "Light", dark: "Dark", quota: "Your limits", dailyQuota: "Per 24 hours", weeklyQuota: "Per 7 days", monthlyQuota: "Per 30 days",
     quotaLoading: "Checking available analyses…", quotaUnavailable: "The remaining allowance could not be refreshed. Server limits are still enforced.",
     quotaRemaining: "{remaining} of {limit} remaining", quotaReset: "Refreshes {time}",
+    quotaEstimated: "The exact remaining balance is being confirmed. Your plan allowance is shown below.", quotaAllowance: "Up to {limit} analyses",
     accountActions: "Account management", proAccount: "WhatNow Pro",
     captchaWaiting: "The bot-protection check runs automatically.",
     captchaReady: "Protection verified.", captchaError: "The protection check could not be completed. Refresh it and try again.",
@@ -93,6 +96,10 @@ function Avatar({ account, large = false }: { account: SupabaseAccount; large?: 
 
 function quotaText(template: string, quota: WindowQuota): string {
   return template.replace("{remaining}", String(quota.remaining)).replace("{limit}", String(quota.limit));
+}
+
+function quotaAllowanceText(template: string, quota: WindowQuota): string {
+  return template.replace("{limit}", String(quota.limit));
 }
 
 function quotaResetText(template: string, quota: WindowQuota, locale: ProfileLanguage): string | null {
@@ -143,6 +150,8 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    let requestTimeout: number | undefined;
     if (!account) {
       queueMicrotask(() => {
         if (!active) return;
@@ -159,17 +168,22 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
       (async () => {
         const accessToken = await getAccessToken();
         if (!accessToken) throw new Error("Missing access token");
+        requestTimeout = window.setTimeout(() => controller.abort(), 18_000);
         const response = await fetch("/api/quota", {
           cache: "no-store",
           headers: { Authorization: `Bearer ${accessToken}` },
+          signal: controller.signal,
         });
         const payload = await response.json().catch(() => null) as { quota?: QuotaSnapshot } | null;
         if (!response.ok || !payload?.quota) throw new Error("Quota unavailable");
         if (active) setQuota(payload.quota);
       })().catch(() => { if (active) setQuotaError(true); })
-        .finally(() => { if (active) setQuotaLoading(false); });
+        .finally(() => {
+          if (requestTimeout !== undefined) window.clearTimeout(requestTimeout);
+          if (active) setQuotaLoading(false);
+        });
     });
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); if (requestTimeout !== undefined) window.clearTimeout(requestTimeout); };
   }, [account, quotaRefreshKey]);
 
   useEffect(() => {
@@ -237,16 +251,14 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   {quotaLoading && !quota ? <p role="status">{t.quotaLoading}</p> : quotaError && !quota ? <p className="quota-error">{t.quotaUnavailable}</p> : quota ? (
                     <div className="quota-grid">
                       {([[t.dailyQuota, quota.daily], [quota.secondaryWindowDays === 30 ? t.monthlyQuota : t.weeklyQuota, quota.weekly]] as const).map(([label, item]) => (
-                        <div className="quota-row" key={label}>
-                          <span><strong>{label}</strong><small>{quotaText(t.quotaRemaining, item)}</small></span>
-                          <b aria-label={quotaText(t.quotaRemaining, item)}>{item.remaining}/{item.limit}</b>
-                          <progress max={item.limit} value={item.remaining}>{item.remaining}</progress>
-                          {quotaResetText(t.quotaReset, item, locale) && <small className="quota-reset">{quotaResetText(t.quotaReset, item, locale)}</small>}
+                        <div className={`quota-row${quota.backend === "unavailable" ? " quota-estimate" : ""}`} key={label}>
+                          <span><strong>{label}</strong><small>{quota.backend === "unavailable" ? quotaAllowanceText(t.quotaAllowance, item) : quotaText(t.quotaRemaining, item)}</small></span>
+                          {quota.backend === "unavailable" ? <b aria-label={quotaAllowanceText(t.quotaAllowance, item)}>{item.limit}</b> : <><b aria-label={quotaText(t.quotaRemaining, item)}>{item.remaining}/{item.limit}</b><progress max={item.limit} value={item.remaining}>{item.remaining}</progress>{quotaResetText(t.quotaReset, item, locale) && <small className="quota-reset">{quotaResetText(t.quotaReset, item, locale)}</small>}</>}
                         </div>
                       ))}
                     </div>
                   ) : <p>{t.quotaUnavailable}</p>}
-                  {quotaError && quota && <p className="quota-stale">{t.quotaUnavailable}</p>}
+                  {(quotaError && quota || quota?.backend === "unavailable") && <p className="quota-stale">{quota?.backend === "unavailable" ? t.quotaEstimated : t.quotaUnavailable}</p>}
                 </section>
                 <ReminderProfileSection locale={locale} />
                 <div className="profile-actions" aria-label={t.accountActions}>

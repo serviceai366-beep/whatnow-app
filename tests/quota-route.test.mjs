@@ -7,6 +7,8 @@ test("quota endpoint requires a verified account and returns uncached live data"
   assert.match(route, /verifySupabaseRequest\(request\)/);
   assert.match(route, /activePlanForUser\(auth\.user\.id(?:,|\))/);
   assert.match(route, /readAnalysisQuota\(\{ userKey: auth\.user\.id, planCode \}\)/);
+  assert.match(route, /QUOTA_LOOKUP_TIMEOUT_MS/);
+  assert.match(route, /estimatedAnalysisQuota/);
   assert.match(route, /"Cache-Control": "no-store"/);
   assert.match(route, /quota\.backend === "unavailable"/);
   assert.doesNotMatch(route, /OPENAI_API_KEY|api\.openai\.com/);

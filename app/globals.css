@@ -176,6 +176,8 @@ a { color: inherit; text-decoration: none; }
 .quota-row strong { font-size: 13px; }
 .quota-row small { color: var(--muted); font-size: 11px; }
 .quota-row b { color: var(--accent-dark); font-size: 14px; font-variant-numeric: tabular-nums; }
+.quota-row.quota-estimate { padding: 2px 0; }
+.quota-row.quota-estimate b { align-self: center; }
 .quota-row progress { grid-column: 1 / -1; width: 100%; height: 7px; overflow: hidden; border: 0; border-radius: 999px; background: var(--border); }
 .quota-row progress::-webkit-progress-bar { border-radius: 999px; background: var(--border); }
 .quota-row progress::-webkit-progress-value { border-radius: 999px; background: var(--accent); }

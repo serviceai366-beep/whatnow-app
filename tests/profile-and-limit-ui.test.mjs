@@ -67,6 +67,9 @@ test("profile offers themes and displays live server-backed quota counters", asy
   assert.match(widget, /quota\.daily/);
   assert.match(widget, /quota\.weekly/);
   assert.match(widget, /item\.remaining\}\/\{item\.limit/);
+  assert.match(widget, /quotaEstimated/);
+  assert.match(widget, /quotaAllowance/);
+  assert.match(widget, /AbortController/);
   assert.match(page, /response\.headers\.has\("X-RateLimit-Limit-24h"\)/);
   assert.match(page, /setQuotaRefreshKey\(\(current\) => current \+ 1\)/);
   assert.match(css, /\.quota-row progress/);

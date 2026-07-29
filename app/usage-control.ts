@@ -328,6 +328,22 @@ function unavailableSnapshot(now: number, planCode: SubscriptionPlanCode): Quota
   return { backend: "unavailable", checkedAt: now, planCode, secondaryWindowDays: planCode === "pro" ? 30 : 7, daily: unavailable, weekly: unavailable };
 }
 
+// This is deliberately display-only. Enforcement never uses this snapshot: if the
+// durable counter cannot be reached, analyses remain blocked by checkAnalysisQuota.
+// It lets the account screen still explain the user's plan allowance while a live
+// remaining balance is being retried.
+export function estimatedAnalysisQuota(planCode: SubscriptionPlanCode, now = Date.now()): QuotaSnapshot {
+  const limits = configuredLimits(planCode);
+  return {
+    backend: "unavailable",
+    checkedAt: now,
+    planCode,
+    secondaryWindowDays: limits.secondaryWindowDays,
+    daily: { limit: limits.daily, remaining: limits.daily, resetAt: now + DAY_MS },
+    weekly: { limit: limits.weekly, remaining: limits.weekly, resetAt: now + limits.userWindowMs },
+  };
+}
+
 export function analysisCostUnits(kind: AnalysisCostKind): number {
   if (kind === "pdf") return 3;
   if (kind === "image" || kind === "document") return 2;
