@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { guideFor, guideText, requiredRegionFor, type StudioGuideLocale } from "./document-studio-guides";
 import { studioCountries, type GeneratedDocument, type StudioMode } from "./document-studio-schema";
@@ -296,7 +296,10 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
   const [focusedPanel, setFocusedPanel] = useState<StudioPanelId | null>(null);
   const [draggedPanel, setDraggedPanel] = useState<StudioPanelId | null>(null);
   const [equalPanels, setEqualPanels] = useState(false);
+  const [dockRetreating, setDockRetreating] = useState(false);
   const documentRef = useRef<HTMLDivElement>(null);
+  const lastPageScrollRef = useRef(0);
+  const lastDocumentScrollRef = useRef(0);
   useEffect(() => {
     if (!focusedPanel) return;
     const previousOverflow = window.document.body.style.overflow;
@@ -310,6 +313,33 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [focusedPanel]);
+  const updateReadingControls = useCallback((nextScroll: number, previousScrollRef: { current: number }) => {
+    const previousScroll = previousScrollRef.current;
+    if (focusedPanel) {
+      previousScrollRef.current = nextScroll;
+      return;
+    }
+    if (nextScroll > previousScroll + 6) {
+      setDockRetreating(true);
+      window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat: true } }));
+    } else if (nextScroll < previousScroll - 6 || nextScroll <= 6) {
+      setDockRetreating(false);
+      window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat: false } }));
+    }
+    previousScrollRef.current = nextScroll;
+  }, [focusedPanel]);
+  useEffect(() => {
+    if (focusedPanel) {
+      setDockRetreating(false);
+      window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat: false } }));
+    }
+  }, [focusedPanel]);
+  useEffect(() => {
+    const trackPageScroll = () => updateReadingControls(window.scrollY, lastPageScrollRef);
+    lastPageScrollRef.current = window.scrollY;
+    window.addEventListener("scroll", trackPageScroll, { passive: true });
+    return () => window.removeEventListener("scroll", trackPageScroll);
+  }, [updateReadingControls]);
   const document = item.result;
   const annotations = document.annotations ?? [];
   const panelLabels: Record<StudioPanelId, string> = {
@@ -395,7 +425,7 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
     </aside>,
     document: <article className="studio-document-paper studio-flex-panel" onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("document")}>
       <div className="studio-document-toolbar studio-panel-header" {...dragAttributes("document")}><div className="studio-panel-title"><span className="studio-panel-grip" aria-hidden="true">⠿</span><strong>{t.draft}</strong></div><div className="studio-document-actions"><button type="button" onClick={onCopy}>{t.copy}</button><button type="button" onClick={() => onDownload("docx")}>{t.docx}</button><button type="button" onClick={() => onDownload("pdf")}>{t.pdf}</button>{panelControls("document")}</div></div>
-      <div className="studio-document-scroll" ref={documentRef} onMouseUp={selectFromDocument} onTouchEnd={selectFromDocument}><p className="document-kicker">{document.country}{document.region ? ` · ${document.region}` : ""}</p><h2>{document.title}</h2>{document.sections.map((section, index) => <section key={index}><h3>{section.heading}</h3>{section.body.split("\n").filter(Boolean).map((paragraph, paragraphIndex) => { const annotation = paragraphAnnotation(section.heading, paragraph); return <div className={annotation ? `studio-annotated-line ${annotation.kind}` : "studio-document-line"} key={paragraphIndex}><p>{paragraph}</p>{annotation && <button type="button" title={annotation.reason} aria-label={`${t.uncertain}: ${annotation.reason}`} onClick={() => pickAnnotation(annotation.excerpt, annotation.question)}>?</button>}</div>; })}</section>)}</div>
+      <div className="studio-document-scroll" ref={documentRef} onScroll={(event) => updateReadingControls(event.currentTarget.scrollTop, lastDocumentScrollRef)} onMouseUp={selectFromDocument} onTouchEnd={selectFromDocument}><p className="document-kicker">{document.country}{document.region ? ` · ${document.region}` : ""}</p><h2>{document.title}</h2>{document.sections.map((section, index) => <section key={index}><h3>{section.heading}</h3>{section.body.split("\n").filter(Boolean).map((paragraph, paragraphIndex) => { const annotation = paragraphAnnotation(section.heading, paragraph); return <div className={annotation ? `studio-annotated-line ${annotation.kind}` : "studio-document-line"} key={paragraphIndex}><p>{paragraph}</p>{annotation && <button type="button" title={annotation.reason} aria-label={`${t.uncertain}: ${annotation.reason}`} onClick={() => pickAnnotation(annotation.excerpt, annotation.question)}>?</button>}</div>; })}</section>)}</div>
     </article>,
     assistant: <aside className="studio-document-assistant studio-flex-panel" aria-label={t.documentAssistant} onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("assistant")}>
       <header className="studio-panel-header" {...dragAttributes("assistant")}><div><span className="studio-panel-grip" aria-hidden="true">⠿</span><small>AI</small><h2>{t.documentAssistant}</h2></div>{panelControls("assistant")}</header>
@@ -403,7 +433,7 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
     </aside>,
   } satisfies Record<StudioPanelId, ReactNode>;
   return <div className={`studio-draft-workspace${focusedPanel ? ` panel-focused focus-${focusedPanel}` : ""}`}>
-    <nav className="studio-layout-dock" aria-label={t.layout}>
+    <nav className={`studio-layout-dock${dockRetreating && !focusedPanel ? " retreating" : ""}`} aria-label={t.layout}>
       <div><strong>{t.layout}</strong><small>{t.layoutHint}</small></div>
       <div className="studio-layout-actions">{panelOrder.map((panel) => <button type="button" key={panel} className={!hiddenPanels.includes(panel) ? "active" : ""} aria-pressed={!hiddenPanels.includes(panel)} onClick={() => focusedPanel ? focusPanel(panel) : hiddenPanels.includes(panel) ? showPanel(panel) : hidePanel(panel)}><span>{panel === "insights" ? "☰" : panel === "document" ? "▤" : "✦"}</span>{panelLabels[panel]}</button>)}<button type="button" className={equalPanels ? "active" : ""} aria-pressed={equalPanels} onClick={() => setEqualPanels((current) => !current)}>▦ {t.equalPanels}</button><button type="button" onClick={resetLayout}>↺ {t.resetLayout}</button></div>
     </nav>

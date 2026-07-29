@@ -1424,7 +1424,15 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   box-shadow: var(--glass-shadow);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  transform: translateX(0);
+  transition: transform .28s var(--liquid-ease), opacity .2s ease;
 }
+.site-header.retreating {
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+  pointer-events: none;
+}
+.site-header.retreating:focus-within { transform: translateX(0); opacity: 1; pointer-events: auto; }
 .site-header::after {
   position: absolute;
   z-index: 0;
@@ -1884,7 +1892,15 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   background: var(--glass-regular);
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(28px) saturate(170%);
+  transform: translateX(0);
+  transition: transform .28s var(--liquid-ease), opacity .2s ease, box-shadow .28s var(--liquid-ease);
 }
+.studio-layout-dock.retreating {
+  transform: translateX(calc(-100% - 32px));
+  opacity: 0;
+  pointer-events: none;
+}
+.studio-layout-dock.retreating:focus-within { transform: translateX(0); opacity: 1; pointer-events: auto; }
 .studio-layout-dock > div:first-child { min-width: 190px; display: grid; }
 .studio-layout-dock strong { font-size: .84rem; }
 .studio-layout-dock small { color: var(--muted); font-size: .68rem; line-height: 1.35; }
@@ -2140,5 +2156,6 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 
 @media (prefers-reduced-motion: reduce) {
   .analyzer-card, .auth-dialog, .user-hub, .calendar-panel, .support-panel, .info-panel, .security-challenge-dialog, .history-panel, .language-picker-menu, .storage-toast, .limit-toast { animation: none; }
+  .site-header, .studio-layout-dock { transition: none; }
   button, a, input, select, textarea, .result-card, .subscription-card, .file-list li { transition: none; }
 }

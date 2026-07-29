@@ -139,6 +139,7 @@ export default function Home() {
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
   const [headerCompact, setHeaderCompact] = useState(false);
+  const [headerRetreating, setHeaderRetreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const languagePickerRef = useRef<HTMLDivElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
@@ -193,11 +194,31 @@ export default function Home() {
   }, [language]);
 
   useEffect(() => {
-    const updateHeader = () => setHeaderCompact(window.scrollY > 140);
+    let previousScrollY = window.scrollY;
+    const updateHeader = () => {
+      const nextScrollY = window.scrollY;
+      setHeaderCompact(nextScrollY > 140);
+      if (productMode !== "create") {
+        setHeaderRetreating(false);
+      } else if (nextScrollY > previousScrollY + 6 && nextScrollY > 150) {
+        setHeaderRetreating(true);
+      } else if (nextScrollY < previousScrollY - 6 || nextScrollY <= 140) {
+        setHeaderRetreating(false);
+      }
+      previousScrollY = nextScrollY;
+    };
+    const updateStudioHeader = (event: Event) => {
+      if (productMode !== "create") return;
+      setHeaderRetreating(Boolean((event as CustomEvent<{ retreat?: boolean }>).detail?.retreat));
+    };
     updateHeader();
     window.addEventListener("scroll", updateHeader, { passive: true });
-    return () => window.removeEventListener("scroll", updateHeader);
-  }, []);
+    window.addEventListener("whatnow:studio-scroll", updateStudioHeader);
+    return () => {
+      window.removeEventListener("scroll", updateHeader);
+      window.removeEventListener("whatnow:studio-scroll", updateStudioHeader);
+    };
+  }, [productMode]);
 
   useEffect(() => {
     if (!account) return;
@@ -527,7 +548,7 @@ export default function Home() {
 
   return (
     <main>
-      <header className={`site-header${headerCompact ? " compact" : ""}`}>
+      <header className={`site-header${headerCompact ? " compact" : ""}${headerRetreating ? " retreating" : ""}`}>
         <a className="brand" href="#top" aria-label={t.homeAria} onClick={goHome}>
           <img className="brand-mark" src="/whatnow-logo.jpg" alt="" />
           <span>WhatNow?</span>
