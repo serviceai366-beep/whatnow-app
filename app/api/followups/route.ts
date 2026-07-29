@@ -12,7 +12,8 @@ import { selectedModelForUser } from "../../model-selection.ts";
 export const dynamic = "force-dynamic";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const REQUEST_TIMEOUT_MS = 30_000;
+// Same hard ceiling as document analysis and Document Studio.
+const REQUEST_TIMEOUT_MS = 600_000;
 const MAX_BODY_BYTES = 8 * 1024;
 
 const languageNames: Record<SupportedLanguage, string> = {

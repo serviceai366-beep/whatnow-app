@@ -96,6 +96,8 @@ test("follow-up API and interface preserve privacy, model choice, expansion, sel
   assert.match(route, /selectedModelForUser/);
   assert.match(route, /model: selectedModel/);
   assert.match(route, /reasoning: \{ effort: "low" \}/);
+  assert.match(route, /REQUEST_TIMEOUT_MS\s*=\s*600_000/);
+  assert.match(route, /setTimeout\(\(\) => controller\.abort\(\), REQUEST_TIMEOUT_MS\)/);
   assert.match(route, /store: false/);
   assert.match(route, /Base the answer only on the supplied structured analysis/);
   assert.doesNotMatch(route, /input_file|input_image|file_data/);

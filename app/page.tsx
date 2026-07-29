@@ -394,7 +394,8 @@ export default function Home() {
     else formData.set("text", documentText.trim());
 
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 55_000);
+    // Keep the browser aligned with the server-side ten-minute ceiling.
+    const timeout = window.setTimeout(() => controller.abort(), 600_000);
     setIsAnalyzing(true);
     setAnalysis(null);
     setShowResult(false);

@@ -10,9 +10,9 @@ import { selectedModelForUser } from "../../model-selection.ts";
 export const dynamic = "force-dynamic";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const MAX_BODY = 80 * 1024;
-// Jurisdiction-aware generation may include a web lookup; allow it to finish
-// before reporting a false timeout to the user.
-const STUDIO_REQUEST_TIMEOUT_MS = 180_000;
+// Hard ceiling for generation, review, editing, and preparation assistance.
+// Jurisdiction-aware work may use a web lookup, but it cannot exceed ten minutes.
+const STUDIO_REQUEST_TIMEOUT_MS = 600_000;
 const languageNames:Record<string,string>={en:"English",ru:"Russian",lv:"Latvian",es:"Spanish",pt:"Portuguese",fr:"French",de:"German",it:"Italian",pl:"Polish",uk:"Ukrainian",nl:"Dutch",ro:"Romanian",sv:"Swedish",cs:"Czech"};
 
 function reply(body:unknown,status=200,headers:HeadersInit={}){return Response.json(body,{status,headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow","Referrer-Policy":"no-referrer",...Object.fromEntries(new Headers(headers))}})}
@@ -100,7 +100,7 @@ export async function PUT(request:Request){
   const store=await getDocumentStudioStore();if(!store)return storeFailure(null);let reservation:string|null=null;
   try{
     reservation=await store.reserveAssistant(auth.user.id,plan);
-    const readiness=assessStudioReadiness(input),controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),60_000);request.signal.addEventListener("abort",()=>controller.abort(),{once:true});
+    const readiness=assessStudioReadiness(input),controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),STUDIO_REQUEST_TIMEOUT_MS);request.signal.addEventListener("abort",()=>controller.abort(),{once:true});
     let upstream:Response;try{upstream=await fetch(OPENAI_RESPONSES_URL,{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:selectedModel,reasoning:{effort:"low"},instructions:`You are the concise WhatNow? document-preparation assistant. Reply in ${languageNames[input.outputLanguage]??"English"}. Help the user complete the questionnaire before generation. Answer the question directly, then ask at most three concrete follow-up questions that would reduce missing facts. Never invent facts or give a final legal conclusion. Jurisdiction: ${input.country}${input.region?`, ${input.region}`:""}.`,input:JSON.stringify({question,request:input,readiness}),max_output_tokens:1200,store:false}),signal:controller.signal})}finally{clearTimeout(timeout)}
     const payload=await upstream.json().catch(()=>null) as unknown;if(!upstream.ok)throw new Error(upstream.status===429?"rate_limited":"upstream_error");const answer=outputText(payload)?.trim();if(!answer)throw new Error("invalid_model_response");
     await store.completeAssistant(auth.user.id,reservation);reservation=null;await recordAnalysisCost({userKey:auth.user.id,model:selectedModel,costKind:"text",usage:usage(payload)});return reply({answer});

@@ -132,7 +132,7 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
   useEffect(() => {
     if (!busy) { setElapsed(0); return; }
     const started = Date.now();
-    const timer = window.setInterval(() => setElapsed(Math.min(180, Math.floor((Date.now() - started) / 1000))), 1000);
+    const timer = window.setInterval(() => setElapsed(Math.min(600, Math.floor((Date.now() - started) / 1000))), 1000);
     return () => window.clearInterval(timer);
   }, [busy]);
   useEffect(() => () => generationController.current?.abort(), []);
@@ -212,7 +212,7 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
         <div className={`studio-readiness ${readiness}`}><div className="studio-readiness-meter"><span style={{ width: `${readinessScore}%` }} /></div><div><small>{t.readiness}</small><strong>{t[readiness]}</strong>{missingFields.critical.length > 0 && <MissingList title={t.critical} items={missingFields.critical} onPick={focusField} />}{missingFields.helpful.length > 0 && <MissingList title={t.helpful} items={missingFields.helpful.slice(0, 8)} onPick={focusField} />}</div></div>
         {error && <p className="studio-api-error" role="alert">{error}</p>}
         <button className="primary-button studio-generate" disabled={busy || quota.remaining === 0} type="button" onClick={() => void generate()}>{busy ? t.generating : t.generate}<span>→</span></button>
-        {busy && <div className="studio-generation-progress" role="status" aria-live="polite"><p className="studio-generation-timer"><span>{t.reasoningTime}: {formatDuration(elapsed)} / 03:00</span><small>{t.reasoningEstimate}</small></p><button type="button" onClick={cancelGeneration}>{t.stop}</button></div>}
+        {busy && <div className="studio-generation-progress" role="status" aria-live="polite"><p className="studio-generation-timer"><span>{t.reasoningTime}: {formatDuration(elapsed)} / 10:00</span><small>{t.reasoningEstimate}</small></p><button type="button" onClick={cancelGeneration}>{t.stop}</button></div>}
       </div>
     </div>
     <div className="studio-legal-note"><span>i</span><p>{t.disclaimer}</p></div>

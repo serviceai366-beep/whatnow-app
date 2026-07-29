@@ -32,7 +32,9 @@ import { activePlanForUser } from "../../subscription-store.ts";
 import { selectedModelForUser } from "../../model-selection.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const DEFAULT_REQUEST_TIMEOUT_MS = 45_000;
+// A hard ceiling for every AI request in WhatNow?. A shorter value is allowed
+// only in controlled tests; production requests never exceed ten minutes.
+const DEFAULT_REQUEST_TIMEOUT_MS = 600_000;
 const REASONING_EFFORT = "low";
 
 const languageNames: Record<SupportedLanguage, string> = {
@@ -120,7 +122,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 function requestTimeoutMs(): number {
   const configured = Number(process.env.WHATNOW_REQUEST_TIMEOUT_MS);
-  return Number.isSafeInteger(configured) && configured >= 10 && configured <= 120_000
+  return Number.isSafeInteger(configured) && configured >= 10 && configured <= DEFAULT_REQUEST_TIMEOUT_MS
     ? configured
     : DEFAULT_REQUEST_TIMEOUT_MS;
 }
