@@ -74,7 +74,6 @@ a { color: inherit; text-decoration: none; }
 }
 
 .site-header {
-  container-type: inline-size;
   position: sticky;
   z-index: 30;
   top: 0;
@@ -1110,62 +1109,6 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .support-message { max-width: 94%; }
 }
 
-/* At laptop widths a translated label must never be squeezed into individual
-   letters. These controls already have accessible names and hover/focus labels,
-   so they switch cleanly to their graphical form before the header gets tight. */
-@media (min-width: 721px) and (max-width: 1280px) {
-  .site-header { width: calc(100% - 24px); max-width: 1440px; }
-  .header-actions { gap: 7px; }
-  .header-nav-actions, .header-utility-actions { gap: 6px; }
-  .header-utility-actions { padding-left: 10px; }
-  .header-nav-actions .header-tool-button,
-  .x-account-link {
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
-    justify-content: center;
-    gap: 0;
-    padding: 4px;
-    overflow: hidden;
-    border-radius: 50%;
-    font-size: 0;
-  }
-  .header-nav-actions .tool-icon,
-  .x-account-link .x-account-symbol {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
-    border-radius: 50%;
-  }
-}
-
-/* The header has a capped content width even on a very wide monitor. Use that
-   real width before switching labels to icons, so X never covers navigation. */
-@container (max-width: 1260px) {
-  .header-actions { gap: 7px; }
-  .header-nav-actions, .header-utility-actions { gap: 6px; }
-  .header-utility-actions { padding-left: 10px; }
-  .header-nav-actions .header-tool-button,
-  .x-account-link {
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
-    justify-content: center;
-    gap: 0;
-    padding: 4px;
-    overflow: hidden;
-    border-radius: 50%;
-    font-size: 0;
-  }
-  .header-nav-actions .tool-icon,
-  .x-account-link .x-account-symbol {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
-    border-radius: 50%;
-  }
-}
-
 @media (max-width: 900px) {
   .hero { min-height: auto; padding-top: 22px; }
   h1 { max-width: 760px; }
@@ -1499,8 +1442,8 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 }
 .site-header > *, .auth-dialog > *, .security-challenge-dialog > *, .history-panel > * { position: relative; z-index: 1; }
 .site-header.compact {
-  width: max-content;
-  max-width: calc(100% - 16px);
+  width: min(1180px, calc(100% - 24px));
+  max-width: none;
   min-height: 52px;
   padding: 4px 7px;
   border-radius: 20px;
@@ -1512,6 +1455,7 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 .site-header.compact .header-actions,
 .site-header.compact .header-nav-actions,
 .site-header.compact .header-utility-actions { gap: 4px; }
+.site-header.compact .header-actions { flex: 1; justify-content: flex-end; }
 .site-header.compact .header-utility-actions { padding-left: 5px; }
 .site-header.compact .header-tool-button {
   width: 40px;
@@ -1557,6 +1501,44 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   outline-offset: 2px;
 }
 .brand-mark { border: 1px solid rgb(255 255 255 / 60%); box-shadow: 0 7px 18px rgb(5 83 75 / 22%), inset 0 1px 0 rgb(255 255 255 / 52%); }
+
+.site-header:not(.compact) .brand { flex: 0 0 auto; font-size: 18px; }
+.site-header:not(.compact) .brand-mark { width: 34px; height: 34px; flex-basis: 34px; }
+.site-header:not(.compact) .header-actions { gap: 8px; }
+.site-header:not(.compact) .header-nav-actions,
+.site-header:not(.compact) .header-utility-actions { gap: 6px; }
+.site-header:not(.compact) .header-utility-actions { padding-left: 8px; }
+.site-header:not(.compact) .header-tool-button { gap: 7px; padding: 4px 9px 4px 5px; font-size: 13px; }
+.site-header:not(.compact) .tool-icon,
+.site-header:not(.compact) .x-account-symbol { width: 32px; height: 32px; flex-basis: 32px; }
+
+/* Only genuinely narrow desktop layouts switch to icons. Full labels stay
+   readable at ordinary laptop and desktop widths. */
+@media (min-width: 721px) and (max-width: 1040px) {
+  .site-header { width: calc(100% - 24px); max-width: 1440px; }
+  .header-actions { gap: 7px; }
+  .header-nav-actions, .header-utility-actions { gap: 6px; }
+  .header-utility-actions { padding-left: 10px; }
+  .site-header:not(.compact) .header-nav-actions .header-tool-button,
+  .site-header:not(.compact) .x-account-link {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    justify-content: center;
+    gap: 0;
+    padding: 4px;
+    overflow: hidden;
+    border-radius: 50%;
+    font-size: 0;
+  }
+  .site-header:not(.compact) .header-nav-actions .tool-icon,
+  .site-header:not(.compact) .x-account-link .x-account-symbol {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    border-radius: 50%;
+  }
+}
 
 .header-tool-button,
 .account-control,
