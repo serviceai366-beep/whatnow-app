@@ -857,6 +857,17 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
 .profile-settings-check > input:checked + .settings-toggle > span { transform: translateX(20px); }
 .profile-settings-check > input:focus-visible + .settings-toggle { outline: 3px solid color-mix(in srgb, var(--accent) 26%, transparent); outline-offset: 2px; }
 .profile-setting-help { margin: 0 0 12px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.profile-model-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 13px 0 12px; }
+.profile-model-choice { min-width: 0; min-height: 52px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--border) 84%, var(--accent)); border-radius: 14px; color: var(--foreground); background: color-mix(in srgb, var(--surface-muted) 82%, transparent); font: inherit; font-weight: 760; text-align: left; cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease, opacity .18s ease; }
+.profile-model-choice:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 58%, var(--border)); background: var(--surface); }
+.profile-model-choice.selected { border-color: var(--accent); color: var(--accent-dark); background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface)); box-shadow: 0 8px 20px rgb(12 108 92 / 10%); }
+.profile-model-choice.locked { color: color-mix(in srgb, var(--muted) 74%, transparent); background: color-mix(in srgb, var(--surface-muted) 80%, transparent); border-color: color-mix(in srgb, var(--border) 65%, transparent); }
+.profile-model-choice.locked:hover { opacity: .92; cursor: pointer; }
+.profile-model-choice small { display: inline-flex; margin: 4px 0 0; padding: 2px 6px; border-radius: 999px; color: var(--accent-dark); background: color-mix(in srgb, var(--accent-soft) 82%, var(--surface)); font-size: 10px; letter-spacing: .08em; }
+.model-upgrade-prompt { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin: 1px 0 14px; padding: 13px 14px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 15px; background: linear-gradient(120deg, color-mix(in srgb, var(--accent-soft) 90%, var(--surface)), var(--surface)); }
+.model-upgrade-prompt strong { display: block; color: var(--accent-dark); }
+.model-upgrade-prompt p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.model-upgrade-prompt button { flex: 0 0 auto; min-height: 40px; padding: 8px 12px; border: 0; border-radius: 12px; color: white; background: var(--accent); font: inherit; font-weight: 760; cursor: pointer; }
 .profile-settings-status { min-height: 34px; padding: 0 3px; color: var(--accent-dark); }
 .profile-settings-status p { margin: 10px 0 0; }
 
@@ -1060,6 +1071,8 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-vis
   .profile-settings fieldset { padding-inline: 17px; }
   .profile-setting-row { grid-template-columns: 1fr; gap: 8px; padding: 13px 0 15px; }
   .profile-settings select { min-height: 48px; }
+  .profile-model-picker { grid-template-columns: 1fr; }
+  .model-upgrade-prompt { align-items: flex-start; flex-direction: column; }
   .file-library > header { align-items: stretch; flex-direction: column; }
   .file-quota { grid-template-columns: 1fr; }
   .file-list li { grid-template-columns: 46px minmax(0, 1fr); }

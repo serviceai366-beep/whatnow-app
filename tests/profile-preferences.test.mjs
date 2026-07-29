@@ -119,9 +119,13 @@ test("settings component is internally localized, responsive, and exposes access
   assert.match(component, /es:\s*\{/);
   assert.match(component, /responseLanguageOptions/);
   assert.match(component, /modelSelectionAvailable/);
+  assert.doesNotMatch(component, /\{modelSelectionAvailable && <fieldset className="settings-card settings-card-model"/);
   assert.match(component, /gpt-5\.6-luna/);
   assert.match(component, /gpt-5\.6-terra/);
   assert.match(component, /gpt-5\.6-sol/);
+  assert.match(component, /profile-model-choice/);
+  assert.match(component, /setShowModelUpgrade\(true\)/);
+  assert.match(component, /onOpenPlan/);
   assert.match(component, /<fieldset/);
   assert.match(component, /<legend>/);
   assert.match(component, /htmlFor=/);
@@ -134,6 +138,7 @@ test("settings component is internally localized, responsive, and exposes access
   assert.match(styles, /@media \(max-width:\s*720px\)[\s\S]*\.profile-setting-row[^}]*grid-template-columns:\s*1fr/);
   assert.match(styles, /\.profile-settings select[^}]*width:\s*100%[^}]*min-width:\s*0/s);
   assert.match(hub, /data-tab="settings"/);
+  assert.match(hub, /onOpenPlan=\{\(\) => setTab\("plan"\)\}/);
   assert.match(client, /Authorization: `Bearer \$\{token\}`/);
   assert.match(client, /credentials: "same-origin"/);
   assert.match(client, /cache: "no-store"/);

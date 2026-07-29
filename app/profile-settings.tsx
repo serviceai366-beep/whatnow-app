@@ -21,6 +21,7 @@ type ProfileSettingsProps = {
   preferences: UserProfilePreferences;
   modelSelectionAvailable: boolean;
   onChange: (patch: UserProfilePatch) => void | Promise<void>;
+  onOpenPlan: () => void;
   disabled?: boolean;
 };
 
@@ -104,27 +105,34 @@ const copy = {
   },
 } as const;
 
-const modelCopy: Record<ProfileLanguage, { title: string; label: string; help: string }> = {
-  en: { title: "AI model", label: "Default model", help: "Used automatically for analyses, document creation and editing, and follow-up questions." },
-  ru: { title: "Модель ИИ", label: "Модель по умолчанию", help: "Автоматически используется для анализа, создания и редактирования документов, а также дополнительных вопросов." },
-  lv: { title: "MI modelis", label: "Noklusējuma modelis", help: "Automātiski tiek izmantots analīzēm, dokumentu izveidei un rediģēšanai, kā arī papildjautājumiem." },
-  es: { title: "Modelo de IA", label: "Modelo predeterminado", help: "Se usa automáticamente para análisis, creación y edición de documentos y preguntas de seguimiento." },
-  pt: { title: "Modelo de IA", label: "Modelo predefinido", help: "É utilizado automaticamente para análises, criação e edição de documentos e perguntas de seguimento." },
-  fr: { title: "Modèle IA", label: "Modèle par défaut", help: "Utilisé automatiquement pour les analyses, la création et l’édition de documents et les questions de suivi." },
-  de: { title: "KI-Modell", label: "Standardmodell", help: "Wird automatisch für Analysen, die Erstellung und Bearbeitung von Dokumenten sowie Rückfragen verwendet." },
+const modelCopy: Record<ProfileLanguage, { title: string; label: string; help: string; proOnly: string; upgradeTitle: string; upgradeText: string; upgradeAction: string }> = {
+  en: { title: "AI model", label: "Default model", help: "Used automatically for analyses, document creation and editing, and follow-up questions.", proOnly: "Pro", upgradeTitle: "Unlock more AI models", upgradeText: "GPT-5.6 Terra and Sol are available with WhatNow? Pro.", upgradeAction: "View Pro plans" },
+  ru: { title: "Модель ИИ", label: "Модель по умолчанию", help: "Автоматически используется для анализа, создания и редактирования документов, а также дополнительных вопросов.", proOnly: "Pro", upgradeTitle: "Откройте больше моделей ИИ", upgradeText: "GPT-5.6 Terra и Sol доступны с подпиской WhatNow? Pro.", upgradeAction: "Посмотреть Pro-тариф" },
+  lv: { title: "MI modelis", label: "Noklusējuma modelis", help: "Automātiski tiek izmantots analīzēm, dokumentu izveidei un rediģēšanai, kā arī papildjautājumiem.", proOnly: "Pro", upgradeTitle: "Atbloķējiet vairāk MI modeļu", upgradeText: "GPT-5.6 Terra un Sol ir pieejami ar WhatNow? Pro.", upgradeAction: "Skatīt Pro plānus" },
+  es: { title: "Modelo de IA", label: "Modelo predeterminado", help: "Se usa automáticamente para análisis, creación y edición de documentos y preguntas de seguimiento.", proOnly: "Pro", upgradeTitle: "Desbloquea más modelos de IA", upgradeText: "GPT-5.6 Terra y Sol están disponibles con WhatNow? Pro.", upgradeAction: "Ver planes Pro" },
+  pt: { title: "Modelo de IA", label: "Modelo predefinido", help: "É utilizado automaticamente para análises, criação e edição de documentos e perguntas de seguimento.", proOnly: "Pro", upgradeTitle: "Desbloqueie mais modelos de IA", upgradeText: "GPT-5.6 Terra e Sol estão disponíveis com WhatNow? Pro.", upgradeAction: "Ver planos Pro" },
+  fr: { title: "Modèle IA", label: "Modèle par défaut", help: "Utilisé automatiquement pour les analyses, la création et l’édition de documents et les questions de suivi.", proOnly: "Pro", upgradeTitle: "Débloquez plus de modèles IA", upgradeText: "GPT-5.6 Terra et Sol sont disponibles avec WhatNow? Pro.", upgradeAction: "Voir les offres Pro" },
+  de: { title: "KI-Modell", label: "Standardmodell", help: "Wird automatisch für Analysen, die Erstellung und Bearbeitung von Dokumenten sowie Rückfragen verwendet.", proOnly: "Pro", upgradeTitle: "Weitere KI-Modelle freischalten", upgradeText: "GPT-5.6 Terra und Sol sind mit WhatNow? Pro verfügbar.", upgradeAction: "Pro-Angebote ansehen" },
 };
 
 const languageLabels: Record<ProfileLanguage, string> = Object.fromEntries(
   interfaceLanguageOptions.map((option) => [option.code, option.nativeName]),
 ) as Record<ProfileLanguage, string>;
 
-export function ProfileSettings({ locale, preferences, modelSelectionAvailable, onChange, disabled = false }: ProfileSettingsProps) {
+const models: Array<{ value: ProfileDefaultModel; label: string }> = [
+  { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
+  { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
+  { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
+];
+
+export function ProfileSettings({ locale, preferences, modelSelectionAvailable, onChange, onOpenPlan, disabled = false }: ProfileSettingsProps) {
   const t = copy[locale];
   const modelT = modelCopy[locale];
   const id = useId();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(false);
+  const [showModelUpgrade, setShowModelUpgrade] = useState(false);
   const locked = disabled || saving;
 
   const apply = async <K extends keyof UserProfilePreferences>(key: K, value: UserProfilePreferences[K]) => {
@@ -223,19 +231,27 @@ export function ProfileSettings({ locale, preferences, modelSelectionAvailable, 
           onChange={(event) => void apply("autoSaveFiles", event.target.checked)} /><span className="settings-toggle" aria-hidden="true"><span /></span><span>{t.autoSaveFiles}</span></label>
       </fieldset>
 
-      {modelSelectionAvailable && <fieldset className="settings-card settings-card-model" disabled={locked}>
+      <fieldset className="settings-card settings-card-model" disabled={locked}>
         <legend>{modelT.title}</legend>
-        <div className="profile-setting-row">
-          <label htmlFor={`${id}-default-model`}>{modelT.label}</label>
-          <select id={`${id}-default-model`} value={preferences.defaultModel}
-            onChange={(event) => void apply("defaultModel", event.target.value as ProfileDefaultModel)}>
-            <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
-            <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
-            <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
-          </select>
+        <div className="profile-model-picker" role="group" aria-label={modelT.label}>
+          {models.map((model) => {
+            const isProOnly = model.value !== "gpt-5.6-luna";
+            const unavailable = isProOnly && !modelSelectionAvailable;
+            return <button key={model.value} type="button"
+              className={`profile-model-choice${preferences.defaultModel === model.value ? " selected" : ""}${unavailable ? " locked" : ""}`}
+              aria-pressed={preferences.defaultModel === model.value}
+              onClick={() => {
+                if (unavailable) { setShowModelUpgrade(true); return; }
+                setShowModelUpgrade(false);
+                void apply("defaultModel", model.value);
+              }}>
+              <span>{model.label}</span>{unavailable && <small>{modelT.proOnly}</small>}
+            </button>;
+          })}
         </div>
         <p className="profile-setting-help">{modelT.help}</p>
-      </fieldset>}
+        {showModelUpgrade && !modelSelectionAvailable && <aside className="model-upgrade-prompt" role="status"><div><strong>{modelT.upgradeTitle}</strong><p>{modelT.upgradeText}</p></div><button type="button" onClick={onOpenPlan}>{modelT.upgradeAction} →</button></aside>}
+      </fieldset>
 
       <div className="profile-settings-status" aria-live="polite">
         {saving && <p role="status">{t.saving}</p>}
