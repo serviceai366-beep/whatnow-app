@@ -14,7 +14,7 @@ test("prevents external and reserved authentication return paths", () => {
   assert.equal(chatGPTSignOutPath("https://attacker.example"), "/signout-with-chatgpt?return_to=%2F");
 });
 
-test("uses Supabase for Google and passwordless email accounts without shipping provider secrets", async () => {
+test("uses Supabase for Google accounts without shipping provider secrets", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const widget = await readFile(new URL("../app/account-widget.tsx", import.meta.url), "utf8");
   const auth = await readFile(new URL("../app/supabase-auth.ts", import.meta.url), "utf8");
@@ -25,13 +25,11 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
 
   assert.match(page, /<AccountWidget/);
   assert.match(widget, /startGoogleSignIn/);
-  assert.match(widget, /sendEmailSignInLink/);
   assert.match(auth, /flowType:\s*"pkce"/);
   assert.match(auth, /detectSessionInUrl:\s*false/);
   assert.match(auth, /signInWithOAuth/);
   assert.match(auth, /provider:\s*"google"/);
   assert.match(auth, /scopes:\s*"openid email profile"/);
-  assert.match(auth, /signInWithOtp/);
   assert.match(auth, /captchaToken/);
   assert.match(widget, /TurnstileWidget/);
   assert.match(turnstile, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?render=explicit&onload=/);
@@ -48,6 +46,7 @@ test("uses Supabase for Google and passwordless email accounts without shipping 
   assert.match(config, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(config, /sb_publishable_/);
   assert.doesNotMatch(auth, /atob\(|sessionFromLocation|access_token.*location\.hash/);
+  assert.doesNotMatch(widget, /sendEmailSignInLink|signInWithOtp/);
   assert.doesNotMatch(`${page}\n${widget}\n${auth}\n${config}\n${serverAuth}`, /GOCSPX|CLIENT_SECRET|service_role/);
   assert.doesNotMatch(auth, /accounts\.google\.com|appleid\.apple\.com|login\.microsoftonline\.com/);
 });

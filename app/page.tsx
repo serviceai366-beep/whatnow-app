@@ -138,6 +138,7 @@ export default function Home() {
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
+  const [headerCompact, setHeaderCompact] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const languagePickerRef = useRef<HTMLDivElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
@@ -190,6 +191,13 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    const updateHeader = () => setHeaderCompact(window.scrollY > 140);
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
 
   useEffect(() => {
     if (!account) return;
@@ -519,20 +527,20 @@ export default function Home() {
 
   return (
     <main>
-      <header className="site-header">
+      <header className={`site-header${headerCompact ? " compact" : ""}`}>
         <a className="brand" href="#top" aria-label={t.homeAria} onClick={goHome}>
           <img className="brand-mark" src="/whatnow-logo.jpg" alt="" />
           <span>WhatNow?</span>
         </a>
         <div className="header-actions">
           <div className="header-nav-actions">
-            <button className="header-tool-button" type="button" aria-label={w.info} data-tooltip={w.info} onClick={() => setInfoOpen(true)}><ToolIcon kind="about" />{w.info}</button>
-            <button className="header-tool-button" type="button" aria-label={w.support} data-tooltip={w.support} onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><ToolIcon kind="support" />{w.support}</button>
+            <button className="header-tool-button header-optional-action" type="button" aria-label={w.info} data-tooltip={w.info} onClick={() => setInfoOpen(true)}><ToolIcon kind="about" />{w.info}</button>
+            <button className="header-tool-button header-optional-action" type="button" aria-label={w.support} data-tooltip={w.support} onClick={() => account ? setSupportOpen(true) : setAuthOpen(true)}><ToolIcon kind="support" />{w.support}</button>
             {account && <button className="header-tool-button" type="button" aria-label={w.calendar} data-tooltip={w.calendar} onClick={() => setCalendarOpen(true)}><ToolIcon kind="calendar" />{w.calendar}</button>}
             {account && <button className="header-tool-button" type="button" aria-label={w.space} data-tooltip={w.space} onClick={() => { setUserHubInitialTab("files"); setUserHubOpen(true); }}><ToolIcon kind="space" />{w.space}</button>}
           </div>
           <div className="header-utility-actions">
-            <a className="header-tool-button x-account-link" href="https://x.com/WhatNowAI" target="_blank" rel="noreferrer" aria-label="Follow WhatNow? on X: @WhatNowAI" data-tooltip="Follow @WhatNowAI on X"><span className="x-account-symbol" aria-hidden="true">𝕏</span>{w.x}</a>
+            <a className="header-tool-button x-account-link header-optional-action" href="https://x.com/WhatNowAI" target="_blank" rel="noreferrer" aria-label="Follow WhatNow? on X: @WhatNowAI" data-tooltip="Follow @WhatNowAI on X"><span className="x-account-symbol" aria-hidden="true">𝕏</span>{w.x}</a>
             <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
               onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={changeTheme} open={authOpen} onOpenChange={setAuthOpen}
               quotaRefreshKey={quotaRefreshKey} />

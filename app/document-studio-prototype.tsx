@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { guideFor, guideText, requiredRegionFor, type StudioGuideLocale } from "./document-studio-guides";
 import { studioCountries, type GeneratedDocument, type StudioMode } from "./document-studio-schema";
 import type { ProfileLanguage } from "./profile-types";
@@ -23,8 +24,9 @@ const text = {
     disclaimer: "AI-generated document for informational purposes only. Completeness, legal validity, enforceability, and suitability are not guaranteed. Verify all facts and local rules before signing, sending, filing, or relying on it.",
     proTitle: "Document Studio", proBody: "Create, review, and edit documents with guided AI assistance.", proButton: "View plan", proBadge: "BETA", loadingPlan: "Checking your plan…", planError: "We could not load your workspace. Please try again.", retryPlan: "Try again",
     assistantTitle: "Preparation assistant", assistantIntro: "Ask what information is missing, why a detail matters, or how to answer a question before generation.", assistantPlaceholder: "Ask about this document brief…", ask: "Ask", suggested: "Suggested questions", suggestion1: "What important information is still missing?", suggestion2: "Which answers matter most in my jurisdiction?", suggestion3: "Explain the questions in simpler words.",
-    selected: "Selected passage", clearSelection: "Clear", documentAssistant: "Work with AI", documentAssistantIntro: "Select a passage or tap a highlighted uncertainty. Ask why it is needed or request an exact change.", editPlaceholder: "Ask a question or describe the change…", send: "Send", expand: "Expand", collapse: "Exit full screen", uncertain: "Needs clarification", missingInfo: "Missing information", confidence: "AI confidence", lowConfidence: "Low confidence — review the highlighted passages before use.", noIssues: "No unresolved passages were identified, but important documents still need review.",
-    upload: "Or attach the existing document", chooseFile: "Choose document", removeFile: "Remove", fileHint: "PDF, image, TXT, RTF, DOCX, or ODT. Maximum size depends on format.", reasoningTime: "Reasoning time", reasoningEstimate: "Usually about 2–3 minutes, with a 3-minute maximum.",
+    selected: "Selected passage", clearSelection: "Clear", documentAssistant: "Work with AI", documentAssistantIntro: "Select a passage or tap a highlighted uncertainty. Ask why it is needed or request an exact change.", editPlaceholder: "Ask a question or describe the change…", send: "Send", expand: "Focus", collapse: "Exit focus", uncertain: "Needs clarification", missingInfo: "Missing information", confidence: "AI confidence", lowConfidence: "Low confidence — review the highlighted passages before use.", noIssues: "No unresolved passages were identified, but important documents still need review.",
+    layout: "Workspace layout", layoutHint: "Drag panel headers to reorder them. Hide, restore, or focus any panel.", insightsPanel: "Checks & guidance", documentPanel: "Document", assistantPanel: "AI assistant", hidePanel: "Hide panel", restorePanel: "Restore panel", focusPanel: "Focus panel", equalPanels: "Equal panels", resetLayout: "Reset layout", moveLeft: "Move left", moveRight: "Move right", dragPanel: "Drag to move",
+    upload: "Or attach the existing document", chooseFile: "Choose document", removeFile: "Remove", fileHint: "PDF, image, TXT, RTF, DOCX, or ODT. Maximum size depends on format.", reasoningTime: "Reasoning time", reasoningEstimate: "Usually about 2–3 minutes, with a 10-minute maximum.",
     lease: "Residential lease", service: "Service agreement", nda: "Non-disclosure agreement", loan: "Loan agreement", power: "Power of attorney", complaint: "Formal complaint", request: "Official request", termination: "Termination notice", letter: "Formal letter", proposal: "Commercial proposal", sow: "Statement of work", minutes: "Meeting minutes", cv: "Cover letter", birthday: "Birthday invitation", wedding: "Wedding invitation", event: "Event invitation", thanks: "Thank-you letter", custom: "Custom document",
   },
   ru: {
@@ -38,8 +40,9 @@ const text = {
     disclaimer: "Документ создан ИИ только в информационных целях. Полнота, юридическая сила, исполнимость и пригодность не гарантируются. Проверьте факты и местные правила до подписания, отправки или подачи.",
     proTitle: "Мастерская документов", proBody: "Создавайте, проверяйте и редактируйте документы с подсказками ИИ.", proButton: "Посмотреть тариф", proBadge: "БЕТА", loadingPlan: "Проверяем ваш тариф…", planError: "Не удалось загрузить мастерскую. Попробуйте ещё раз.", retryPlan: "Попробовать снова",
     assistantTitle: "Помощник по подготовке", assistantIntro: "Спросите, каких данных не хватает, зачем нужен определённый пункт или как правильно ответить ещё до создания документа.", assistantPlaceholder: "Задайте вопрос об этой анкете…", ask: "Спросить", suggested: "Готовые вопросы", suggestion1: "Какой важной информации всё ещё не хватает?", suggestion2: "Какие ответы особенно важны в моей юрисдикции?", suggestion3: "Объясни эти вопросы простыми словами.",
-    selected: "Выбранный фрагмент", clearSelection: "Убрать", documentAssistant: "Работа с ИИ", documentAssistantIntro: "Выделите фрагмент или нажмите на подсвеченное место. Спросите, зачем оно нужно, или попросите точно изменить его.", editPlaceholder: "Задайте вопрос или опишите изменение…", send: "Отправить", expand: "Развернуть", collapse: "Свернуть", uncertain: "Нужно уточнить", missingInfo: "Не хватает данных", confidence: "Уверенность ИИ", lowConfidence: "Низкая уверенность — проверьте подсвеченные места перед использованием.", noIssues: "Неясные фрагменты не найдены, но важный документ всё равно нужно проверить.",
-    upload: "Или прикрепите готовый документ", chooseFile: "Выбрать документ", removeFile: "Удалить", fileHint: "PDF, изображение, TXT, RTF, DOCX или ODT. Максимальный размер зависит от формата.", reasoningTime: "Время рассуждения", reasoningEstimate: "Обычно около 2–3 минут, максимум — 3 минуты.",
+    selected: "Выбранный фрагмент", clearSelection: "Убрать", documentAssistant: "Работа с ИИ", documentAssistantIntro: "Выделите фрагмент или нажмите на подсвеченное место. Спросите, зачем оно нужно, или попросите точно изменить его.", editPlaceholder: "Задайте вопрос или опишите изменение…", send: "Отправить", expand: "Фокус", collapse: "Выйти из фокуса", uncertain: "Нужно уточнить", missingInfo: "Не хватает данных", confidence: "Уверенность ИИ", lowConfidence: "Низкая уверенность — проверьте подсвеченные места перед использованием.", noIssues: "Неясные фрагменты не найдены, но важный документ всё равно нужно проверить.",
+    layout: "Расположение окон", layoutHint: "Перетаскивайте заголовки окон, меняйте порядок, скрывайте или разворачивайте любое окно.", insightsPanel: "Проверка и подсказки", documentPanel: "Документ", assistantPanel: "ИИ-помощник", hidePanel: "Скрыть окно", restorePanel: "Вернуть окно", focusPanel: "Развернуть окно", equalPanels: "Равные окна", resetLayout: "Вернуть исходный вид", moveLeft: "Сдвинуть влево", moveRight: "Сдвинуть вправо", dragPanel: "Перетащите, чтобы переместить",
+    upload: "Или прикрепите готовый документ", chooseFile: "Выбрать документ", removeFile: "Удалить", fileHint: "PDF, изображение, TXT, RTF, DOCX или ODT. Максимальный размер зависит от формата.", reasoningTime: "Время рассуждения", reasoningEstimate: "Обычно около 2–3 минут, максимум — 10 минут.",
     lease: "Договор аренды жилья", service: "Договор услуг", nda: "Соглашение о конфиденциальности", loan: "Договор займа", power: "Доверенность", complaint: "Официальная жалоба", request: "Официальное заявление", termination: "Уведомление о расторжении", letter: "Деловое письмо", proposal: "Коммерческое предложение", sow: "Техническое задание", minutes: "Протокол встречи", cv: "Сопроводительное письмо", birthday: "Приглашение на день рождения", wedding: "Приглашение на свадьбу", event: "Приглашение на мероприятие", thanks: "Благодарственное письмо", custom: "Свой документ",
   },
   lv: {
@@ -53,8 +56,9 @@ const text = {
     disclaimer: "AI dokuments ir tikai informatīvs. Pilnība, juridiskais spēks, izpildāmība un piemērotība netiek garantēta. Pirms parakstīšanas, nosūtīšanas vai iesniegšanas pārbaudiet faktus un vietējos noteikumus.",
     proTitle: "Dokumentu darbnīca", proBody: "Veidojiet, pārbaudiet un rediģējiet dokumentus ar AI norādēm.", proButton: "Skatīt plānu", proBadge: "BETA", loadingPlan: "Pārbaudām jūsu plānu…", planError: "Neizdevās ielādēt darbnīcu. Mēģiniet vēlreiz.", retryPlan: "Mēģināt vēlreiz",
     assistantTitle: "Sagatavošanas palīgs", assistantIntro: "Jautājiet, kādas informācijas trūkst, kāpēc detaļa ir vajadzīga vai kā atbildēt pirms ģenerēšanas.", assistantPlaceholder: "Jautājiet par šo anketu…", ask: "Jautāt", suggested: "Ieteiktie jautājumi", suggestion1: "Kādas svarīgas informācijas vēl trūkst?", suggestion2: "Kuras atbildes ir īpaši svarīgas manā jurisdikcijā?", suggestion3: "Izskaidro jautājumus vienkāršāk.",
-    selected: "Izvēlētais fragments", clearSelection: "Notīrīt", documentAssistant: "Darbs ar AI", documentAssistantIntro: "Iezīmējiet fragmentu vai pieskarieties izceltai neskaidrībai. Jautājiet, kāpēc tā vajadzīga, vai lūdziet konkrētu labojumu.", editPlaceholder: "Uzdodiet jautājumu vai aprakstiet izmaiņu…", send: "Sūtīt", expand: "Izvērst", collapse: "Sakļaut", uncertain: "Jāprecizē", missingInfo: "Trūkst informācijas", confidence: "AI pārliecība", lowConfidence: "Zema pārliecība — pārbaudiet izceltās vietas.", noIssues: "Neatrisināti fragmenti nav atrasti, taču svarīgs dokuments joprojām jāpārbauda.",
-    upload: "Vai pievienojiet esošo dokumentu", chooseFile: "Izvēlēties dokumentu", removeFile: "Noņemt", fileHint: "PDF, attēls, TXT, RTF, DOCX vai ODT. Maksimālais izmērs atkarīgs no formāta.", reasoningTime: "Spriešanas laiks", reasoningEstimate: "Parasti ap 2–3 minūtēm, maksimums 3 minūtes.",
+    selected: "Izvēlētais fragments", clearSelection: "Notīrīt", documentAssistant: "Darbs ar AI", documentAssistantIntro: "Iezīmējiet fragmentu vai pieskarieties izceltai neskaidrībai. Jautājiet, kāpēc tā vajadzīga, vai lūdziet konkrētu labojumu.", editPlaceholder: "Uzdodiet jautājumu vai aprakstiet izmaiņu…", send: "Sūtīt", expand: "Fokuss", collapse: "Iziet no fokusa", uncertain: "Jāprecizē", missingInfo: "Trūkst informācijas", confidence: "AI pārliecība", lowConfidence: "Zema pārliecība — pārbaudiet izceltās vietas.", noIssues: "Neatrisināti fragmenti nav atrasti, taču svarīgs dokuments joprojām jāpārbauda.",
+    layout: "Darba telpas izkārtojums", layoutHint: "Velciet paneļu virsrakstus, lai mainītu secību. Paslēpiet, atjaunojiet vai fokusējiet jebkuru paneli.", insightsPanel: "Pārbaudes un norādes", documentPanel: "Dokuments", assistantPanel: "AI palīgs", hidePanel: "Paslēpt paneli", restorePanel: "Atjaunot paneli", focusPanel: "Fokusēt paneli", equalPanels: "Vienādi paneļi", resetLayout: "Atjaunot izkārtojumu", moveLeft: "Pārvietot pa kreisi", moveRight: "Pārvietot pa labi", dragPanel: "Velciet, lai pārvietotu",
+    upload: "Vai pievienojiet esošo dokumentu", chooseFile: "Izvēlēties dokumentu", removeFile: "Noņemt", fileHint: "PDF, attēls, TXT, RTF, DOCX vai ODT. Maksimālais izmērs atkarīgs no formāta.", reasoningTime: "Spriešanas laiks", reasoningEstimate: "Parasti ap 2–3 minūtēm, maksimums 10 minūtes.",
     lease: "Dzīvojamās telpas īres līgums", service: "Pakalpojumu līgums", nda: "Konfidencialitātes līgums", loan: "Aizdevuma līgums", power: "Pilnvara", complaint: "Oficiāla sūdzība", request: "Oficiāls iesniegums", termination: "Uzteikuma paziņojums", letter: "Oficiāla vēstule", proposal: "Komerciāls piedāvājums", sow: "Darba uzdevums", minutes: "Sanāksmes protokols", cv: "Motivācijas vēstule", birthday: "Dzimšanas dienas ielūgums", wedding: "Kāzu ielūgums", event: "Pasākuma ielūgums", thanks: "Pateicības vēstule", custom: "Cits dokuments",
   },
 } as const;
@@ -233,16 +237,28 @@ function StudioFileField({ t, file, onFile }: { t: Copy; file: File | null; onFi
   return <div className="studio-file-field"><span>{t.upload}</span><input key={file ? `${file.name}-${file.lastModified}` : "empty"} id="studio-document-file" className="visually-hidden" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.rtf,.docx,.odt" onChange={(event) => onFile(event.target.files?.[0] ?? null)} /><label htmlFor="studio-document-file" className="studio-file-button">{t.chooseFile}</label>{file && <div className="studio-selected-file"><strong title={file.name}>{file.name}</strong><span>{Math.max(1, Math.round(file.size / 1024))} KB</span><button type="button" onClick={() => onFile(null)}>{t.removeFile}</button></div>}<small>{t.fileHint}</small></div>;
 }
 
+type StudioPanelId = "insights" | "document" | "assistant";
+const defaultStudioPanelOrder: StudioPanelId[] = ["insights", "document", "assistant"];
+
 function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: { t: Copy; item: Saved; quota: Quota | null; onBack: () => void; onUpdated: (item: Saved, quota: Quota) => void; onCopy: () => void; onDownload: (format: "docx" | "pdf") => void }) {
   const [selectedText, setSelectedText] = useState("");
   const [instruction, setInstruction] = useState("");
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [busy, setBusy] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState("");
+  const [panelOrder, setPanelOrder] = useState<StudioPanelId[]>(defaultStudioPanelOrder);
+  const [hiddenPanels, setHiddenPanels] = useState<StudioPanelId[]>([]);
+  const [focusedPanel, setFocusedPanel] = useState<StudioPanelId | null>(null);
+  const [draggedPanel, setDraggedPanel] = useState<StudioPanelId | null>(null);
+  const [equalPanels, setEqualPanels] = useState(false);
   const documentRef = useRef<HTMLDivElement>(null);
   const document = item.result;
   const annotations = document.annotations ?? [];
+  const panelLabels: Record<StudioPanelId, string> = {
+    insights: t.insightsPanel,
+    document: t.documentPanel,
+    assistant: t.assistantPanel,
+  };
   const selectFromDocument = () => {
     const selection = window.getSelection(); if (!selection || !selection.rangeCount || !documentRef.current) return;
     const range = selection.getRangeAt(0); if (!documentRef.current.contains(range.commonAncestorContainer)) return;
@@ -261,10 +277,78 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
     finally { setBusy(false); }
   };
   const paragraphAnnotation = (heading: string, paragraph: string) => annotations.find((annotation) => annotation.sectionHeading === heading && (paragraph.includes(annotation.excerpt) || annotation.excerpt.includes(paragraph.slice(0, 80)))) ?? (paragraph.includes("[TO BE COMPLETED") ? { sectionHeading: heading, excerpt: paragraph, reason: t.missingInfo, kind: "missing" as const, question: t.missingInfo } : null);
-  return <div className={`studio-draft-workspace${expanded ? " assistant-expanded" : ""}`}>
-    <div className="studio-draft-layout"><aside><button type="button" onClick={onBack}>← {t.back}</button><div className={`studio-confidence ${document.confidence}`}><small>{t.confidence}</small><strong>{document.confidence.toUpperCase()}</strong>{document.confidence === "low" && <p>{t.lowConfidence}</p>}</div><div><small>{t.issues}</small>{annotations.length || document.assumptions.length || document.unresolvedIssues.length ? <ul>{[...document.assumptions, ...document.unresolvedIssues.map((issue) => issue.issue)].map((value, index) => <li key={index}>{value}</li>)}</ul> : <p>{t.noIssues}</p>}</div>{document.legalSources.length > 0 && <div><small>{t.sources}</small><ul>{document.legalSources.map((source, index) => <li key={index}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul></div>}{quota && <div><small>{t.limit}</small><p>{quota.remaining} · 24h {quota.dailyUsed}/{quota.dailyLimit}</p></div>}</aside>
-      <article className="studio-document-paper"><div className="studio-document-toolbar"><strong>{t.draft}</strong><div><button type="button" onClick={onCopy}>{t.copy}</button><button type="button" onClick={() => onDownload("docx")}>{t.docx}</button><button type="button" onClick={() => onDownload("pdf")}>{t.pdf}</button></div></div><div ref={documentRef} onMouseUp={selectFromDocument} onTouchEnd={selectFromDocument}><p className="document-kicker">{document.country}{document.region ? ` · ${document.region}` : ""}</p><h2>{document.title}</h2>{document.sections.map((section, index) => <section key={index}><h3>{section.heading}</h3>{section.body.split("\n").filter(Boolean).map((paragraph, paragraphIndex) => { const annotation = paragraphAnnotation(section.heading, paragraph); return <div className={annotation ? `studio-annotated-line ${annotation.kind}` : "studio-document-line"} key={paragraphIndex}><p>{paragraph}</p>{annotation && <button type="button" title={annotation.reason} aria-label={`${t.uncertain}: ${annotation.reason}`} onClick={() => pickAnnotation(annotation.excerpt, annotation.question)}>?</button>}</div>; })}</section>)}</div></article>
-    </div>
-    <aside className="studio-document-assistant" aria-label={t.documentAssistant}><header><div><small>AI</small><h2>{t.documentAssistant}</h2></div><button type="button" onClick={() => setExpanded((value) => !value)}>{expanded ? t.collapse : t.expand}</button></header><p>{t.documentAssistantIntro}</p>{selectedText && <blockquote><span>{t.selected}</span><p>{selectedText}</p><button type="button" onClick={() => setSelectedText("")}>{t.clearSelection}</button></blockquote>}<div className="studio-assistant-messages" aria-live="polite">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>{error && <p className="studio-api-error" role="alert">{error}</p>}<div className="studio-assistant-composer"><textarea rows={3} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={t.editPlaceholder} /><button type="button" disabled={!instruction.trim() || busy} onClick={() => void ask()}>{busy ? "…" : t.send}</button></div></aside>
+  const showPanel = (panel: StudioPanelId) => {
+    setHiddenPanels((current) => current.filter((value) => value !== panel));
+    setFocusedPanel(null);
+  };
+  const hidePanel = (panel: StudioPanelId) => {
+    setHiddenPanels((current) => current.includes(panel) ? current : [...current, panel]);
+    if (focusedPanel === panel) setFocusedPanel(null);
+  };
+  const focusPanel = (panel: StudioPanelId) => {
+    setHiddenPanels((current) => current.filter((value) => value !== panel));
+    setFocusedPanel((current) => current === panel ? null : panel);
+  };
+  const movePanel = (panel: StudioPanelId, direction: -1 | 1) => {
+    setPanelOrder((current) => {
+      const index = current.indexOf(panel);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+  const dropPanel = (target: StudioPanelId) => {
+    if (!draggedPanel || draggedPanel === target || focusedPanel) return;
+    setPanelOrder((current) => {
+      const next = current.filter((panel) => panel !== draggedPanel);
+      next.splice(next.indexOf(target), 0, draggedPanel);
+      return next;
+    });
+    setDraggedPanel(null);
+  };
+  const resetLayout = () => {
+    setPanelOrder(defaultStudioPanelOrder);
+    setHiddenPanels([]);
+    setFocusedPanel(null);
+    setEqualPanels(false);
+  };
+  const visiblePanels = focusedPanel ? [focusedPanel] : panelOrder.filter((panel) => !hiddenPanels.includes(panel));
+  const panelControls = (panel: StudioPanelId) => {
+    const index = panelOrder.indexOf(panel);
+    return <div className="studio-panel-controls">
+      {!focusedPanel && <button type="button" disabled={index === 0} title={t.moveLeft} aria-label={`${t.moveLeft}: ${panelLabels[panel]}`} onClick={() => movePanel(panel, -1)}>←</button>}
+      {!focusedPanel && <button type="button" disabled={index === panelOrder.length - 1} title={t.moveRight} aria-label={`${t.moveRight}: ${panelLabels[panel]}`} onClick={() => movePanel(panel, 1)}>→</button>}
+      <button type="button" title={focusedPanel === panel ? t.collapse : t.focusPanel} aria-label={`${focusedPanel === panel ? t.collapse : t.focusPanel}: ${panelLabels[panel]}`} onClick={() => focusPanel(panel)}>{focusedPanel === panel ? "↙" : "↗"}</button>
+      {!focusedPanel && <button type="button" title={t.hidePanel} aria-label={`${t.hidePanel}: ${panelLabels[panel]}`} onClick={() => hidePanel(panel)}>−</button>}
+    </div>;
+  };
+  const dragAttributes = (panel: StudioPanelId) => ({
+    draggable: !focusedPanel,
+    onDragStart: () => setDraggedPanel(panel),
+    onDragEnd: () => setDraggedPanel(null),
+    title: focusedPanel ? undefined : t.dragPanel,
+  });
+  const panels = {
+    insights: <aside className="studio-insights-panel studio-flex-panel" onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("insights")}>
+      <header className="studio-panel-header" {...dragAttributes("insights")}><div><span className="studio-panel-grip" aria-hidden="true">⠿</span><strong>{t.insightsPanel}</strong></div>{panelControls("insights")}</header>
+      <div className="studio-panel-scroll"><button className="studio-back-button" type="button" onClick={onBack}>← {t.back}</button><div className={`studio-confidence ${document.confidence}`}><small>{t.confidence}</small><strong>{document.confidence.toUpperCase()}</strong>{document.confidence === "low" && <p>{t.lowConfidence}</p>}</div><div><small>{t.issues}</small>{annotations.length || document.assumptions.length || document.unresolvedIssues.length ? <ul>{[...document.assumptions, ...document.unresolvedIssues.map((issue) => issue.issue)].map((value, index) => <li key={index}>{value}</li>)}</ul> : <p>{t.noIssues}</p>}</div>{document.legalSources.length > 0 && <div><small>{t.sources}</small><ul>{document.legalSources.map((source, index) => <li key={index}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul></div>}{quota && <div><small>{t.limit}</small><p>{quota.remaining} · 24h {quota.dailyUsed}/{quota.dailyLimit}</p></div>}</div>
+    </aside>,
+    document: <article className="studio-document-paper studio-flex-panel" onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("document")}>
+      <div className="studio-document-toolbar studio-panel-header" {...dragAttributes("document")}><div className="studio-panel-title"><span className="studio-panel-grip" aria-hidden="true">⠿</span><strong>{t.draft}</strong></div><div className="studio-document-actions"><button type="button" onClick={onCopy}>{t.copy}</button><button type="button" onClick={() => onDownload("docx")}>{t.docx}</button><button type="button" onClick={() => onDownload("pdf")}>{t.pdf}</button>{panelControls("document")}</div></div>
+      <div className="studio-document-scroll" ref={documentRef} onMouseUp={selectFromDocument} onTouchEnd={selectFromDocument}><p className="document-kicker">{document.country}{document.region ? ` · ${document.region}` : ""}</p><h2>{document.title}</h2>{document.sections.map((section, index) => <section key={index}><h3>{section.heading}</h3>{section.body.split("\n").filter(Boolean).map((paragraph, paragraphIndex) => { const annotation = paragraphAnnotation(section.heading, paragraph); return <div className={annotation ? `studio-annotated-line ${annotation.kind}` : "studio-document-line"} key={paragraphIndex}><p>{paragraph}</p>{annotation && <button type="button" title={annotation.reason} aria-label={`${t.uncertain}: ${annotation.reason}`} onClick={() => pickAnnotation(annotation.excerpt, annotation.question)}>?</button>}</div>; })}</section>)}</div>
+    </article>,
+    assistant: <aside className="studio-document-assistant studio-flex-panel" aria-label={t.documentAssistant} onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("assistant")}>
+      <header className="studio-panel-header" {...dragAttributes("assistant")}><div><span className="studio-panel-grip" aria-hidden="true">⠿</span><small>AI</small><h2>{t.documentAssistant}</h2></div>{panelControls("assistant")}</header>
+      <div className="studio-panel-scroll"><p>{t.documentAssistantIntro}</p>{selectedText && <blockquote><span>{t.selected}</span><p>{selectedText}</p><button type="button" onClick={() => setSelectedText("")}>{t.clearSelection}</button></blockquote>}<div className="studio-assistant-messages" aria-live="polite">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>{error && <p className="studio-api-error" role="alert">{error}</p>}<div className="studio-assistant-composer"><textarea rows={3} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={t.editPlaceholder} /><button type="button" disabled={!instruction.trim() || busy} onClick={() => void ask()}>{busy ? "…" : t.send}</button></div></div>
+    </aside>,
+  } satisfies Record<StudioPanelId, ReactNode>;
+  return <div className={`studio-draft-workspace${focusedPanel ? ` panel-focused focus-${focusedPanel}` : ""}`}>
+    <nav className="studio-layout-dock" aria-label={t.layout}>
+      <div><strong>{t.layout}</strong><small>{t.layoutHint}</small></div>
+      <div className="studio-layout-actions">{panelOrder.map((panel) => <button type="button" key={panel} className={!hiddenPanels.includes(panel) ? "active" : ""} aria-pressed={!hiddenPanels.includes(panel)} onClick={() => focusedPanel ? focusPanel(panel) : hiddenPanels.includes(panel) ? showPanel(panel) : hidePanel(panel)}><span>{panel === "insights" ? "☰" : panel === "document" ? "▤" : "✦"}</span>{panelLabels[panel]}</button>)}<button type="button" className={equalPanels ? "active" : ""} aria-pressed={equalPanels} onClick={() => setEqualPanels((current) => !current)}>▦ {t.equalPanels}</button><button type="button" onClick={resetLayout}>↺ {t.resetLayout}</button></div>
+    </nav>
+    <div className={`studio-panel-grid${equalPanels ? " equal-panels" : ""}`} data-panels={visiblePanels.length}>{visiblePanels.map((panel) => <div className={`studio-panel-slot panel-${panel}${draggedPanel === panel ? " dragging" : ""}`} key={panel}>{panels[panel]}</div>)}</div>
   </div>;
 }
