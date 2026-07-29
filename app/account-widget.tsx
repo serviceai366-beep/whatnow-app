@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
 import type { ProfileLanguage } from "./profile-types";
 import { interfaceCopyFallback } from "./language-options";
 import {
@@ -9,7 +8,6 @@ import {
   acceptCurrentLegalTerms,
   getAccessToken,
   loadAccount,
-  sendEmailSignInLink,
   signOutAccount,
   startGoogleSignIn,
   type SupabaseAccount,
@@ -26,10 +24,8 @@ const copy = {
     signIn: "Войти", signOut: "Выйти", title: "Войти в WhatNow?", profile: "Профиль",
     createAccount: "Создать аккаунт", createTitle: "Создайте аккаунт WhatNow?", signInTab: "Вход", createTab: "Регистрация",
     intro: "Один аккаунт для защищённых лимитов, истории и входа с разных устройств.", history: "Открыть историю разборов",
-    google: "Продолжить через Google", googleLoading: "Открываем Google…", divider: "или по email", email: "Email",
-    emailPlaceholder: "name@example.com", emailAction: "Получить ссылку для входа", sending: "Отправляем…",
-    sent: "Проверьте почту — ссылка одноразовая и подтвердит, что ящик принадлежит вам. Откройте её на этом устройстве.",
-    privacy: "Знания адреса недостаточно: Google проверяет свой аккаунт, а вход по email возможен только по секретной ссылке из почты. Документы этим сервисам не передаются.",
+    google: "Продолжить через Google", googleLoading: "Открываем Google…",
+    privacy: "Google надёжно подтверждает учётную запись. Документы этому сервису не передаются.",
     close: "Закрыть окно", unavailable: "Вход временно не настроен. Попробуйте позже.",
     error: "Не удалось начать вход. Попробуйте ещё раз.", secure: "Email подтверждён",
     securityText: "Сессия проверяется Supabase перед каждым анализом.", appearance: "Оформление",
@@ -41,7 +37,6 @@ const copy = {
     captchaReady: "Защита подтверждена.", captchaError: "Не удалось выполнить защитную проверку. Обновите её и попробуйте снова.",
     legalAgree: "Я принимаю Условия использования и подтверждаю, что прочитал(а) Политику конфиденциальности.",
     terms: "Условия использования", privacyPolicy: "Политика конфиденциальности", legalRequired: "Для создания аккаунта сначала подтвердите условия.", createRequirements: "Чтобы создать аккаунт, сначала согласитесь с политикой конфиденциальности и пройдите проверку от ботов.",
-    createEmailAction: "Создать аккаунт по email", createSent: "Проверьте почту — одноразовая ссылка подтвердит email и завершит создание аккаунта.",
     finishLegalTitle: "Завершите создание аккаунта", finishLegalText: "Чтобы пользоваться WhatNow?, подтвердите действующие условия и политику конфиденциальности.",
     acceptAndContinue: "Принять и продолжить", accepting: "Сохраняем…",
   },
@@ -49,10 +44,8 @@ const copy = {
     signIn: "Pierakstīties", signOut: "Iziet", title: "Pierakstīties WhatNow?", profile: "Profils",
     createAccount: "Izveidot kontu", createTitle: "Izveidojiet WhatNow? kontu", signInTab: "Pierakstīties", createTab: "Reģistrēties",
     intro: "Viens konts drošiem limitiem, vēsturei un darbam dažādās ierīcēs.", history: "Atvērt analīžu vēsturi",
-    google: "Turpināt ar Google", googleLoading: "Atveram Google…", divider: "vai ar e-pastu", email: "E-pasts",
-    emailPlaceholder: "vards@piemers.lv", emailAction: "Saņemt pierakstīšanās saiti", sending: "Nosūtām…",
-    sent: "Pārbaudiet e-pastu — vienreizējā saite apliecinās, ka pastkaste pieder jums. Atveriet to šajā ierīcē.",
-    privacy: "Ar adreses zināšanu nepietiek: Google pārbauda kontu, bet e-pasta ieeja darbojas tikai ar slepeno saiti. Dokumenti šiem pakalpojumiem netiek nodoti.",
+    google: "Turpināt ar Google", googleLoading: "Atveram Google…",
+    privacy: "Google droši pārbauda kontu. Jūsu dokumenti šim pakalpojumam netiek nodoti.",
     close: "Aizvērt logu", unavailable: "Pierakstīšanās pašlaik nav iestatīta. Mēģiniet vēlāk.",
     error: "Neizdevās sākt pierakstīšanos. Mēģiniet vēlreiz.", secure: "E-pasts apstiprināts",
     securityText: "Supabase pārbauda sesiju pirms katras analīzes.", appearance: "Izskats",
@@ -64,7 +57,6 @@ const copy = {
     captchaReady: "Aizsardzība apstiprināta.", captchaError: "Neizdevās veikt aizsardzības pārbaudi. Atjaunojiet to un mēģiniet vēlreiz.",
     legalAgree: "Es piekrītu Lietošanas noteikumiem un apliecinu, ka esmu izlasījis Privātuma politiku.",
     terms: "Lietošanas noteikumi", privacyPolicy: "Privātuma politika", legalRequired: "Lai izveidotu kontu, vispirms apstipriniet noteikumus.", createRequirements: "Lai izveidotu kontu, vispirms piekrītiet privātuma politikai un pabeidziet aizsardzības pārbaudi.",
-    createEmailAction: "Izveidot kontu ar e-pastu", createSent: "Pārbaudiet e-pastu — vienreizējā saite apstiprinās adresi un pabeigs konta izveidi.",
     finishLegalTitle: "Pabeidziet konta izveidi", finishLegalText: "Lai izmantotu WhatNow?, apstipriniet spēkā esošos noteikumus un privātuma politiku.",
     acceptAndContinue: "Piekrītu un turpinu", accepting: "Saglabājam…",
   },
@@ -72,10 +64,8 @@ const copy = {
     signIn: "Sign in", signOut: "Sign out", title: "Sign in to WhatNow?", profile: "Profile",
     createAccount: "Create account", createTitle: "Create your WhatNow? account", signInTab: "Sign in", createTab: "Create account",
     intro: "One account for protected limits, history, and access across devices.", history: "Open analysis history",
-    google: "Continue with Google", googleLoading: "Opening Google…", divider: "or use email", email: "Email",
-    emailPlaceholder: "name@example.com", emailAction: "Email me a sign-in link", sending: "Sending…",
-    sent: "Check your inbox — the one-time link proves that you control the mailbox. Open it on this device.",
-    privacy: "Knowing an address is not enough: Google verifies its account, and email sign-in requires the secret inbox link. Your documents are not shared with either provider.",
+    google: "Continue with Google", googleLoading: "Opening Google…",
+    privacy: "Google securely verifies the account. Your documents are not shared with this service.",
     close: "Close window", unavailable: "Sign-in is not configured right now. Try again later.",
     error: "We could not start sign-in. Please try again.", secure: "Email verified",
     securityText: "Supabase verifies the session before every analysis.", appearance: "Appearance",
@@ -87,7 +77,6 @@ const copy = {
     captchaReady: "Protection verified.", captchaError: "The protection check could not be completed. Refresh it and try again.",
     legalAgree: "I agree to the Terms of Service and acknowledge that I have read the Privacy Policy.",
     terms: "Terms of Service", privacyPolicy: "Privacy Policy", legalRequired: "Accept the terms before creating an account.", createRequirements: "To create an account, first agree to the Privacy Policy and complete the bot-protection check.",
-    createEmailAction: "Create account with email", createSent: "Check your inbox — the one-time link will verify your email and finish creating the account.",
     finishLegalTitle: "Finish creating your account", finishLegalText: "To use WhatNow?, accept the current Terms of Service and acknowledge the Privacy Policy.",
     acceptAndContinue: "Accept and continue", accepting: "Saving…",
   },
@@ -127,10 +116,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
   const t = copy[interfaceCopyFallback(locale)];
   const [account, setAccount] = useState<SupabaseAccount | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authCaptchaToken, setAuthCaptchaToken] = useState<string | null>(null);
   const [authCaptchaResetKey, setAuthCaptchaResetKey] = useState(0);
@@ -192,29 +178,6 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onOpenChange, open]);
-
-  const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (authMode === "create-account" && (!legalAccepted || !authCaptchaToken)) {
-      setError(t.createRequirements);
-      return;
-    }
-    if (authMode === "sign-in" && !authCaptchaToken) {
-      setAuthCaptchaError(true);
-      return;
-    }
-    setError(null); setMessage(null); setSending(true);
-    try {
-      await sendEmailSignInLink(email.trim(), authCaptchaToken, authMode, legalAccepted);
-      setMessage(authMode === "create-account" ? t.createSent : t.sent);
-    }
-    catch { setError(t.error); }
-    finally {
-      setSending(false);
-      setAuthCaptchaToken(null);
-      setAuthCaptchaResetKey((value) => value + 1);
-    }
-  };
 
   if (!loaded) return <span className="account-loading" aria-hidden="true" />;
 
@@ -297,8 +260,8 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
               <>
                 <img className="auth-mark" src="/whatnow-logo.jpg" alt="" />
                 <div className="auth-mode-switch" role="tablist" aria-label={t.title}>
-                  <button type="button" role="tab" aria-selected={authMode === "sign-in"} className={authMode === "sign-in" ? "active" : ""} onClick={() => { setAuthMode("sign-in"); setLegalAccepted(false); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); setMessage(null); }}>{t.signInTab}</button>
-                  <button type="button" role="tab" aria-selected={authMode === "create-account"} className={authMode === "create-account" ? "active" : ""} onClick={() => { setAuthMode("create-account"); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); setMessage(null); }}>{t.createTab}</button>
+                  <button type="button" role="tab" aria-selected={authMode === "sign-in"} className={authMode === "sign-in" ? "active" : ""} onClick={() => { setAuthMode("sign-in"); setLegalAccepted(false); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); }}>{t.signInTab}</button>
+                  <button type="button" role="tab" aria-selected={authMode === "create-account"} className={authMode === "create-account" ? "active" : ""} onClick={() => { setAuthMode("create-account"); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); }}>{t.createTab}</button>
                 </div>
                 <h2 id="account-dialog-title">{authMode === "create-account" ? t.createTitle : t.title}</h2>
                 <p className="auth-intro">{t.intro}</p>
@@ -329,14 +292,6 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                   setGoogleLoading(true);
                   try { await startGoogleSignIn(authMode, legalAccepted, authCaptchaToken); } catch { setError(t.error); setGoogleLoading(false); }
                 }}><span aria-hidden="true">G</span>{googleLoading ? t.googleLoading : t.google}</button>
-                <div className="auth-divider"><span>{t.divider}</span></div>
-                <form className="email-sign-in" onSubmit={submitEmail}>
-                  <label htmlFor="account-email">{t.email}</label>
-                  <input id="account-email" type="email" value={email} required autoComplete="email"
-                    placeholder={t.emailPlaceholder} onChange={(event) => setEmail(event.target.value)} />
-                  <button type="submit" disabled={sending || !email.trim() || !authCaptchaToken || (authMode === "create-account" && !legalAccepted)}>{sending ? t.sending : authMode === "create-account" ? t.createEmailAction : t.emailAction}</button>
-                </form>
-                {message && <p className="auth-message" role="status">{message}</p>}
                 {error && <p className="auth-error" role="alert">{error}</p>}
                 <p className="auth-privacy">{t.privacy}</p>
               </>
