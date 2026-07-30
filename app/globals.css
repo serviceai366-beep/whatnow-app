@@ -2161,3 +2161,40 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   .site-header, .studio-layout-dock { transition: none; }
   button, a, input, select, textarea, .result-card, .subscription-card, .file-list li { transition: none; }
 }
+
+/* Mobile header: keep every navigation label inside its circular control.
+   These rules intentionally live after the desktop glass overrides. */
+@media (max-width: 720px) {
+  .site-header:not(.compact) .header-tool-button,
+  .site-header:not(.compact) .header-nav-actions .header-tool-button,
+  .site-header:not(.compact) .x-account-link {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    flex: 0 0 42px;
+    justify-content: center;
+    gap: 0;
+    padding: 3px;
+    overflow: hidden;
+    border-radius: 50%;
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .site-header:not(.compact) .header-tool-button > .tool-icon,
+  .site-header:not(.compact) .x-account-link > .x-account-symbol {
+    margin: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .site-header:not(.compact) .header-tool-button,
+  .site-header:not(.compact) .header-nav-actions .header-tool-button,
+  .site-header:not(.compact) .x-account-link {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    flex-basis: 40px;
+    padding: 2px;
+  }
+}

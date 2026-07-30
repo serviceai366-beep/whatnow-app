@@ -120,6 +120,17 @@ test("translated header labels never collapse into individual letters", async ()
   assert.match(css, /\.site-header:not\(\.compact\) \.header-tool-button[\s\S]*font-size: 13px/);
 });
 
+test("mobile header controls hide overflowing labels after desktop overrides", async () => {
+  const [, , css] = await files;
+  const mobileOverride = css.lastIndexOf("@media (max-width: 720px)");
+  const desktopGlassOverride = css.lastIndexOf("font-size: 13px;");
+  assert.ok(mobileOverride > desktopGlassOverride);
+  assert.match(css.slice(mobileOverride), /\.site-header:not\(\.compact\) \.header-tool-button,[\s\S]*font-size: 0/);
+  assert.match(css.slice(mobileOverride), /overflow: hidden/);
+  assert.match(css.slice(mobileOverride), /line-height: 0/);
+  assert.match(css.slice(mobileOverride), /@media \(max-width: 430px\)[\s\S]*flex-basis: 40px/);
+});
+
 test("the top brand states the current Free or Pro plan", async () => {
   const [page, accountWidget] = await files;
   assert.match(page, /headerPlan === "pro" \? "WhatNow Pro" : "WhatNow Free"/);
