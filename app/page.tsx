@@ -130,6 +130,7 @@ export default function Home() {
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [quotaRefreshKey, setQuotaRefreshKey] = useState(0);
+  const [headerPlan, setHeaderPlan] = useState<"free" | "pro">("free");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [userHubOpen, setUserHubOpen] = useState(false);
   const [userHubInitialTab, setUserHubInitialTab] = useState<"files" | "plan">("files");
@@ -180,6 +181,7 @@ export default function Home() {
     accountIdRef.current = nextId;
     setAccount(value);
     if (!value) {
+      setHeaderPlan("free");
       setHistoryOpen(false);
       setLanguage("en");
       setAnalysisLanguage("en");
@@ -551,7 +553,7 @@ export default function Home() {
       <header className={`site-header${headerCompact ? " compact" : ""}${headerRetreating ? " retreating" : ""}`}>
         <a className="brand" href="#top" aria-label={t.homeAria} onClick={goHome}>
           <img className="brand-mark" src="/whatnow-logo.jpg" alt="" />
-          <span>WhatNow?</span>
+          <span>{headerPlan === "pro" ? "WhatNow Pro" : "WhatNow Free"}</span>
         </a>
         <div className="header-actions">
           <div className="header-nav-actions">
@@ -564,7 +566,7 @@ export default function Home() {
             <a className="header-tool-button x-account-link header-optional-action" href="https://x.com/WhatNowAI" target="_blank" rel="noreferrer" aria-label="Follow WhatNow? on X: @WhatNowAI" data-tooltip="Follow @WhatNowAI on X"><span className="x-account-symbol" aria-hidden="true">𝕏</span>{w.x}</a>
             <AccountWidget locale={language} accountAria={t.accountAria} onAccountChange={handleAccountChange}
               onOpenHistory={() => setHistoryOpen(true)} theme={theme} onThemeChange={changeTheme} open={authOpen} onOpenChange={setAuthOpen}
-              quotaRefreshKey={quotaRefreshKey} />
+              quotaRefreshKey={quotaRefreshKey} onPlanChange={setHeaderPlan} />
           </div>
         </div>
       </header>

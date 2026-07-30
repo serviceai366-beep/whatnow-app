@@ -109,10 +109,11 @@ function quotaResetText(template: string, quota: WindowQuota, locale: ProfileLan
   return template.replace("{time}", time);
 }
 
-export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHistory, theme, onThemeChange, open, onOpenChange, quotaRefreshKey }: {
+export function AccountWidget({ locale, accountAria, onAccountChange, onPlanChange, onOpenHistory, theme, onThemeChange, open, onOpenChange, quotaRefreshKey }: {
   locale: ProfileLanguage;
   accountAria: string;
   onAccountChange?: (account: SupabaseAccount | null) => void;
+  onPlanChange?: (plan: "free" | "pro") => void;
   onOpenHistory?: () => void;
   theme: ColorTheme;
   onThemeChange: (theme: ColorTheme) => void;
@@ -156,6 +157,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
       queueMicrotask(() => {
         if (!active) return;
         setQuota(null);
+        onPlanChange?.("free");
         setQuotaLoading(false);
         setQuotaError(false);
       });
@@ -176,7 +178,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
         });
         const payload = await response.json().catch(() => null) as { quota?: QuotaSnapshot } | null;
         if (!response.ok || !payload?.quota) throw new Error("Quota unavailable");
-        if (active) setQuota(payload.quota);
+        if (active) { setQuota(payload.quota); onPlanChange?.(payload.quota.planCode === "pro" ? "pro" : "free"); }
       })().catch(() => { if (active) setQuotaError(true); })
         .finally(() => {
           if (requestTimeout !== undefined) window.clearTimeout(requestTimeout);
@@ -184,7 +186,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
         });
     });
     return () => { active = false; controller.abort(); if (requestTimeout !== undefined) window.clearTimeout(requestTimeout); };
-  }, [account, quotaRefreshKey]);
+  }, [account, onPlanChange, quotaRefreshKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -264,7 +266,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onOpenHist
                 <div className="profile-actions" aria-label={t.accountActions}>
                   <button type="button" className="account-history" onClick={() => { onOpenChange(false); onOpenHistory?.(); }}>{t.history}</button>
                   <button type="button" className="account-sign-out" onClick={async () => {
-                    await signOutAccount(); setAccount(null); onAccountChange?.(null); onOpenChange(false);
+                    await signOutAccount(); setAccount(null); onAccountChange?.(null); onPlanChange?.("free"); onOpenChange(false);
                   }}>{t.signOut}</button>
                 </div>
               </>

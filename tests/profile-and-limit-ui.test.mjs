@@ -119,3 +119,10 @@ test("translated header labels never collapse into individual letters", async ()
   assert.match(css, /\.site-header\.compact \{[\s\S]*width: min\(1180px, calc\(100% - 24px\)\)/);
   assert.match(css, /\.site-header:not\(\.compact\) \.header-tool-button[\s\S]*font-size: 13px/);
 });
+
+test("the top brand states the current Free or Pro plan", async () => {
+  const [page, accountWidget] = await files;
+  assert.match(page, /headerPlan === "pro" \? "WhatNow Pro" : "WhatNow Free"/);
+  assert.match(page, /onPlanChange=\{setHeaderPlan\}/);
+  assert.match(accountWidget, /onPlanChange\?\.\(payload\.quota\.planCode === "pro" \? "pro" : "free"\)/);
+});
