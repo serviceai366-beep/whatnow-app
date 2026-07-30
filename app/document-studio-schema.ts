@@ -26,6 +26,7 @@ export type StudioRequest = {
   outputLanguage: SupportedLanguage;
   details: Record<string, string>;
   confirmedInsufficient: boolean;
+  preSignatureCheck: boolean;
 };
 
 export type GeneratedDocument = {
@@ -47,6 +48,7 @@ export type GeneratedDocument = {
   confidence: "low" | "medium" | "high";
   annotations?: { sectionHeading: string; excerpt: string; reason: string; kind: "missing" | "uncertain"; question: string }[];
   safetyNotice: string;
+  preSignatureCheck?: boolean;
 };
 
 export type StudioRevisionResult = { message: string; changed: boolean; document: GeneratedDocument };
@@ -73,6 +75,7 @@ export function parseStudioRequest(value: unknown): StudioRequest | null {
     outputLanguage: value.outputLanguage as SupportedLanguage,
     details,
     confirmedInsufficient: value.confirmedInsufficient === true,
+    preSignatureCheck: value.preSignatureCheck === true,
   };
 }
 
@@ -91,7 +94,7 @@ export function assessStudioReadiness(input: StudioRequest): GeneratedDocument["
   }
   if (input.mode !== "create") {
     if (!input.details.existing?.trim()) critical.push("existing_document");
-    if (!input.details.goal?.trim()) critical.push("requested_changes");
+    if (!input.preSignatureCheck && !input.details.goal?.trim()) critical.push("requested_changes");
   } else {
     for (const field of guideFor(input.templateId).fields) {
       if (input.details[field.key]?.trim()) continue;
