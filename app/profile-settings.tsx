@@ -115,6 +115,44 @@ const modelCopy: Record<ProfileLanguage, { title: string; label: string; help: s
   de: { title: "KI-Modell", label: "Standardmodell", help: "Wird automatisch für Analysen, die Erstellung und Bearbeitung von Dokumenten sowie Rückfragen verwendet.", proOnly: "Pro", upgradeTitle: "Weitere KI-Modelle freischalten", upgradeText: "GPT-5.6 Terra und Sol sind mit WhatNow? Pro verfügbar.", upgradeAction: "Pro-Angebote ansehen" },
 };
 
+const modelDescriptions: Record<ProfileLanguage, Record<ProfileDefaultModel, string>> = {
+  en: {
+    "gpt-5.6-luna": "Fastest and most affordable",
+    "gpt-5.6-terra": "Balanced speed and capability",
+    "gpt-5.6-sol": "Smartest for complex tasks",
+  },
+  ru: {
+    "gpt-5.6-luna": "Самая быстрая и доступная",
+    "gpt-5.6-terra": "Баланс скорости и качества",
+    "gpt-5.6-sol": "Самая умная для сложных задач",
+  },
+  lv: {
+    "gpt-5.6-luna": "Ātrākais un pieejamākais",
+    "gpt-5.6-terra": "Līdzsvars starp ātrumu un kvalitāti",
+    "gpt-5.6-sol": "Gudrākais sarežģītiem uzdevumiem",
+  },
+  es: {
+    "gpt-5.6-luna": "La más rápida y económica",
+    "gpt-5.6-terra": "Equilibrio entre velocidad y capacidad",
+    "gpt-5.6-sol": "La más inteligente para tareas complejas",
+  },
+  pt: {
+    "gpt-5.6-luna": "A mais rápida e económica",
+    "gpt-5.6-terra": "Equilíbrio entre rapidez e capacidade",
+    "gpt-5.6-sol": "A mais inteligente para tarefas complexas",
+  },
+  fr: {
+    "gpt-5.6-luna": "La plus rapide et la plus économique",
+    "gpt-5.6-terra": "Équilibre entre rapidité et capacité",
+    "gpt-5.6-sol": "La plus intelligente pour les tâches complexes",
+  },
+  de: {
+    "gpt-5.6-luna": "Am schnellsten und am günstigsten",
+    "gpt-5.6-terra": "Ausgewogenes Verhältnis von Tempo und Leistung",
+    "gpt-5.6-sol": "Am intelligentesten für komplexe Aufgaben",
+  },
+};
+
 const languageLabels: Record<ProfileLanguage, string> = Object.fromEntries(
   interfaceLanguageOptions.map((option) => [option.code, option.nativeName]),
 ) as Record<ProfileLanguage, string>;
@@ -245,7 +283,9 @@ export function ProfileSettings({ locale, preferences, modelSelectionAvailable, 
                 setShowModelUpgrade(false);
                 void apply("defaultModel", model.value);
               }}>
-              <span>{model.label}</span>{unavailable && <small>{modelT.proOnly}</small>}
+              <span className="profile-model-label">{model.label}</span>
+              <small className="profile-model-description">{modelDescriptions[locale][model.value]}</small>
+              {unavailable && <small className="profile-model-access">{modelT.proOnly}</small>}
             </button>;
           })}
         </div>

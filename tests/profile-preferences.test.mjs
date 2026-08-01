@@ -124,6 +124,10 @@ test("settings component is internally localized, responsive, and exposes access
   assert.match(component, /gpt-5\.6-terra/);
   assert.match(component, /gpt-5\.6-sol/);
   assert.match(component, /profile-model-choice/);
+  assert.match(component, /modelDescriptions/);
+  assert.match(component, /Fastest and most affordable/);
+  assert.match(component, /Самая умная для сложных задач/);
+  assert.match(component, /profile-model-description/);
   assert.match(component, /setShowModelUpgrade\(true\)/);
   assert.match(component, /onOpenPlan/);
   assert.match(component, /<fieldset/);
