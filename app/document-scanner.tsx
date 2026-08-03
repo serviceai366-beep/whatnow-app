@@ -36,7 +36,7 @@ type ScannerCopy = {
 const scannerCopy: Record<"en" | "ru" | "lv", ScannerCopy> = {
   en: {
     title: "Scan a document",
-    intro: "Point your camera at a paper document. We detect the edges on your device and crop the scan before anything is uploaded.",
+    intro: "Point your camera at a paper document. We detect the paper contour on your device, remove the surrounding desk, and crop the scan before anything is uploaded.",
     close: "Close scanner",
     cameraStarting: "Starting camera…",
     cameraReady: "Keep all four corners visible and hold the phone steady.",
@@ -62,7 +62,7 @@ const scannerCopy: Record<"en" | "ru" | "lv", ScannerCopy> = {
   },
   ru: {
     title: "Сканировать документ",
-    intro: "Наведите камеру на бумажный документ. Границы определяются на устройстве, а обрезка выполняется до отправки снимка.",
+    intro: "Наведите камеру на бумажный документ. Сканер ищет именно контур листа, убирает стол вокруг него и выполняет обрезку на устройстве до отправки снимка.",
     close: "Закрыть сканер",
     cameraStarting: "Запускаем камеру…",
     cameraReady: "Держите все четыре угла в кадре и не двигайте телефон.",
@@ -88,7 +88,7 @@ const scannerCopy: Record<"en" | "ru" | "lv", ScannerCopy> = {
   },
   lv: {
     title: "Skenēt dokumentu",
-    intro: "Pavērsiet kameru pret papīra dokumentu. Malas tiek noteiktas ierīcē, un apgriešana notiek pirms augšupielādes.",
+    intro: "Pavērsiet kameru pret papīra dokumentu. Skeneris atrod pašas lapas kontūru, noņem galdu apkārt un apgriež attēlu ierīcē pirms augšupielādes.",
     close: "Aizvērt skeneri",
     cameraStarting: "Palaižam kameru…",
     cameraReady: "Turiet visus četrus stūrus kadrā un nekustiniet tālruni.",
@@ -129,77 +129,271 @@ function distance(a: Point, b: Point) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function sampleBackground(data: Uint8ClampedArray, width: number, height: number): [number, number, number] {
-  const samples: [number, number, number][] = [];
-  const step = Math.max(1, Math.floor(Math.min(width, height) / 45));
-  for (let x = 0; x < width; x += step) {
-    for (const y of [0, height - 1]) {
-      const index = (y * width + x) * 4;
-      samples.push([data[index], data[index + 1], data[index + 2]]);
+type ScanComponent = {
+  pixels: number[];
+  mean: number;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  touchesBorder: boolean;
+};
+
+function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+function luminancePixels(data: Uint8ClampedArray) {
+  const result = new Float32Array(data.length / 4);
+  for (let index = 0, pixel = 0; index < data.length; index += 4, pixel += 1) {
+    result[pixel] = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+  }
+  return result;
+}
+
+function borderLuminance(gray: Float32Array, width: number, height: number) {
+  const values: number[] = [];
+  const stride = Math.max(1, Math.floor(Math.min(width, height) / 35));
+  for (let x = 0; x < width; x += stride) {
+    values.push(gray[x], gray[(height - 1) * width + x]);
+  }
+  for (let y = 0; y < height; y += stride) {
+    values.push(gray[y * width], gray[y * width + width - 1]);
+  }
+  return median(values);
+}
+
+function smoothLuminance(gray: Float32Array, width: number, height: number) {
+  // A small box blur makes text and table grain disappear while preserving the
+  // long, high-contrast boundary of a sheet of paper.
+  const radius = 2;
+  const integral = new Float64Array((width + 1) * (height + 1));
+  for (let y = 0; y < height; y += 1) {
+    let rowSum = 0;
+    for (let x = 0; x < width; x += 1) {
+      rowSum += gray[y * width + x];
+      integral[(y + 1) * (width + 1) + x + 1] = integral[y * (width + 1) + x + 1] + rowSum;
     }
   }
-  for (let y = 0; y < height; y += step) {
-    for (const x of [0, width - 1]) {
-      const index = (y * width + x) * 4;
-      samples.push([data[index], data[index + 1], data[index + 2]]);
+  const result = new Float32Array(gray.length);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const left = Math.max(0, x - radius);
+      const right = Math.min(width - 1, x + radius);
+      const top = Math.max(0, y - radius);
+      const bottom = Math.min(height - 1, y + radius);
+      const rowWidth = width + 1;
+      const sum = integral[(bottom + 1) * rowWidth + right + 1] - integral[top * rowWidth + right + 1] - integral[(bottom + 1) * rowWidth + left] + integral[top * rowWidth + left];
+      result[y * width + x] = sum / ((right - left + 1) * (bottom - top + 1));
     }
   }
-  const result = samples.reduce((sum, value) => [sum[0] + value[0], sum[1] + value[1], sum[2] + value[2]], [0, 0, 0]);
-  return samples.length ? [result[0] / samples.length, result[1] / samples.length, result[2] / samples.length] : [0, 0, 0];
+  return result;
+}
+
+function morphClose(mask: Uint8Array, width: number, height: number) {
+  const dilated = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let hit = 0;
+      for (let dy = -1; dy <= 1 && !hit; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height && mask[ny * width + nx]) {
+            hit = 1;
+            break;
+          }
+        }
+      }
+      dilated[y * width + x] = hit;
+    }
+  }
+  const closed = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let hit = 1;
+      for (let dy = -1; dy <= 1 && hit; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height || !dilated[ny * width + nx]) {
+            hit = 0;
+            break;
+          }
+        }
+      }
+      closed[y * width + x] = hit;
+    }
+  }
+  return closed;
+}
+
+function connectedComponents(mask: Uint8Array, gray: Float32Array, width: number, height: number) {
+  const visited = new Uint8Array(mask.length);
+  const components: ScanComponent[] = [];
+  for (let start = 0; start < mask.length; start += 1) {
+    if (!mask[start] || visited[start]) continue;
+    const queue = [start];
+    const pixels: number[] = [];
+    visited[start] = 1;
+    let total = 0;
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+    while (queue.length) {
+      const index = queue.pop()!;
+      const x = index % width;
+      const y = Math.floor(index / width);
+      pixels.push(index);
+      total += gray[index];
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const next = ny * width + nx;
+        if (mask[next] && !visited[next]) {
+          visited[next] = 1;
+          queue.push(next);
+        }
+      }
+    }
+    components.push({ pixels, mean: total / Math.max(1, pixels.length), minX, minY, maxX, maxY, touchesBorder: minX === 0 || minY === 0 || maxX === width - 1 || maxY === height - 1 });
+  }
+  return components;
+}
+
+function cross(origin: Point, a: Point, b: Point) {
+  return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
+}
+
+function convexHull(points: Point[]) {
+  const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+  if (sorted.length < 4) return sorted;
+  const lower: Point[] = [];
+  for (const point of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0) lower.pop();
+    lower.push(point);
+  }
+  const upper: Point[] = [];
+  for (let index = sorted.length - 1; index >= 0; index -= 1) {
+    const point = sorted[index];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0) upper.pop();
+    upper.push(point);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+function polygonArea(points: Point[]) {
+  return Math.abs(points.reduce((sum, point, index) => {
+    const next = points[(index + 1) % points.length];
+    return sum + point.x * next.y - next.x * point.y;
+  }, 0)) / 2;
+}
+
+function pickExtreme(hull: Point[], score: (point: Point) => number, descending: boolean, used: Point[]) {
+  const candidates = [...hull].sort((a, b) => {
+    const difference = score(a) - score(b);
+    return descending ? -difference : difference;
+  });
+  const spanX = Math.max(...hull.map((point) => point.x)) - Math.min(...hull.map((point) => point.x));
+  const spanY = Math.max(...hull.map((point) => point.y)) - Math.min(...hull.map((point) => point.y));
+  const minimumDistance = Math.max(3, Math.min(spanX, spanY) * 0.08);
+  return candidates.find((candidate) => used.every((point) => Math.hypot(candidate.x - point.x, candidate.y - point.y) > minimumDistance)) ?? candidates[0];
+}
+
+function cornersFromComponent(component: ScanComponent, width: number, height: number): [Point, Point, Point, Point] | null {
+  // Only the boundary is needed for the hull; dropping interior pixels keeps
+  // sorting cheap even on a high-resolution phone photo.
+  const componentSet = new Uint8Array(width * height);
+  component.pixels.forEach((index) => { componentSet[index] = 1; });
+  const boundary: Point[] = [];
+  for (const index of component.pixels) {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    if (x === 0 || y === 0 || x === width - 1 || y === height - 1 || !componentSet[index - 1] || !componentSet[index + 1] || !componentSet[index - width] || !componentSet[index + width]) {
+      boundary.push({ x, y });
+    }
+  }
+  const hull = convexHull(boundary);
+  if (hull.length < 4) return null;
+  const used: Point[] = [];
+  const topLeft = pickExtreme(hull, (point) => point.x + point.y, false, used); used.push(topLeft);
+  const topRight = pickExtreme(hull, (point) => point.x - point.y, true, used); used.push(topRight);
+  const bottomRight = pickExtreme(hull, (point) => point.x + point.y, true, used); used.push(bottomRight);
+  const bottomLeft = pickExtreme(hull, (point) => point.x - point.y, false, used);
+  const result: [Point, Point, Point, Point] = [topLeft, topRight, bottomRight, bottomLeft];
+  const area = polygonArea(result) / (width * height);
+  if (!Number.isFinite(area) || area < 0.12 || area > 0.985) return null;
+  return result.map((point) => ({ x: clamp(point.x / Math.max(1, width - 1)), y: clamp(point.y / Math.max(1, height - 1)) })) as [Point, Point, Point, Point];
+}
+
+function cornersFromBounds(component: ScanComponent, width: number, height: number): [Point, Point, Point, Point] | null {
+  const area = ((component.maxX - component.minX) * (component.maxY - component.minY)) / (width * height);
+  if (area < 0.12 || area > 0.99) return null;
+  // No artificial outward padding: the previous implementation added 1.2%
+  // on every side, which is precisely the table border users saw in scans.
+  const left = clamp(component.minX / Math.max(1, width - 1));
+  const top = clamp(component.minY / Math.max(1, height - 1));
+  const right = clamp(component.maxX / Math.max(1, width - 1));
+  const bottom = clamp(component.maxY / Math.max(1, height - 1));
+  return [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }];
 }
 
 /**
- * Finds a useful first quadrilateral without an external computer-vision SDK.
- * It intentionally falls back to safe margins when a paper edge cannot be
- * separated from its background; the four handles always let the user correct it.
+ * Finds the largest paper-like connected region, then fits a convex
+ * quadrilateral to its outer contour. This is deliberately local (no image
+ * leaves the device) and is much more selective than a global bright-pixel
+ * bounding box: text, table grain, and shadows are smoothed away first.
  */
 export function detectDocumentCorners(canvas: HTMLCanvasElement): [Point, Point, Point, Point] {
-  const maxSide = 420;
+  const maxSide = 520;
   const scale = Math.min(1, maxSide / Math.max(canvas.width, canvas.height));
-  const width = Math.max(24, Math.round(canvas.width * scale));
-  const height = Math.max(24, Math.round(canvas.height * scale));
+  const width = Math.max(32, Math.round(canvas.width * scale));
+  const height = Math.max(32, Math.round(canvas.height * scale));
   const sampleCanvas = document.createElement("canvas");
   sampleCanvas.width = width;
   sampleCanvas.height = height;
   const context = sampleCanvas.getContext("2d", { willReadFrequently: true });
   if (!context) return DEFAULT_CORNERS;
   context.drawImage(canvas, 0, 0, width, height);
-  const pixels = context.getImageData(0, 0, width, height).data;
-  const background = sampleBackground(pixels, width, height);
-  const points: Point[] = [];
-  let minX = width;
-  let minY = height;
-  let maxX = 0;
-  let maxY = 0;
-  let hits = 0;
-  for (let y = 1; y < height - 1; y += 1) {
-    for (let x = 1; x < width - 1; x += 1) {
-      const index = (y * width + x) * 4;
-      const red = pixels[index];
-      const green = pixels[index + 1];
-      const blue = pixels[index + 2];
-      const luminance = red * 0.299 + green * 0.587 + blue * 0.114;
-      const colorDistance = Math.hypot(red - background[0], green - background[1], blue - background[2]);
-      const left = (y * width + x - 1) * 4;
-      const up = ((y - 1) * width + x) * 4;
-      const gradient = Math.abs(red - pixels[left]) + Math.abs(red - pixels[up]) + Math.abs(green - pixels[left + 1]) + Math.abs(green - pixels[up + 1]) + Math.abs(blue - pixels[left + 2]) + Math.abs(blue - pixels[up + 2]);
-      if ((colorDistance > 48 && luminance > 115) || gradient > 190) {
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-        minY = Math.min(minY, y);
-        maxY = Math.max(maxY, y);
-        hits += 1;
-      }
-    }
+  const gray = luminancePixels(context.getImageData(0, 0, width, height).data);
+  const smooth = smoothLuminance(gray, width, height);
+  const background = borderLuminance(smooth, width, height);
+  const candidates: ScanComponent[] = [];
+  // Several thresholds handle white paper on a dark desk as well as a light
+  // desk. The best component is selected by size, contrast, and border contact.
+  for (const threshold of [Math.max(112, background + 14), Math.max(132, background + 8), 178]) {
+    const mask = new Uint8Array(smooth.length);
+    for (let index = 0; index < smooth.length; index += 1) mask[index] = smooth[index] >= threshold ? 1 : 0;
+    candidates.push(...connectedComponents(morphClose(mask, width, height), smooth, width, height));
   }
-  const area = Math.max(0, maxX - minX) * Math.max(0, maxY - minY);
-  if (hits < width * height * 0.002 || area < width * height * 0.18 || area > width * height * 0.98) return DEFAULT_CORNERS;
-  const padding = 0.012;
-  const left = clamp((minX / width) - padding);
-  const top = clamp((minY / height) - padding);
-  const right = clamp((maxX / width) + padding);
-  const bottom = clamp((maxY / height) + padding);
-  return [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }];
+  const imageArea = width * height;
+  const usable = candidates.filter((component) => component.pixels.length >= imageArea * 0.08 && component.pixels.length <= imageArea * 0.98);
+  usable.sort((a, b) => {
+    const score = (component: ScanComponent) => {
+      const area = component.pixels.length / imageArea;
+      const contrast = Math.max(0, component.mean - background) / 90;
+      const borderPenalty = component.touchesBorder ? 0.62 : 1;
+      const widthRatio = (component.maxX - component.minX) / width;
+      const heightRatio = (component.maxY - component.minY) / height;
+      return area * Math.max(0.25, contrast) * borderPenalty * Math.min(1, widthRatio * heightRatio * 1.4);
+    };
+    return score(b) - score(a);
+  });
+  for (const component of usable.slice(0, 4)) {
+    const corners = cornersFromComponent(component, width, height) ?? cornersFromBounds(component, width, height);
+    if (corners) return corners;
+  }
+  return DEFAULT_CORNERS;
 }
 
 function solveHomography(source: [Point, Point, Point, Point], width: number, height: number) {

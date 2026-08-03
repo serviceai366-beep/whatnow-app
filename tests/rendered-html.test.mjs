@@ -100,6 +100,11 @@ test("offers a local document scanner with crop, use, and save actions", async (
   assert.match(scanner, /warpDocument/);
   assert.match(scanner, /navigator\.share/);
   assert.match(scanner, /Drag the four corners/);
+  assert.match(scanner, /morphClose/);
+  assert.match(scanner, /connectedComponents/);
+  assert.match(scanner, /convexHull/);
+  assert.match(scanner, /No artificial outward padding/);
+  assert.match(scanner, /paper-like connected region/);
   assert.match(worker, /media-src 'self' blob:/);
   assert.match(worker, /camera=\(self\)/);
 });
