@@ -105,6 +105,9 @@ test("offers a local document scanner with crop, use, and save actions", async (
   assert.match(scanner, /cv\.findContours/);
   assert.match(scanner, /cv\.approxPolyDP/);
   assert.match(scanner, /scoreQuadrilateral/);
+  assert.match(scanner, /hasFourVisibleDocumentEdges/);
+  assert.match(scanner, /if \(!hasFourVisibleDocumentEdges\(points, width, height\) \|\| borderDistance < 0\.012\) return -Infinity/);
+  assert.match(scanner, /!component\.touchesBorder/);
   assert.match(scanner, /paperColorMask/);
   assert.match(scanner, /makeRefinedScan/);
   assert.match(scanner, /manual cropping usable/);

@@ -347,6 +347,19 @@ function polygonArea(points: Point[]) {
   }, 0)) / 2;
 }
 
+function hasFourVisibleDocumentEdges(points: [Point, Point, Point, Point], width = 1, height = 1) {
+  // Automatic scanning is only safe when every paper corner is visible inside
+  // the photo. If a proposed contour reaches the image frame, it has almost
+  // certainly combined one or more photo/desk edges with real paper edges.
+  const minimumMargin = 0.012;
+  return points.every((point) => (
+    point.x / width > minimumMargin
+    && point.x / width < 1 - minimumMargin
+    && point.y / height > minimumMargin
+    && point.y / height < 1 - minimumMargin
+  ));
+}
+
 function pickExtreme(hull: Point[], score: (point: Point) => number, descending: boolean, used: Point[]) {
   const candidates = [...hull].sort((a, b) => {
     const difference = score(a) - score(b);
@@ -380,20 +393,21 @@ function cornersFromComponent(component: ScanComponent, width: number, height: n
   const bottomLeft = pickExtreme(hull, (point) => point.x - point.y, false, used);
   const result: [Point, Point, Point, Point] = [topLeft, topRight, bottomRight, bottomLeft];
   const area = polygonArea(result) / (width * height);
-  if (!Number.isFinite(area) || area < 0.12 || area > 0.985) return null;
+  if (!Number.isFinite(area) || area < 0.12 || area > 0.9 || !hasFourVisibleDocumentEdges(result, width, height)) return null;
   return result.map((point) => ({ x: clamp(point.x / Math.max(1, width - 1)), y: clamp(point.y / Math.max(1, height - 1)) })) as [Point, Point, Point, Point];
 }
 
 function cornersFromBounds(component: ScanComponent, width: number, height: number): [Point, Point, Point, Point] | null {
   const area = ((component.maxX - component.minX) * (component.maxY - component.minY)) / (width * height);
-  if (area < 0.12 || area > 0.99) return null;
+  if (area < 0.12 || area > 0.9 || component.touchesBorder) return null;
   // No artificial outward padding: the previous implementation added 1.2%
   // on every side, which is precisely the table border users saw in scans.
   const left = clamp(component.minX / Math.max(1, width - 1));
   const top = clamp(component.minY / Math.max(1, height - 1));
   const right = clamp(component.maxX / Math.max(1, width - 1));
   const bottom = clamp(component.maxY / Math.max(1, height - 1));
-  return [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }];
+  const result: [Point, Point, Point, Point] = [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }];
+  return hasFourVisibleDocumentEdges(result) ? result : null;
 }
 
 /**
@@ -444,7 +458,7 @@ function detectDocumentCornersFallback(canvas: HTMLCanvasElement): [Point, Point
     candidates.push(...connectedComponents(morphClose(mask, width, height), smooth, width, height));
   }
   const imageArea = width * height;
-  const usable = candidates.filter((component) => component.pixels.length >= imageArea * 0.08 && component.pixels.length <= imageArea * 0.98);
+  const usable = candidates.filter((component) => !component.touchesBorder && component.pixels.length >= imageArea * 0.08 && component.pixels.length <= imageArea * 0.9);
   usable.sort((a, b) => {
     const score = (component: ScanComponent) => {
       const area = component.pixels.length / imageArea;
@@ -528,11 +542,12 @@ function scoreQuadrilateral(points: [Point, Point, Point, Point], width: number,
   const centerY = points.reduce((sum, point) => sum + point.y, 0) / 4 / height;
   const centerScore = 1 - Math.min(1, Math.hypot(centerX - 0.5, centerY - 0.5) / 0.71);
   const borderDistance = Math.min(minX / width, minY / height, (width - maxX) / width, (height - maxY) / height);
-  // A large quadrilateral touching the camera frame is the photo/desk border,
-  // not a sheet whose four corners are visible inside the capture.
-  if (borderDistance < 0.008 && areaRatio > 0.72) return -Infinity;
-  const framePenalty = borderDistance < 0.006 && areaRatio > 0.82 ? 1.8 : borderDistance < 0.002 ? 0.8 : 0;
-  return areaRatio * 4.4 + angleScore * 1.4 + rectangularity * 0.65 + centerScore * 0.35 - framePenalty;
+  // A proposed contour that reaches the photo frame is never accepted. The
+  // previous soft penalty still allowed a hybrid contour made from two paper
+  // edges and two image-frame edges to win, producing the visibly crooked
+  // crops reported from iPhone captures.
+  if (!hasFourVisibleDocumentEdges(points, width, height) || borderDistance < 0.012) return -Infinity;
+  return areaRatio * 4.4 + angleScore * 1.4 + rectangularity * 0.65 + centerScore * 0.35;
 }
 
 /**
