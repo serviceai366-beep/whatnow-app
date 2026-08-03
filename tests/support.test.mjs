@@ -245,7 +245,7 @@ test("support API, UI, and D1 migration enforce server-side privacy and provide 
   assert.match(panel, /support-delete-confirm/);
   assert.match(panel, /resolvedForUser/);
   assert.match(panel, /locale: supportLocale/);
-  const englishSupportCopy = panel.match(/en: \{([\s\S]*?)\n  \},\n  ru:/)?.[1] ?? "";
+  const englishSupportCopy = panel.match(/const copy[\s\S]*?en: \{([\s\S]*?)\}\s*,\s*ru:/)?.[1] ?? "";
   assert.ok(englishSupportCopy.length > 0);
   assert.doesNotMatch(englishSupportCopy, /[А-Яа-яЁё]/);
   assert.match(styles, /\.support-panel \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*overflow: hidden;/);
