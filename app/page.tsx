@@ -26,6 +26,7 @@ import { FileClientError, uploadStoredFile } from "./file-client";
 import { interfaceCopyFallback, languageOption, responseLanguageOptions } from "./language-options";
 import { DocumentChat } from "./document-chat";
 import { DocumentStudioPrototype } from "./document-studio-prototype";
+import { TranslationWorkspace } from "./translation-workspace";
 
 const workspaceCopy = {
   en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", x: "X · @WhatNowAI", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately.", studioUnavailable: "Create & edit is temporarily unavailable. Please try again later." },
@@ -103,7 +104,7 @@ function resolvedProfileTheme(preferences: UserProfilePreferences): ColorTheme {
 }
 
 export default function Home() {
-  const [productMode, setProductMode] = useState<"understand" | "create">("understand");
+  const [productMode, setProductMode] = useState<"understand" | "create" | "translate">("understand");
   const [language, setLanguage] = useState<ProfileLanguage>("en");
   const [analysisLanguage, setAnalysisLanguage] = useState<SupportedLanguage>("en");
   const [preferences, setPreferences] = useState<UserProfilePreferences>({ ...DEFAULT_PROFILE_PREFERENCES });
@@ -141,10 +142,12 @@ export default function Home() {
   const [languageQuery, setLanguageQuery] = useState("");
   const [headerCompact, setHeaderCompact] = useState(false);
   const [headerRetreating, setHeaderRetreating] = useState(false);
+  const [studioPrefill, setStudioPrefill] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const languagePickerRef = useRef<HTMLDivElement>(null);
   const lastAnalysisRef = useRef<{ fingerprint: string; result: AnalysisResult } | null>(null);
   const accountIdRef = useRef<string | null | undefined>(undefined);
+  const pendingChallengeRef = useRef<((token: string) => void) | null>(null);
   const t = translations[language];
   const interfaceCopyLanguage = interfaceCopyFallback(language);
   const h = historyCopy[interfaceCopyLanguage];
@@ -173,7 +176,7 @@ export default function Home() {
       setUserHubOpen(false);
       setSupportOpen(false);
       setFileSaveNotice(null);
-      setCaptchaToken(null);
+      pendingChallengeRef.current = null;
       setCaptchaResetKey((current) => current + 1);
       setCaptchaError(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -454,6 +457,7 @@ export default function Home() {
       if (!response.ok || !payload?.result) {
         const limit = payload?.error;
         if (limit?.code === "captcha_required" || limit?.code === "captcha_failed" || limit?.code === "captcha_unavailable") {
+          pendingChallengeRef.current = (token) => { void analyzeDocument(token); };
           setCaptchaError(limit.code === "captcha_required" ? null : limit.code === "captcha_failed" ? t.errorCaptchaFailed : t.errorCaptchaUnavailable);
           setCaptchaChallengeOpen(true);
           setCaptchaResetKey((current) => current + 1);
@@ -527,6 +531,7 @@ export default function Home() {
     setUserHubOpen(false);
     setHistoryOpen(false);
     setAuthOpen(false);
+    setStudioPrefill("");
     setProductMode("understand");
   };
 
@@ -546,6 +551,24 @@ export default function Home() {
     selectDocument(file);
     setUserHubOpen(false);
     window.setTimeout(() => document.getElementById("analyzer-title")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
+  const useTranslationInUnderstand = (translatedText: string) => {
+    clearSelectedDocument();
+    setDocumentText(translatedText);
+    setInputMode("text");
+    setAnalysis(null);
+    setAnalysisError(null);
+    setShowResult(false);
+    setProductMode("understand");
+    window.setTimeout(() => document.getElementById("analyzer-title")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
+  const useTranslationInCreate = (translatedText: string) => {
+    setStudioPrefill(translatedText);
+    setShowResult(false);
+    setProductMode("create");
+    window.setTimeout(() => document.getElementById("studio-title")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   };
 
   return (
@@ -576,14 +599,19 @@ export default function Home() {
 
       {!showResult && <nav className="product-mode-switch" aria-label="WhatNow? modes">
         <button type="button" className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? "Понять документ" : interfaceCopyLanguage === "lv" ? "Saprast dokumentu" : "Understand"}</strong></button>
-        <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => setProductMode("create")}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong></button>
+        <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => { setStudioPrefill(""); setProductMode("create"); }}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong></button>
+        <button type="button" className={productMode === "translate" ? "active" : ""} aria-current={productMode === "translate" ? "page" : undefined} onClick={() => setProductMode("translate")}><span aria-hidden="true">↔</span><strong>{interfaceCopyLanguage === "ru" ? "Перевести" : interfaceCopyLanguage === "lv" ? "Tulkošana" : "Translate"}</strong></button>
       </nav>}
 
       {showResult && analysis ? (
         <AnalysisResultView key={`${savedHistoryId ?? "unsaved"}:${analysis.summary}`} result={analysis} onRestart={resetAnalysis} t={t} locale={language}
           account={account} analysisId={savedHistoryId} preferences={preferences} onSave={() => void persistAnalysisHistory(analysis, inputMode, analysisLanguage)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : productMode === "create" ? (
-        <DocumentStudioPrototype locale={language} account={account} onRequireAccount={() => setAuthOpen(true)} onOpenPlan={() => { setUserHubInitialTab("plan"); setUserHubOpen(true); }} />
+        <DocumentStudioPrototype locale={language} account={account} initialPrompt={studioPrefill} onRequireAccount={() => setAuthOpen(true)} onOpenPlan={() => { setUserHubInitialTab("plan"); setUserHubOpen(true); }} />
+      ) : productMode === "translate" ? (
+        <TranslationWorkspace locale={language} defaultLanguage={analysisLanguage} account={account} onRequireAccount={() => setAuthOpen(true)}
+          onChallengeRequired={(retry) => { pendingChallengeRef.current = retry; setCaptchaError(null); setCaptchaChallengeOpen(true); setCaptchaResetKey((current) => current + 1); }}
+          onUseInUnderstand={useTranslationInUnderstand} onUseInCreate={useTranslationInCreate} />
       ) : (
         <>
       <section className="hero" id="top">
@@ -767,8 +795,8 @@ export default function Home() {
       {account && <SupportPanel open={supportOpen} locale={language} onClose={() => setSupportOpen(false)} />}
       <InfoPanel open={infoOpen} locale={language} t={t} onClose={() => setInfoOpen(false)} />
       {captchaChallengeOpen && <SecurityChallenge locale={language} theme={theme} resetKey={captchaResetKey} error={captchaError}
-        onClose={() => { setCaptchaChallengeOpen(false); setCaptchaError(null); }}
-        onVerified={(token) => { setCaptchaChallengeOpen(false); setCaptchaError(null); void analyzeDocument(token); }}
+        onClose={() => { pendingChallengeRef.current = null; setCaptchaChallengeOpen(false); setCaptchaError(null); }}
+        onVerified={(token) => { const retry = pendingChallengeRef.current; pendingChallengeRef.current = null; setCaptchaChallengeOpen(false); setCaptchaError(null); if (retry) void retry(token); else void analyzeDocument(token); }}
         onError={() => setCaptchaError(t.errorCaptchaUnavailable)} />}
 
       <footer>

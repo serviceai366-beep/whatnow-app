@@ -76,7 +76,7 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
-export function DocumentStudioPrototype({ locale, account, onRequireAccount, onOpenPlan }: { locale: ProfileLanguage; account: SupabaseAccount | null; onRequireAccount: () => void; onOpenPlan: () => void }) {
+export function DocumentStudioPrototype({ locale, account, initialPrompt = "", onRequireAccount, onOpenPlan }: { locale: ProfileLanguage; account: SupabaseAccount | null; initialPrompt?: string; onRequireAccount: () => void; onOpenPlan: () => void }) {
   const copyLocale: StudioGuideLocale = locale === "ru" || locale === "lv" ? locale : "en";
   const t = { ...text[copyLocale], preSignChecks: text[copyLocale].reviewChecks, preSignDone: text[copyLocale].reviewDone } as Copy;
   const [workflow, setWorkflow] = useState<"guided" | "quick">("guided");
@@ -104,6 +104,15 @@ export function DocumentStudioPrototype({ locale, account, onRequireAccount, onO
   const generationController = useRef<AbortController | null>(null);
   const guide = useMemo(() => guideFor(template), [template]);
   const jurisdictionNeedsRegion = requiredRegionFor(country);
+
+  useEffect(() => {
+    if (!initialPrompt.trim()) return;
+    setCurrent(null);
+    setWorkflow("quick");
+    setMode("create");
+    setQuickPrompt(initialPrompt);
+    setError("");
+  }, [initialPrompt]);
 
   const missingFields = useMemo(() => {
     const critical: { key: string; label: string }[] = [];
