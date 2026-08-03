@@ -65,9 +65,8 @@ const worker = {
       "media-src 'self' blob:",
       "worker-src 'self' blob:",
     ].join("; "));
-    // The scanner needs camera access on the first-party site only. Keep all
-    // unrelated device capabilities disabled, and never allow cross-origin use.
-    headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=(), payment=()");
+    // Document inputs are supplied as files or text; camera access is disabled.
+    headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
     headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     headers.set("X-Content-Type-Options", "nosniff");

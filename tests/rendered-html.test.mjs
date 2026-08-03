@@ -23,7 +23,7 @@ test("server-renders the WhatNow prototype", async () => {
   assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
   assert.equal(response.headers.get("pragma"), "no-cache");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
-  assert.match(response.headers.get("permissions-policy") ?? "", /camera=\(self\)/);
+  assert.match(response.headers.get("permissions-policy") ?? "", /camera=\(\)/);
   assert.match(response.headers.get("content-security-policy") ?? "", /object-src 'none'/);
   assert.match(response.headers.get("content-security-policy") ?? "", /vrcbgpmevieccopqembx\.supabase\.co/);
   assert.match(response.headers.get("strict-transport-security") ?? "", /max-age=31536000/);
@@ -82,35 +82,23 @@ test("keeps the home screen focused and moves explanatory content into the infor
   assert.match(styles, /\.info-detail-grid/);
 });
 
-test("offers a local document scanner with crop, use, and save actions", async () => {
-  const [page, studio, scanner, worker] = await Promise.all([
+test("removes the document scanner and camera access", async () => {
+  const [page, studio, i18n, styles, worker, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/document-studio-prototype.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/document-scanner.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/i18n.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /DocumentScanner/);
-  assert.match(page, /setScannerOpen\(true\)/);
-  assert.match(page, /text-scan-button/);
-  assert.match(studio, /onOpenScanner/);
-  assert.match(studio, /scanDocument/);
-  assert.match(scanner, /getUserMedia/);
-  assert.match(scanner, /detectDocumentCorners/);
-  assert.match(scanner, /warpDocument/);
-  assert.match(scanner, /navigator\.share/);
-  assert.match(scanner, /Drag the four corners/);
-  assert.match(scanner, /@techstark\/opencv-js/);
-  assert.match(scanner, /cv\.Canny/);
-  assert.match(scanner, /cv\.findContours/);
-  assert.match(scanner, /cv\.approxPolyDP/);
-  assert.match(scanner, /scoreQuadrilateral/);
-  assert.match(scanner, /hasFourVisibleDocumentEdges/);
-  assert.match(scanner, /if \(!hasFourVisibleDocumentEdges\(points, width, height\) \|\| borderDistance < 0\.012\) return -Infinity/);
-  assert.match(scanner, /!component\.touchesBorder/);
-  assert.match(scanner, /paperColorMask/);
-  assert.match(scanner, /makeRefinedScan/);
-  assert.match(scanner, /manual cropping usable/);
+  assert.doesNotMatch(page, /DocumentScanner|scannerOpen|onOpenScanner|scanDocument|text-scan-button/);
+  assert.doesNotMatch(studio, /onOpenScanner|scanDocument|studio-file-scan/);
+  assert.doesNotMatch(i18n, /scanDocument|Сканировать камерой|Skenēt ar kameru/);
+  assert.doesNotMatch(styles, /document-scanner|scanner-|scan-button|text-scan-button|studio-file-scan/);
+  assert.match(worker, /camera=\(\)/);
+  assert.doesNotMatch(worker, /camera=\(self\)/);
+  assert.doesNotMatch(packageJson, /@techstark\/opencv-js/);
+  await assert.rejects(access(new URL("../app/document-scanner.tsx", templateRoot)));
   assert.match(worker, /media-src 'self' blob:/);
-  assert.match(worker, /camera=\(self\)/);
 });

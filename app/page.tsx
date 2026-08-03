@@ -26,7 +26,6 @@ import { FileClientError, uploadStoredFile } from "./file-client";
 import { interfaceCopyFallback, languageOption, responseLanguageOptions } from "./language-options";
 import { DocumentChat } from "./document-chat";
 import { DocumentStudioPrototype } from "./document-studio-prototype";
-import { DocumentScanner } from "./document-scanner";
 
 const workspaceCopy = {
   en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", x: "X · @WhatNowAI", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately.", studioUnavailable: "Create & edit is temporarily unavailable. Please try again later." },
@@ -140,7 +139,6 @@ export default function Home() {
   const [fileSaveNotice, setFileSaveNotice] = useState<{ kind: "success" | "warning"; text: string } | null>(null);
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
-  const [scannerOpen, setScannerOpen] = useState(false);
   const [headerCompact, setHeaderCompact] = useState(false);
   const [headerRetreating, setHeaderRetreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -175,7 +173,6 @@ export default function Home() {
       setUserHubOpen(false);
       setSupportOpen(false);
       setFileSaveNotice(null);
-      setScannerOpen(false);
       setCaptchaToken(null);
       setCaptchaResetKey((current) => current + 1);
       setCaptchaError(null);
@@ -551,14 +548,6 @@ export default function Home() {
     window.setTimeout(() => document.getElementById("analyzer-title")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   };
 
-  const useScannedFile = (file: File) => {
-    setInputMode("file");
-    setTextError(null);
-    selectDocument(file);
-    setScannerOpen(false);
-    window.setTimeout(() => document.getElementById("analyzer-title")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
-  };
-
   return (
     <main>
       <header className={`site-header${headerCompact ? " compact" : ""}${headerRetreating ? " retreating" : ""}`}>
@@ -594,7 +583,7 @@ export default function Home() {
         <AnalysisResultView key={`${savedHistoryId ?? "unsaved"}:${analysis.summary}`} result={analysis} onRestart={resetAnalysis} t={t} locale={language}
           account={account} analysisId={savedHistoryId} preferences={preferences} onSave={() => void persistAnalysisHistory(analysis, inputMode, analysisLanguage)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : productMode === "create" ? (
-        <DocumentStudioPrototype locale={language} account={account} onRequireAccount={() => setAuthOpen(true)} onOpenPlan={() => { setUserHubInitialTab("plan"); setUserHubOpen(true); }} onOpenScanner={() => setScannerOpen(true)} />
+        <DocumentStudioPrototype locale={language} account={account} onRequireAccount={() => setAuthOpen(true)} onOpenPlan={() => { setUserHubInitialTab("plan"); setUserHubOpen(true); }} />
       ) : (
         <>
       <section className="hero" id="top">
@@ -720,9 +709,6 @@ export default function Home() {
                     <button className="secondary-button" type="button" onClick={() => fileInputRef.current?.click()}>
                       {t.chooseFile}
                     </button>
-                    <button className="scan-button" type="button" onClick={() => setScannerOpen(true)} disabled={isAnalyzing}>
-                      <span aria-hidden="true">⌾</span> {t.scanDocument}
-                    </button>
                   </div>
                   <small>{t.allowedFiles}</small>
                 </div>
@@ -755,9 +741,6 @@ export default function Home() {
               </div>
               <div className="text-input-actions">
                 <small className="clipboard-image-hint">{t.pasteScreenshotHint}</small>
-                <button className="scan-button text-scan-button" type="button" onClick={() => setScannerOpen(true)} disabled={isAnalyzing} title={t.scanDocumentHint}>
-                  <span aria-hidden="true">⌾</span> {t.scanDocument}
-                </button>
               </div>
               {textError && <p className="input-error" id="text-error" role="alert">{textError}</p>}
             </div>
@@ -783,7 +766,6 @@ export default function Home() {
       {account && <UserHub open={userHubOpen} initialTab={userHubInitialTab} locale={language} preferences={preferences} modelSelectionAvailable={modelSelectionAvailable} onPreferencesChange={applyPreferences} onUseFile={useStoredFile} onClose={() => setUserHubOpen(false)} />}
       {account && <SupportPanel open={supportOpen} locale={language} onClose={() => setSupportOpen(false)} />}
       <InfoPanel open={infoOpen} locale={language} t={t} onClose={() => setInfoOpen(false)} />
-      <DocumentScanner open={scannerOpen} locale={language} onClose={() => setScannerOpen(false)} onUse={useScannedFile} />
       {captchaChallengeOpen && <SecurityChallenge locale={language} theme={theme} resetKey={captchaResetKey} error={captchaError}
         onClose={() => { setCaptchaChallengeOpen(false); setCaptchaError(null); }}
         onVerified={(token) => { setCaptchaChallengeOpen(false); setCaptchaError(null); void analyzeDocument(token); }}
