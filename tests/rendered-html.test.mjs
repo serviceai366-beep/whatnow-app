@@ -105,6 +105,8 @@ test("offers a local document scanner with crop, use, and save actions", async (
   assert.match(scanner, /cv\.findContours/);
   assert.match(scanner, /cv\.approxPolyDP/);
   assert.match(scanner, /scoreQuadrilateral/);
+  assert.match(scanner, /paperColorMask/);
+  assert.match(scanner, /makeRefinedScan/);
   assert.match(scanner, /manual cropping usable/);
   assert.match(worker, /media-src 'self' blob:/);
   assert.match(worker, /camera=\(self\)/);

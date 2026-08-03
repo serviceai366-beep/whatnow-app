@@ -161,6 +161,46 @@ function luminancePixels(data: Uint8ClampedArray) {
   return result;
 }
 
+function medianRgb(data: Uint8ClampedArray, width: number, height: number, include: (x: number, y: number) => boolean) {
+  const channels: [number[], number[], number[]] = [[], [], []];
+  const stride = Math.max(1, Math.floor(Math.min(width, height) / 150));
+  for (let y = 0; y < height; y += stride) {
+    for (let x = 0; x < width; x += stride) {
+      if (!include(x, y)) continue;
+      const index = (y * width + x) * 4;
+      channels[0].push(data[index]);
+      channels[1].push(data[index + 1]);
+      channels[2].push(data[index + 2]);
+    }
+  }
+  return channels.map((channel) => median(channel)) as [number, number, number];
+}
+
+function colorDistance(first: [number, number, number], second: [number, number, number]) {
+  return (first[0] - second[0]) ** 2 + (first[1] - second[1]) ** 2 + (first[2] - second[2]) ** 2;
+}
+
+function paperColorMask(data: Uint8ClampedArray, width: number, height: number) {
+  // In the capture UI the document is deliberately centred. Sampling a broad
+  // central area gives us the paper colour, while the outer ring describes the
+  // desk/background. This remains available when OpenCV cannot start on iOS.
+  const paper = medianRgb(data, width, height, (x, y) => x > width * 0.28 && x < width * 0.72 && y > height * 0.24 && y < height * 0.76);
+  const background = medianRgb(data, width, height, (x, y) => x < width * 0.12 || x > width * 0.88 || y < height * 0.1 || y > height * 0.9);
+  if (colorDistance(paper, background) < 14 ** 2) return null;
+
+  const mask = new Uint8Array(width * height);
+  for (let pixel = 0; pixel < mask.length; pixel += 1) {
+    const index = pixel * 4;
+    const color: [number, number, number] = [data[index], data[index + 1], data[index + 2]];
+    const paperDistance = colorDistance(color, paper);
+    const backgroundDistance = colorDistance(color, background);
+    mask[pixel] = paperDistance < backgroundDistance * 0.86 ? 1 : 0;
+  }
+  // Multiple small closes reconnect the page through printed text without
+  // allowing a single large blur to swallow the surrounding table.
+  return morphClose(morphClose(morphClose(mask, width, height), width, height), width, height);
+}
+
 function borderLuminance(gray: Float32Array, width: number, height: number) {
   const values: number[] = [];
   const stride = Math.max(1, Math.floor(Math.min(width, height) / 35));
@@ -373,10 +413,13 @@ function detectDocumentCornersFallback(canvas: HTMLCanvasElement): [Point, Point
   const context = sampleCanvas.getContext("2d", { willReadFrequently: true });
   if (!context) return DEFAULT_CORNERS;
   context.drawImage(canvas, 0, 0, width, height);
-  const gray = luminancePixels(context.getImageData(0, 0, width, height).data);
+  const imageData = context.getImageData(0, 0, width, height).data;
+  const gray = luminancePixels(imageData);
   const smooth = smoothLuminance(gray, width, height);
   const background = borderLuminance(smooth, width, height);
   const candidates: ScanComponent[] = [];
+  const colorMask = paperColorMask(imageData, width, height);
+  if (colorMask) candidates.push(...connectedComponents(colorMask, smooth, width, height));
   // Several thresholds handle white paper on a dark desk as well as a light
   // desk. The best component is selected by size, contrast, and border contact.
   for (const threshold of [Math.max(112, background + 14), Math.max(132, background + 8), 178]) {
@@ -390,7 +433,9 @@ function detectDocumentCornersFallback(canvas: HTMLCanvasElement): [Point, Point
     const score = (component: ScanComponent) => {
       const area = component.pixels.length / imageArea;
       const contrast = Math.max(0, component.mean - background) / 90;
-      const borderPenalty = component.touchesBorder ? 0.62 : 1;
+      // A real sheet should have four visible corners. Large background masks
+      // usually touch the image frame and must not outrank the centred paper.
+      const borderPenalty = component.touchesBorder ? 0.2 : 1;
       const widthRatio = (component.maxX - component.minX) / width;
       const heightRatio = (component.maxY - component.minY) / height;
       return area * Math.max(0.25, contrast) * borderPenalty * Math.min(1, widthRatio * heightRatio * 1.4);
@@ -563,9 +608,9 @@ export async function detectDocumentCorners(canvas: HTMLCanvasElement): Promise<
   } catch {
     // A browser without WebAssembly/OpenCV still keeps manual cropping usable.
   }
-  // Do not pretend that a brightness-only guess is an exact scan. A neutral
-  // inset plus the visible corner handles is safer than silently cutting text.
-  return { corners: DEFAULT_CORNERS, precise: false, confidence: 0 };
+  const fallback = detectDocumentCornersFallback(canvas);
+  const foundPaper = fallback !== DEFAULT_CORNERS;
+  return { corners: fallback, precise: foundPaper, confidence: foundPaper ? 0.58 : 0 };
 }
 
 function solveHomography(source: [Point, Point, Point, Point], width: number, height: number) {
