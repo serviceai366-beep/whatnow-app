@@ -20,6 +20,8 @@ type ScannerCopy = {
   retake: string;
   adjust: string;
   autoDetected: string;
+  detecting: string;
+  manualAdjust: string;
   useInApp: string;
   saveGallery: string;
   saving: string;
@@ -48,6 +50,8 @@ const scannerCopy: Record<"en" | "ru" | "lv", ScannerCopy> = {
     retake: "Retake",
     adjust: "Drag the four corners to correct the crop.",
     autoDetected: "Edges detected automatically",
+    detecting: "Finding the exact paper contour…",
+    manualAdjust: "We could not confirm every edge. Check and adjust the four corners.",
     useInApp: "Use in WhatNow?",
     saveGallery: "Save to gallery",
     saving: "Preparing scan…",
@@ -74,6 +78,8 @@ const scannerCopy: Record<"en" | "ru" | "lv", ScannerCopy> = {
     retake: "Переснять",
     adjust: "Перетащите четыре угла, чтобы исправить обрезку.",
     autoDetected: "Границы найдены автоматически",
+    detecting: "Ищем точный контур листа…",
+    manualAdjust: "Не удалось уверенно определить все края. Проверьте и поправьте четыре угла.",
     useInApp: "Использовать в WhatNow?",
     saveGallery: "Сохранить в галерею",
     saving: "Готовим скан…",
@@ -100,6 +106,8 @@ const scannerCopy: Record<"en" | "ru" | "lv", ScannerCopy> = {
     retake: "Fotografēt vēlreiz",
     adjust: "Velciet četrus stūrus, lai labotu apgriešanu.",
     autoDetected: "Malas noteiktas automātiski",
+    detecting: "Meklējam precīzu lapas kontūru…",
+    manualAdjust: "Neizdevās droši noteikt visas malas. Pārbaudiet un pielāgojiet četrus stūrus.",
     useInApp: "Izmantot WhatNow?",
     saveGallery: "Saglabāt galerijā",
     saving: "Sagatavojam skenu…",
@@ -354,7 +362,7 @@ function cornersFromBounds(component: ScanComponent, width: number, height: numb
  * leaves the device) and is much more selective than a global bright-pixel
  * bounding box: text, table grain, and shadows are smoothed away first.
  */
-export function detectDocumentCorners(canvas: HTMLCanvasElement): [Point, Point, Point, Point] {
+function detectDocumentCornersFallback(canvas: HTMLCanvasElement): [Point, Point, Point, Point] {
   const maxSide = 520;
   const scale = Math.min(1, maxSide / Math.max(canvas.width, canvas.height));
   const width = Math.max(32, Math.round(canvas.width * scale));
@@ -394,6 +402,165 @@ export function detectDocumentCorners(canvas: HTMLCanvasElement): [Point, Point,
     if (corners) return corners;
   }
   return DEFAULT_CORNERS;
+}
+
+type DetectionResult = {
+  corners: [Point, Point, Point, Point];
+  precise: boolean;
+  confidence: number;
+};
+
+type OpenCv = {
+  [key: string]: any;
+  Mat: any;
+};
+
+let openCvPromise: Promise<OpenCv> | null = null;
+
+async function loadOpenCv(): Promise<OpenCv> {
+  if (!openCvPromise) {
+    openCvPromise = import("@techstark/opencv-js").then(async (module) => {
+      let cv = module.default as unknown as OpenCv | Promise<OpenCv>;
+      if (typeof (cv as Promise<OpenCv>)?.then === "function") cv = await cv;
+      if (!(cv as OpenCv)?.Mat) throw new Error("opencv_runtime_unavailable");
+      return cv as OpenCv;
+    }).catch((error) => {
+      openCvPromise = null;
+      throw error;
+    });
+  }
+  return openCvPromise;
+}
+
+function orderQuadrilateral(points: Point[]): [Point, Point, Point, Point] | null {
+  if (points.length !== 4) return null;
+  const bySum = [...points].sort((a, b) => (a.x + a.y) - (b.x + b.y));
+  const byDifference = [...points].sort((a, b) => (a.x - a.y) - (b.x - b.y));
+  const ordered: [Point, Point, Point, Point] = [bySum[0], byDifference[3], bySum[3], byDifference[0]];
+  if (new Set(ordered).size !== 4 || polygonArea(ordered) < 1) return null;
+  return ordered;
+}
+
+function cornerAngleScore(previous: Point, corner: Point, next: Point) {
+  const first = { x: previous.x - corner.x, y: previous.y - corner.y };
+  const second = { x: next.x - corner.x, y: next.y - corner.y };
+  const denominator = Math.max(1e-6, Math.hypot(first.x, first.y) * Math.hypot(second.x, second.y));
+  return 1 - Math.min(1, Math.abs((first.x * second.x + first.y * second.y) / denominator));
+}
+
+function scoreQuadrilateral(points: [Point, Point, Point, Point], width: number, height: number) {
+  const imageArea = width * height;
+  const areaRatio = polygonArea(points) / imageArea;
+  if (areaRatio < 0.1 || areaRatio > 0.985) return -Infinity;
+  const sideRatios = points.map((point, index) => distance(point, points[(index + 1) % 4]) / Math.max(width, height));
+  if (Math.min(...sideRatios) < 0.08) return -Infinity;
+  const angleScore = points.reduce((sum, point, index) => sum + cornerAngleScore(points[(index + 3) % 4], point, points[(index + 1) % 4]), 0) / 4;
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+  const rectangularity = Math.min(1, polygonArea(points) / Math.max(1, (maxX - minX) * (maxY - minY)));
+  const centerX = points.reduce((sum, point) => sum + point.x, 0) / 4 / width;
+  const centerY = points.reduce((sum, point) => sum + point.y, 0) / 4 / height;
+  const centerScore = 1 - Math.min(1, Math.hypot(centerX - 0.5, centerY - 0.5) / 0.71);
+  const borderDistance = Math.min(minX / width, minY / height, (width - maxX) / width, (height - maxY) / height);
+  const framePenalty = borderDistance < 0.006 && areaRatio > 0.82 ? 1.8 : borderDistance < 0.002 ? 0.8 : 0;
+  return areaRatio * 4.4 + angleScore * 1.4 + rectangularity * 0.65 + centerScore * 0.35 - framePenalty;
+}
+
+/**
+ * Uses several OpenCV edge/threshold passes and selects the strongest closed,
+ * convex four-corner paper contour. Processing stays in the browser. The old
+ * brightness detector is retained only as an explicitly low-confidence fallback.
+ */
+export async function detectDocumentCorners(canvas: HTMLCanvasElement): Promise<DetectionResult> {
+  try {
+    const cv = await loadOpenCv();
+    const maxSide = 960;
+    const scale = Math.min(1, maxSide / Math.max(canvas.width, canvas.height));
+    const width = Math.max(64, Math.round(canvas.width * scale));
+    const height = Math.max(64, Math.round(canvas.height * scale));
+    const sampleCanvas = document.createElement("canvas");
+    sampleCanvas.width = width;
+    sampleCanvas.height = height;
+    sampleCanvas.getContext("2d")?.drawImage(canvas, 0, 0, width, height);
+
+    const source = cv.imread(sampleCanvas);
+    const gray = new cv.Mat();
+    const blurred = new cv.Mat();
+    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(7, 7));
+    const passes: any[] = [];
+    let best: { corners: [Point, Point, Point, Point]; score: number } | null = null;
+    try {
+      cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY, 0);
+      cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+
+      for (const [low, high] of [[35, 110], [65, 190]]) {
+        const edges = new cv.Mat();
+        cv.Canny(blurred, edges, low, high, 3, true);
+        cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernel, new cv.Point(-1, -1), 2);
+        cv.dilate(edges, edges, kernel, new cv.Point(-1, -1), 1);
+        passes.push(edges);
+      }
+      const otsu = new cv.Mat();
+      cv.threshold(blurred, otsu, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+      cv.morphologyEx(otsu, otsu, cv.MORPH_CLOSE, kernel, new cv.Point(-1, -1), 2);
+      passes.push(otsu);
+      const inverted = new cv.Mat();
+      cv.bitwise_not(otsu, inverted);
+      passes.push(inverted);
+
+      for (const pass of passes) {
+        const contours = new cv.MatVector();
+        const hierarchy = new cv.Mat();
+        try {
+          cv.findContours(pass, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+          for (let index = 0; index < contours.size(); index += 1) {
+            const contour = contours.get(index);
+            const perimeter = cv.arcLength(contour, true);
+            try {
+              for (const epsilonRatio of [0.012, 0.02, 0.035]) {
+                const approximation = new cv.Mat();
+                try {
+                  cv.approxPolyDP(contour, approximation, perimeter * epsilonRatio, true);
+                  if (approximation.rows !== 4 || !cv.isContourConvex(approximation)) continue;
+                  const raw = approximation.data32S;
+                  const ordered = orderQuadrilateral(Array.from({ length: 4 }, (_, pointIndex) => ({ x: raw[pointIndex * 2], y: raw[pointIndex * 2 + 1] })));
+                  if (!ordered) continue;
+                  const score = scoreQuadrilateral(ordered, width, height);
+                  if (!best || score > best.score) best = { corners: ordered, score };
+                } finally {
+                  approximation.delete();
+                }
+              }
+            } finally {
+              contour.delete();
+            }
+          }
+        } finally {
+          contours.delete();
+          hierarchy.delete();
+        }
+      }
+    } finally {
+      passes.forEach((pass) => pass.delete());
+      kernel.delete();
+      blurred.delete();
+      gray.delete();
+      source.delete();
+    }
+
+    if (best && best.score >= 2.15) {
+      return {
+        corners: best.corners.map((point) => ({ x: clamp(point.x / Math.max(1, width - 1)), y: clamp(point.y / Math.max(1, height - 1)) })) as [Point, Point, Point, Point],
+        precise: true,
+        confidence: Math.min(1, best.score / 5.4),
+      };
+    }
+  } catch {
+    // A browser without WebAssembly/OpenCV still keeps manual cropping usable.
+  }
+  return { corners: detectDocumentCornersFallback(canvas), precise: false, confidence: 0 };
 }
 
 function solveHomography(source: [Point, Point, Point, Point], width: number, height: number) {
@@ -528,6 +695,7 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
   const [sourceSize, setSourceSize] = useState({ width: 4, height: 3 });
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [detectionMode, setDetectionMode] = useState<"detecting" | "precise" | "manual">("detecting");
   const [savedMessage, setSavedMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const streamRef = useRef<MediaStream | null>(null);
@@ -538,14 +706,22 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  const loadCanvas = useCallback((canvas: HTMLCanvasElement) => {
+  const loadCanvas = useCallback(async (canvas: HTMLCanvasElement) => {
     sourceCanvasRef.current = canvas;
     setSourceSize({ width: canvas.width, height: canvas.height });
-    setCorners(detectDocumentCorners(canvas));
     setSourceUrl(canvas.toDataURL("image/jpeg", 0.92));
     setSavedMessage("");
     setSaveError("");
     setPhase("review");
+    setBusy(true);
+    setDetectionMode("detecting");
+    try {
+      const detection = await detectDocumentCorners(canvas);
+      setCorners(detection.corners);
+      setDetectionMode(detection.precise ? "precise" : "manual");
+    } finally {
+      setBusy(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -603,7 +779,7 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose, open, phase, sourceUrl]);
 
-  const capture = () => {
+  const capture = async () => {
     const video = videoRef.current;
     if (!video || !video.videoWidth || !video.videoHeight) {
       setCameraError(copy.captureError);
@@ -619,7 +795,7 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
       return;
     }
     stopStream();
-    loadCanvas(canvas);
+    await loadCanvas(canvas);
   };
 
   const handlePhoto = async (file: File | undefined) => {
@@ -631,7 +807,7 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
     setBusy(true);
     try {
       stopStream();
-      loadCanvas(await fileToCanvas(file));
+      await loadCanvas(await fileToCanvas(file));
     } catch {
       setCameraError(copy.captureError);
     } finally {
@@ -710,7 +886,7 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
             <svg className="scanner-polygon" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points={corners.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")} /></svg>
             {corners.map((point, index) => <button key={cornerLabels[index]} type="button" className="scanner-handle" aria-label={`${copy.adjust} ${cornerLabels[index]}`} style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }} onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture?.(event.pointerId); setDragIndex(index); }} />)}
           </div>
-          <p className="scanner-adjust-hint"><span aria-hidden="true">✓</span> {copy.autoDetected}. {copy.adjust}</p>
+          <p className={`scanner-adjust-hint scanner-adjust-${detectionMode}`} role="status"><span aria-hidden="true">{detectionMode === "precise" ? "✓" : detectionMode === "detecting" ? "◌" : "!"}</span> {detectionMode === "detecting" ? copy.detecting : detectionMode === "precise" ? `${copy.autoDetected}. ${copy.adjust}` : copy.manualAdjust}</p>
           {savedMessage && <p className="scanner-saved" role="status">{savedMessage} {copy.saveHint}</p>}
           {saveError && <p className="input-error" role="alert">{saveError}</p>}
         </div>}
@@ -723,7 +899,7 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
           </> : <>
             <button className="secondary-button" type="button" onClick={() => fileInputRef.current?.click()}>{copy.choosePhoto}</button>
             <input ref={fileInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic" onChange={(event) => void handlePhoto(event.target.files?.[0])} />
-            <button className="primary-button" type="button" disabled={phase === "starting" || busy || Boolean(cameraError && !streamRef.current)} onClick={capture}>{busy ? copy.processing : copy.capture} <span aria-hidden="true">⌾</span></button>
+            <button className="primary-button" type="button" disabled={phase === "starting" || busy || Boolean(cameraError && !streamRef.current)} onClick={() => void capture()}>{busy ? copy.processing : copy.capture} <span aria-hidden="true">⌾</span></button>
           </>}
         </div>
         {phase !== "review" && <p className="scanner-device-hint">{copy.scanHint}</p>}
