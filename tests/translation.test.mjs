@@ -2,14 +2,22 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { POST } from "../app/api/translate/route.ts";
+import { POST as POST_FOLLOWUP } from "../app/api/translate/followup/route.ts";
 import { resetAnalysisChallengeStateForTests } from "../app/analysis-challenge.ts";
 import { translationJsonSchema, validateTranslationResult } from "../app/translation-schema.ts";
+import { translationFollowupJsonSchema, validateTranslationFollowup } from "../app/translation-followup-schema.ts";
 
 const validTranslation = {
-  schemaVersion: "1.0",
+  schemaVersion: "1.1",
   sourceLanguage: "lv",
   targetLanguage: "en",
   translation: "This is a translated document.",
+  transcription: "This is a translated document.",
+  variants: [
+    { style: "literal", label: "Literal", translation: "This is a translated document.", transcription: "This iz a translaytid dokyument." },
+    { style: "conversational", label: "Conversational", translation: "Here is the translated document.", transcription: "Hir iz the translaytid dokyument." },
+    { style: "bold", label: "Bold", translation: "This document is translated and ready.", transcription: "This dokyument iz translaytid and redi." },
+  ],
   notes: [],
   uncertainties: [],
 };
@@ -18,6 +26,7 @@ function requestWithText(text = "Sveiki!", options = {}) {
   const formData = new FormData();
   formData.set("targetLanguage", options.targetLanguage ?? "en");
   formData.set("mode", "text");
+  formData.set("variantMode", options.variantMode ?? "initial");
   formData.set("text", text);
   if (options.captchaToken) formData.set("turnstileToken", options.captchaToken);
   return new Request("http://localhost/api/translate", {
@@ -34,6 +43,7 @@ function requestWithFile(file, options = {}) {
   const formData = new FormData();
   formData.set("targetLanguage", options.targetLanguage ?? "ru");
   formData.set("mode", "file");
+  formData.set("variantMode", options.variantMode ?? "initial");
   formData.set("file", file);
   return new Request("http://localhost/api/translate", {
     method: "POST",
@@ -68,8 +78,13 @@ test("translation schema accepts complete results and rejects invented fields or
   assert.equal(validateTranslationResult(validTranslation, "en"), true);
   assert.equal(validateTranslationResult({ ...validTranslation, targetLanguage: "ru" }, "en"), false);
   assert.equal(validateTranslationResult({ ...validTranslation, extra: "no" }, "en"), false);
+  assert.equal(validateTranslationResult({ ...validTranslation, variants: validTranslation.variants.slice(0, 2) }, "en"), false);
+  assert.equal(validateTranslationResult({ ...validTranslation, variants: [{ ...validTranslation.variants[0], style: "alternative" }] }, "en", "more"), true);
+  assert.equal(validateTranslationFollowup({ answer: "It is a nuance.", uncertain: false, transcription: "" }), true);
+  assert.equal(validateTranslationFollowup({ answer: "It is a nuance.", uncertain: false, transcription: "", extra: true }), false);
   assert.equal(translationJsonSchema.additionalProperties, false);
   assert.deepEqual(translationJsonSchema.properties.targetLanguage.enum, ["en", "ru", "lv", "es", "pt", "fr", "de", "it", "pl", "uk", "nl", "ro", "sv", "cs"]);
+  assert.equal(translationFollowupJsonSchema.additionalProperties, false);
 });
 
 test("translation route requires a verified account and never calls OpenAI without it", async () => withServerKey(async () => {
@@ -107,7 +122,34 @@ test("translation route sends a structured, non-stored request for text", async 
     assert.equal(requests[0].body.store, false);
     assert.equal(requests[0].body.text.format.name, "whatnow_translation");
     assert.equal(requests[0].body.text.format.strict, true);
+    assert.equal(requests[0].body.input[0].content[0].type, "input_text");
     assert.match(requests[0].body.instructions, /Translate the supplied source material/);
+    assert.match(requests[0].body.instructions, /exactly three variants/);
+  } finally { globalThis.fetch = previousFetch; }
+}));
+
+test("translation route requests alternative variants without changing the schema", async () => withServerKey(async () => {
+  const previousFetch = globalThis.fetch;
+  const requests = [];
+  resetAnalysisChallengeStateForTests();
+  const alternatives = {
+    ...validTranslation,
+    variants: [{ style: "alternative", label: "Alternative 1", translation: "Another clear version.", transcription: "Another klir version." }],
+    translation: "Another clear version.",
+    transcription: "Another klir version.",
+  };
+  globalThis.fetch = async (url, init = {}) => {
+    const address = String(url);
+    if (address.includes("/auth/v1/user")) return Response.json({ id: "translation-more-user", email: "more@example.com", email_confirmed_at: "2026-08-03T10:00:00Z", is_anonymous: false });
+    requests.push({ url: address, body: JSON.parse(init.body) });
+    return openAiResponse(alternatives);
+  };
+  try {
+    const response = await POST(requestWithText("Labdien!", { userId: "translation-more-user", variantMode: "more" }));
+    assert.equal(response.status, 200);
+    assert.equal(requests[0].body.max_output_tokens, 2800);
+    assert.match(requests[0].body.instructions, /additional alternatives/);
+    assert.equal((await response.json()).result.variants[0].style, "alternative");
   } finally { globalThis.fetch = previousFetch; }
 }));
 
@@ -132,6 +174,33 @@ test("translation route validates file signatures and forwards a safe PDF filena
   } finally { globalThis.fetch = previousFetch; }
 }));
 
+test("translation follow-up answers from the saved translation context", async () => withServerKey(async () => {
+  const previousFetch = globalThis.fetch;
+  const requests = [];
+  resetAnalysisChallengeStateForTests();
+  globalThis.fetch = async (url, init = {}) => {
+    const address = String(url);
+    if (address.includes("/auth/v1/user")) return Response.json({ id: "translation-followup-user", email: "followup@example.com", email_confirmed_at: "2026-08-03T10:00:00Z", is_anonymous: false });
+    if (address.includes("challenges.cloudflare.com")) return Response.json({ success: true, hostname: "localhost", action: "analyze" });
+    requests.push({ url: address, body: JSON.parse(init.body) });
+    return openAiResponse({ answer: "This wording keeps the original meaning but sounds more natural.", uncertain: false, transcription: "" });
+  };
+  try {
+    const response = await POST_FOLLOWUP(new Request("http://localhost/api/translate/followup", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer test.translation-followup-user.signature", "x-forwarded-for": "192.0.2.41" },
+      body: JSON.stringify({ targetLanguage: "en", question: "Why is this phrase conversational?", context: "The conversational variant is Here is the translated document.", selectedVariant: "Here is the translated document." }),
+    }));
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.answer.uncertain, false);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].body.store, false);
+    assert.equal(requests[0].body.text.format.name, "whatnow_translation_followup");
+    assert.equal(requests[0].body.reasoning.effort, "low");
+  } finally { globalThis.fetch = previousFetch; }
+}));
+
 test("translation UI exposes the dedicated mode and handoff actions", async () => {
   const [page, component, route, styles, studio] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -144,11 +213,17 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(page, /<TranslationWorkspace/);
   assert.match(component, /onUseInUnderstand/);
   assert.match(component, /onUseInCreate/);
+  assert.match(component, /translation-workspace-grid/);
+  assert.match(component, /variantMode/);
+  assert.match(component, /api\/translate\/followup/);
+  assert.match(component, /translation-transcription/);
   assert.match(component, /\.pdf.*\.docx.*\.odt/);
   assert.match(route, /verifySupabaseRequest/);
   assert.match(route, /checkAnalysisQuota/);
   assert.match(route, /store: false/);
   assert.match(styles, /\.translation-shell/);
+  assert.match(styles, /\.translation-workspace-grid/);
+  assert.match(styles, /\.translation-followup/);
   assert.match(styles, /grid-template-columns: repeat\(3/);
   assert.match(studio, /initialPrompt/);
 });

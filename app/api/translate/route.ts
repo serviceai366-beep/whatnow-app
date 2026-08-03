@@ -17,10 +17,12 @@ import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server
 import { checkAnalysisChallenge } from "../../analysis-challenge.ts";
 import { activePlanForUser } from "../../subscription-store.ts";
 import { selectedModelForUser } from "../../model-selection.ts";
-import { translationJsonSchema, validateTranslationResult } from "../../translation-schema.ts";
+import { translationJsonSchema, validateTranslationResult, type TranslationVariantMode } from "../../translation-schema.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const DEFAULT_REQUEST_TIMEOUT_MS = 600_000;
+// Translation is intentionally faster than long-form document generation. The
+// route still fails safely if a provider stalls instead of holding a request.
+const DEFAULT_REQUEST_TIMEOUT_MS = 180_000;
 const REASONING_EFFORT = "low";
 
 const languageNames: Record<SupportedLanguage, string> = {
@@ -80,7 +82,10 @@ function requestTimeoutMs(): number {
     : DEFAULT_REQUEST_TIMEOUT_MS;
 }
 
-function getInstructions(targetLanguage: SupportedLanguage): string {
+function getInstructions(targetLanguage: SupportedLanguage, variantMode: TranslationVariantMode): string {
+  const variantRules = variantMode === "more"
+    ? `Return exactly two additional alternatives in variants. Every item must use style "alternative" and a distinct wording. Do not repeat the literal, conversational, or bold versions.`
+    : `Return exactly three variants in variants: one style "literal" (close to the source), one style "conversational" (natural everyday language), and one style "bold" (more confident and expressive, without changing the meaning). Keep all three faithful to the source.`;
   return `You are the WhatNow? document translation service. Translate the supplied source material into ${languageNames[targetLanguage]}.
 
 Rules:
@@ -89,8 +94,11 @@ Rules:
 - Preserve headings, paragraphs, lists, tables, dates, amounts, names, and line breaks as closely as possible.
 - Do not invent unreadable words. If a fragment cannot be read confidently, keep a clear marker such as [unreadable] and explain it in uncertainties.
 - Identify the source language only when reasonably clear; otherwise use unknown.
-- Put brief formatting or terminology observations in notes, not in the translation.
-- schemaVersion must be "1.0" and targetLanguage must be "${targetLanguage}".`;
+- Put only brief terminology observations in notes, not in the translation.
+- For each variant, provide a short pronunciation/transcription guide in Latin letters when it is useful for reading the translated words. For long passages, transcribe only the first useful sentence or key terms; do not duplicate the entire document.
+- schemaVersion must be "1.1" and targetLanguage must be "${targetLanguage}".
+- ${variantRules}
+- Set the top-level translation and transcription to the first variant's values.`;
 }
 
 function extractOutputText(payload: unknown): string | null {
@@ -148,11 +156,14 @@ export async function POST(request: Request): Promise<Response> {
   try { formData = await request.formData(); } catch { return errorResponse("invalid_request", "Не удалось прочитать отправленные данные.", 400); }
   const targetValue = formData.get("targetLanguage");
   const mode = formData.get("mode");
+  const variantModeValue = formData.get("variantMode");
   if (typeof targetValue !== "string" || !supportedLanguages.includes(targetValue as SupportedLanguage)) {
     return errorResponse("invalid_request", "Выбран неподдерживаемый язык перевода.", 400);
   }
   if (mode !== "file" && mode !== "text") return errorResponse("invalid_request", "Не указан корректный способ добавления материала.", 400);
+  if (variantModeValue !== "initial" && variantModeValue !== "more") return errorResponse("invalid_request", "Не указан корректный вариант перевода.", 400);
   const targetLanguage = targetValue as SupportedLanguage;
+  const variantMode = variantModeValue as TranslationVariantMode;
   const content: Array<Record<string, unknown>> = [];
   let costKind: AnalysisCostKind;
 
@@ -232,10 +243,10 @@ export async function POST(request: Request): Promise<Response> {
       body: JSON.stringify({
         model: selectedModel,
         reasoning: { effort: REASONING_EFFORT },
-        instructions: getInstructions(targetLanguage),
+        instructions: getInstructions(targetLanguage, variantMode),
         input: [{ role: "user", content }],
         text: { format: { type: "json_schema", name: "whatnow_translation", strict: true, schema: translationJsonSchema } },
-        max_output_tokens: 6_000,
+        max_output_tokens: variantMode === "more" ? 2_800 : 5_000,
         store: false,
       }),
       signal: controller.signal,
@@ -253,7 +264,7 @@ export async function POST(request: Request): Promise<Response> {
     if (!outputText) return errorResponse("invalid_model_response", "Модель вернула пустой перевод.", 502, true, limitHeaders);
     let result: unknown;
     try { result = JSON.parse(outputText); } catch { return errorResponse("invalid_model_response", "Модель вернула некорректный формат перевода.", 502, true, limitHeaders); }
-    if (!validateTranslationResult(result, targetLanguage)) return errorResponse("invalid_model_response", "Результат перевода не прошёл проверку структуры.", 502, true, limitHeaders);
+    if (!validateTranslationResult(result, targetLanguage, variantMode)) return errorResponse("invalid_model_response", "Результат перевода не прошёл проверку структуры.", 502, true, limitHeaders);
     const usage = extractTokenUsage(payload);
     await recordAnalysisCost({ userKey: auth.user.id, model: selectedModel, costKind, usage });
     return jsonResponse({ result, meta: { model: selectedModel, reasoningEffort: REASONING_EFFORT, usage } }, 200, limitHeaders);
