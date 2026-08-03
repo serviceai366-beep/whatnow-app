@@ -451,7 +451,10 @@ function cornerAngleScore(previous: Point, corner: Point, next: Point) {
 function scoreQuadrilateral(points: [Point, Point, Point, Point], width: number, height: number) {
   const imageArea = width * height;
   const areaRatio = polygonArea(points) / imageArea;
-  if (areaRatio < 0.1 || areaRatio > 0.985) return -Infinity;
+  // A camera scan is expected to contain a prominent sheet. Rejecting small
+  // rectangles prevents tables, text blocks, and form boxes from winning over
+  // the actual paper contour.
+  if (areaRatio < 0.22 || areaRatio > 0.985) return -Infinity;
   const sideRatios = points.map((point, index) => distance(point, points[(index + 1) % 4]) / Math.max(width, height));
   if (Math.min(...sideRatios) < 0.08) return -Infinity;
   const angleScore = points.reduce((sum, point, index) => sum + cornerAngleScore(points[(index + 3) % 4], point, points[(index + 1) % 4]), 0) / 4;
@@ -560,7 +563,9 @@ export async function detectDocumentCorners(canvas: HTMLCanvasElement): Promise<
   } catch {
     // A browser without WebAssembly/OpenCV still keeps manual cropping usable.
   }
-  return { corners: detectDocumentCornersFallback(canvas), precise: false, confidence: 0 };
+  // Do not pretend that a brightness-only guess is an exact scan. A neutral
+  // inset plus the visible corner handles is safer than silently cutting text.
+  return { corners: DEFAULT_CORNERS, precise: false, confidence: 0 };
 }
 
 function solveHomography(source: [Point, Point, Point, Point], width: number, height: number) {
@@ -590,7 +595,7 @@ function solveHomography(source: [Point, Point, Point, Point], width: number, he
   return matrix.map((row) => row[8]);
 }
 
-export function warpDocument(sourceCanvas: HTMLCanvasElement, corners: [Point, Point, Point, Point], maxWidth = 1800) {
+function scanOutputSize(sourceCanvas: HTMLCanvasElement, corners: [Point, Point, Point, Point], maxWidth: number) {
   const sourceWidth = sourceCanvas.width;
   const sourceHeight = sourceCanvas.height;
   const sourcePoints: [Point, Point, Point, Point] = corners.map((point) => ({ x: point.x * sourceWidth, y: point.y * sourceHeight })) as [Point, Point, Point, Point];
@@ -601,6 +606,13 @@ export function warpDocument(sourceCanvas: HTMLCanvasElement, corners: [Point, P
   const aspect = Math.max(0.45, Math.min(2.2, ((top + bottom) / 2) / Math.max(1, (left + right) / 2)));
   const width = Math.max(320, Math.min(maxWidth, Math.round(Math.max(top, bottom))));
   const height = Math.max(420, Math.min(Math.round(width / aspect), 2400));
+  return { sourcePoints, width, height };
+}
+
+function warpDocumentFallback(sourceCanvas: HTMLCanvasElement, corners: [Point, Point, Point, Point], maxWidth = 1800) {
+  const sourceWidth = sourceCanvas.width;
+  const sourceHeight = sourceCanvas.height;
+  const { sourcePoints, width, height } = scanOutputSize(sourceCanvas, corners, maxWidth);
   const output = document.createElement("canvas");
   output.width = width;
   output.height = height;
@@ -648,6 +660,60 @@ export function warpDocument(sourceCanvas: HTMLCanvasElement, corners: [Point, P
   }
   context.putImageData(outputData, 0, 0);
   return output;
+}
+
+/**
+ * Applies a true four-point perspective transform. OpenCV's bicubic sampler is
+ * both sharper and substantially faster than the pixel-by-pixel fallback on a
+ * phone. The fallback keeps scanning available when WebAssembly is blocked.
+ */
+export async function warpDocument(sourceCanvas: HTMLCanvasElement, corners: [Point, Point, Point, Point], maxWidth = 1800) {
+  try {
+    const cv = await loadOpenCv();
+    const { sourcePoints, width, height } = scanOutputSize(sourceCanvas, corners, maxWidth);
+    const source = cv.imread(sourceCanvas);
+    const outputMat = new cv.Mat();
+    const sourceMatrix = cv.matFromArray(4, 1, cv.CV_32FC2, sourcePoints.flatMap((point) => [point.x, point.y]));
+    const destinationMatrix = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, width - 1, 0, width - 1, height - 1, 0, height - 1]);
+    const transform = cv.getPerspectiveTransform(sourceMatrix, destinationMatrix);
+    try {
+      cv.warpPerspective(
+        source,
+        outputMat,
+        transform,
+        new cv.Size(width, height),
+        cv.INTER_CUBIC,
+        cv.BORDER_REPLICATE,
+        new cv.Scalar(255, 255, 255, 255),
+      );
+      const output = document.createElement("canvas");
+      output.width = width;
+      output.height = height;
+      cv.imshow(output, outputMat);
+      return output;
+    } finally {
+      transform.delete();
+      destinationMatrix.delete();
+      sourceMatrix.delete();
+      outputMat.delete();
+      source.delete();
+    }
+  } catch {
+    return warpDocumentFallback(sourceCanvas, corners, maxWidth);
+  }
+}
+
+async function makeRefinedScan(sourceCanvas: HTMLCanvasElement, corners: [Point, Point, Point, Point], refineAutomatically: boolean) {
+  const firstPass = await warpDocument(sourceCanvas, corners);
+  if (!refineAutomatically) return firstPass;
+
+  // The first pass removes most perspective. A second contour search on that
+  // flatter image can then see the real paper/background boundary instead of
+  // being distracted by a desk pattern or by strong lines inside a form.
+  const refinement = await detectDocumentCorners(firstPass);
+  const retainedArea = polygonArea(refinement.corners);
+  if (!refinement.precise || refinement.confidence < 0.52 || retainedArea < 0.55 || retainedArea > 0.975) return firstPass;
+  return warpDocument(firstPass, refinement.corners);
 }
 
 async function fileToCanvas(file: File) {
@@ -820,19 +886,20 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
     const bounds = stageRef.current.getBoundingClientRect();
     const x = clamp((event.clientX - bounds.left) / bounds.width);
     const y = clamp((event.clientY - bounds.top) / bounds.height);
+    setDetectionMode("manual");
     setCorners((previous) => previous.map((point, index) => index === dragIndex ? { x, y } : point) as [Point, Point, Point, Point]);
   };
 
-  const makeOutput = useCallback(() => {
+  const makeOutput = useCallback(async () => {
     if (!sourceCanvasRef.current) throw new Error("scan_source_missing");
-    return warpDocument(sourceCanvasRef.current, corners);
-  }, [corners]);
+    return makeRefinedScan(sourceCanvasRef.current, corners, detectionMode === "precise");
+  }, [corners, detectionMode]);
 
   const useInApp = async () => {
     setBusy(true);
     setSaveError("");
     try {
-      onUse(await canvasToFile(makeOutput()));
+      onUse(await canvasToFile(await makeOutput()));
     } catch {
       setSaveError(copy.saveError);
     } finally {
@@ -844,7 +911,7 @@ export function DocumentScanner({ open, locale, onClose, onUse }: { open: boolea
     setBusy(true);
     setSaveError("");
     try {
-      const file = await canvasToFile(makeOutput());
+      const file = await canvasToFile(await makeOutput());
       const share = navigator.share;
       if (share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
         await share.call(navigator, { files: [file], title: "WhatNow? scan" });
