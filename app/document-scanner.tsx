@@ -419,7 +419,23 @@ function detectDocumentCornersFallback(canvas: HTMLCanvasElement): [Point, Point
   const background = borderLuminance(smooth, width, height);
   const candidates: ScanComponent[] = [];
   const colorMask = paperColorMask(imageData, width, height);
-  if (colorMask) candidates.push(...connectedComponents(colorMask, smooth, width, height));
+  if (colorMask) {
+    const imageArea = width * height;
+    const centeredPaper = connectedComponents(colorMask, smooth, width, height)
+      .filter((component) => {
+        const pixelRatio = component.pixels.length / imageArea;
+        const containsCenter = component.minX < width * 0.5 && component.maxX > width * 0.5 && component.minY < height * 0.5 && component.maxY > height * 0.5;
+        const hasVisibleMargin = component.minX > width * 0.012 && component.maxX < width * 0.988 && component.minY > height * 0.012 && component.maxY < height * 0.988;
+        return pixelRatio > 0.14 && pixelRatio < 0.88 && containsCenter && hasVisibleMargin;
+      })
+      .sort((a, b) => b.pixels.length - a.pixels.length);
+    // The centred colour component is the sheet the user aimed at. Prefer it
+    // before any brightness-only region, which can otherwise be the whole desk.
+    for (const component of centeredPaper.slice(0, 2)) {
+      const corners = cornersFromComponent(component, width, height) ?? cornersFromBounds(component, width, height);
+      if (corners) return corners;
+    }
+  }
   // Several thresholds handle white paper on a dark desk as well as a light
   // desk. The best component is selected by size, contrast, and border contact.
   for (const threshold of [Math.max(112, background + 14), Math.max(132, background + 8), 178]) {
@@ -512,6 +528,9 @@ function scoreQuadrilateral(points: [Point, Point, Point, Point], width: number,
   const centerY = points.reduce((sum, point) => sum + point.y, 0) / 4 / height;
   const centerScore = 1 - Math.min(1, Math.hypot(centerX - 0.5, centerY - 0.5) / 0.71);
   const borderDistance = Math.min(minX / width, minY / height, (width - maxX) / width, (height - maxY) / height);
+  // A large quadrilateral touching the camera frame is the photo/desk border,
+  // not a sheet whose four corners are visible inside the capture.
+  if (borderDistance < 0.008 && areaRatio > 0.72) return -Infinity;
   const framePenalty = borderDistance < 0.006 && areaRatio > 0.82 ? 1.8 : borderDistance < 0.002 ? 0.8 : 0;
   return areaRatio * 4.4 + angleScore * 1.4 + rectangularity * 0.65 + centerScore * 0.35 - framePenalty;
 }
