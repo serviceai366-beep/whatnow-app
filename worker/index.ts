@@ -62,10 +62,12 @@ const worker = {
       "font-src 'self' data:",
       "connect-src 'self' https://vrcbgpmevieccopqembx.supabase.co https://challenges.cloudflare.com",
       "frame-src 'self' blob: https://challenges.cloudflare.com",
-      "media-src 'none'",
+      "media-src 'self' blob:",
       "worker-src 'self' blob:",
     ].join("; "));
-    headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+    // The scanner needs camera access on the first-party site only. Keep all
+    // unrelated device capabilities disabled, and never allow cross-origin use.
+    headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=(), payment=()");
     headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     headers.set("X-Content-Type-Options", "nosniff");

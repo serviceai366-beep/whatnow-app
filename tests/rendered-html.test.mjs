@@ -23,7 +23,7 @@ test("server-renders the WhatNow prototype", async () => {
   assert.equal(response.headers.get("cache-control"), "no-store, max-age=0");
   assert.equal(response.headers.get("pragma"), "no-cache");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
-  assert.match(response.headers.get("permissions-policy") ?? "", /camera=\(\)/);
+  assert.match(response.headers.get("permissions-policy") ?? "", /camera=\(self\)/);
   assert.match(response.headers.get("content-security-policy") ?? "", /object-src 'none'/);
   assert.match(response.headers.get("content-security-policy") ?? "", /vrcbgpmevieccopqembx\.supabase\.co/);
   assert.match(response.headers.get("strict-transport-security") ?? "", /max-age=31536000/);
@@ -80,4 +80,26 @@ test("keeps the home screen focused and moves explanatory content into the infor
   assert.doesNotMatch(page, /className="professional-notice"/);
   assert.match(styles, /\.hero \{[\s\S]*width: min\(820px/);
   assert.match(styles, /\.info-detail-grid/);
+});
+
+test("offers a local document scanner with crop, use, and save actions", async () => {
+  const [page, studio, scanner, worker] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/document-studio-prototype.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/document-scanner.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /DocumentScanner/);
+  assert.match(page, /setScannerOpen\(true\)/);
+  assert.match(page, /text-scan-button/);
+  assert.match(studio, /onOpenScanner/);
+  assert.match(studio, /scanDocument/);
+  assert.match(scanner, /getUserMedia/);
+  assert.match(scanner, /detectDocumentCorners/);
+  assert.match(scanner, /warpDocument/);
+  assert.match(scanner, /navigator\.share/);
+  assert.match(scanner, /Drag the four corners/);
+  assert.match(worker, /media-src 'self' blob:/);
+  assert.match(worker, /camera=\(self\)/);
 });
