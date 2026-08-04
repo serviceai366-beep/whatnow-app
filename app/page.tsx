@@ -37,9 +37,9 @@ const workspaceCopy = {
 } as const;
 
 const modePinCopy = {
-  en: { pin: "Pin this mode", unpin: "Unpin mode", note: "This mode will open first next time.", saved: "Pinned mode saved" },
-  ru: { pin: "Закрепить этот режим", unpin: "Открепить режим", note: "В следующий раз этот режим откроется первым.", saved: "Режим закреплён" },
-  lv: { pin: "Piespraust šo režīmu", unpin: "Atspraust režīmu", note: "Nākamreiz šis režīms atvērsies pirmais.", saved: "Režīms piesprausts" },
+  en: { pin: "Pin this mode", unpin: "Unpin mode", saved: "Pinned mode saved" },
+  ru: { pin: "Закрепить этот режим", unpin: "Открепить режим", saved: "Режим закреплён" },
+  lv: { pin: "Piespraust šo režīmu", unpin: "Atspraust režīmu", saved: "Režīms piesprausts" },
 } as const;
 
 const challengeCopy = {
@@ -651,7 +651,6 @@ export default function Home() {
         <button type="button" className={productMode === "translate" ? "active" : ""} aria-current={productMode === "translate" ? "page" : undefined} onClick={() => setProductMode("translate")}><span aria-hidden="true">↔</span><strong>{interfaceCopyLanguage === "ru" ? "Перевести" : interfaceCopyLanguage === "lv" ? "Tulkošana" : "Translate"}</strong></button>
         <button type="button" className={`mode-pin-button${favoriteMode === productMode ? " pinned" : ""}`} aria-pressed={favoriteMode === productMode} aria-label={favoriteMode === productMode ? pin.unpin : pin.pin} data-tooltip={favoriteMode === productMode ? pin.unpin : pin.pin} onClick={() => void toggleFavoriteMode()}><span aria-hidden="true">{favoriteMode === productMode ? "★" : "☆"}</span><small>{favoriteMode === productMode ? pin.saved : pin.pin}</small></button>
       </nav>
-      {favoriteMode && <p className="mode-pin-note" role="status"><span aria-hidden="true">★</span> {pin.note}</p>}
       </>}
 
       {showResult && analysis ? (

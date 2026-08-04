@@ -56,5 +56,6 @@ test("favorite mode UI and API keep the choice explicit and same-origin", async 
   assert.match(schema, /userFavoriteModes/);
   assert.match(schema, /user_favorite_modes_value_valid/);
   assert.match(styles, /\.mode-pin-button/);
-  assert.match(styles, /\.mode-pin-note/);
+  assert.doesNotMatch(page, /mode-pin-note/);
+  assert.doesNotMatch(styles, /\.mode-pin-note/);
 });
