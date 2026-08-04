@@ -78,6 +78,13 @@
       "when": 1784659441127,
       "tag": "0010_curly_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1785839324602,
+      "tag": "0011_volatile_patriot",
+      "breakpoints": true
     }
   ]
 }

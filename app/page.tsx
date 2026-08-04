@@ -27,11 +27,19 @@ import { interfaceCopyFallback, languageOption, responseLanguageOptions } from "
 import { DocumentChat } from "./document-chat";
 import { DocumentStudioPrototype } from "./document-studio-prototype";
 import { TranslationWorkspace } from "./translation-workspace";
+import { loadFavoriteMode, readLocalFavoriteMode, updateFavoriteMode, writeLocalFavoriteMode } from "./favorite-mode-client";
+import type { FavoriteMode } from "./favorite-mode-store";
 
 const workspaceCopy = {
   en: { info: "About", calendar: "Calendar", space: "My space", support: "Support", x: "X · @WhatNowAI", privateHint: "Private processing · Check important decisions", fileSaved: "The file was saved privately in My files.", fileDuplicate: "This file is already in My files.", fileLimit: "The analysis is ready, but the file vault is full. Delete a saved file to free space.", fileSaveError: "The analysis is ready, but the file could not be saved privately.", studioUnavailable: "Create & edit is temporarily unavailable. Please try again later." },
   ru: { info: "О сервисе", calendar: "Календарь", space: "Моё пространство", support: "Поддержка", x: "X · @WhatNowAI", privateHint: "Приватная обработка · Важные решения нужно проверять", fileSaved: "Файл приватно сохранён в разделе «Мои файлы».", fileDuplicate: "Этот файл уже есть в разделе «Мои файлы».", fileLimit: "Разбор готов, но хранилище файлов заполнено. Удалите сохранённый файл, чтобы освободить место.", fileSaveError: "Разбор готов, но приватно сохранить файл не удалось.", studioUnavailable: "Режим «Создать и изменить» временно недоступен. Попробуйте позже." },
   lv: { info: "Par servisu", calendar: "Kalendārs", space: "Mana telpa", support: "Atbalsts", x: "X · @WhatNowAI", privateHint: "Privāta apstrāde · Svarīgus lēmumus pārbaudiet", fileSaved: "Fails ir privāti saglabāts sadaļā “Mani faili”.", fileDuplicate: "Šis fails jau ir sadaļā “Mani faili”.", fileLimit: "Analīze ir gatava, bet failu krātuve ir pilna. Izdzēsiet saglabātu failu.", fileSaveError: "Fails nav izdevies privāti saglabāt.", studioUnavailable: "Režīms “Izveidot un rediģēt” īslaicīgi nav pieejams. Mēģiniet vēlāk." },
+} as const;
+
+const modePinCopy = {
+  en: { pin: "Pin this mode", unpin: "Unpin mode", note: "This mode will open first next time.", saved: "Pinned mode saved" },
+  ru: { pin: "Закрепить этот режим", unpin: "Открепить режим", note: "В следующий раз этот режим откроется первым.", saved: "Режим закреплён" },
+  lv: { pin: "Piespraust šo režīmu", unpin: "Atspraust režīmu", note: "Nākamreiz šis režīms atvērsies pirmais.", saved: "Režīms piesprausts" },
 } as const;
 
 const challengeCopy = {
@@ -105,6 +113,7 @@ function resolvedProfileTheme(preferences: UserProfilePreferences): ColorTheme {
 
 export default function Home() {
   const [productMode, setProductMode] = useState<"understand" | "create" | "translate">("understand");
+  const [favoriteMode, setFavoriteMode] = useState<FavoriteMode>(null);
   const [language, setLanguage] = useState<ProfileLanguage>("en");
   const [analysisLanguage, setAnalysisLanguage] = useState<SupportedLanguage>("en");
   const [preferences, setPreferences] = useState<UserProfilePreferences>({ ...DEFAULT_PROFILE_PREFERENCES });
@@ -152,6 +161,7 @@ export default function Home() {
   const interfaceCopyLanguage = interfaceCopyFallback(language);
   const h = historyCopy[interfaceCopyLanguage];
   const w = workspaceCopy[interfaceCopyLanguage];
+  const pin = modePinCopy[interfaceCopyLanguage];
   const filteredResponseLanguages = responseLanguageOptions.filter((option) => {
     const search = languageQuery.trim().toLocaleLowerCase();
     return !search || `${option.nativeName} ${option.englishName}`.toLocaleLowerCase().includes(search);
@@ -183,9 +193,13 @@ export default function Home() {
     }
     accountIdRef.current = nextId;
     setAccount(value);
+    const localFavorite = readLocalFavoriteMode(nextId);
+    setFavoriteMode(localFavorite);
+    if (localFavorite) setProductMode(localFavorite);
     if (!value) {
       setHeaderPlan("free");
       setHistoryOpen(false);
+      if (!localFavorite) setProductMode("understand");
       setLanguage("en");
       setAnalysisLanguage("en");
       setPreferences({ ...DEFAULT_PROFILE_PREFERENCES });
@@ -226,15 +240,33 @@ export default function Home() {
   }, [productMode]);
 
   useEffect(() => {
+    const localFavorite = readLocalFavoriteMode();
+    if (!localFavorite) return;
+    const timer = window.setTimeout(() => {
+      setFavoriteMode(localFavorite);
+      setProductMode(localFavorite);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (!account) return;
     let active = true;
-    loadUserProfileWithAccess().then(({ preferences: profile, modelSelectionAvailable: hasModelSelection }) => {
+    Promise.all([
+      loadUserProfileWithAccess(),
+      loadFavoriteMode().catch(() => undefined),
+    ]).then(([{ preferences: profile, modelSelectionAvailable: hasModelSelection }, remoteFavorite]) => {
       if (!active || accountIdRef.current !== account.id) return;
       setPreferences(profile);
       setModelSelectionAvailable(hasModelSelection);
       setLanguage(profile.uiLanguage);
       setAnalysisLanguage(profile.analysisLanguage);
       setTheme(resolvedProfileTheme(profile));
+      if (remoteFavorite !== undefined) {
+        setFavoriteMode(remoteFavorite);
+        writeLocalFavoriteMode(account.id, remoteFavorite);
+        if (remoteFavorite) setProductMode(remoteFavorite);
+      }
     }).catch(() => {
       if (!active || accountIdRef.current !== account.id) return;
       setPreferences({ ...DEFAULT_PROFILE_PREFERENCES });
@@ -281,6 +313,21 @@ export default function Home() {
     setAnalysisLanguage(next.analysisLanguage);
     setTheme(resolvedProfileTheme(next));
   }, [account]);
+
+  const toggleFavoriteMode = useCallback(async () => {
+    const nextFavorite = favoriteMode === productMode ? null : productMode;
+    setFavoriteMode(nextFavorite);
+    writeLocalFavoriteMode(account?.id, nextFavorite);
+    if (account) {
+      try {
+        const savedFavorite = await updateFavoriteMode(nextFavorite);
+        setFavoriteMode(savedFavorite);
+        writeLocalFavoriteMode(account.id, savedFavorite);
+      } catch {
+        // Keep the local copy so a temporary account-store outage does not lose the choice.
+      }
+    }
+  }, [account, favoriteMode, productMode]);
 
   const changeTheme = useCallback((value: ColorTheme) => {
     setTheme(value);
@@ -597,11 +644,15 @@ export default function Home() {
       {limitNotice && <LimitToast key={`${limitNotice.scope}:${limitNotice.observedAt}`} data={limitNotice} locale={language} onClose={() => setLimitNotice(null)} />}
       {fileSaveNotice && <div className={`storage-toast ${fileSaveNotice.kind}`} role="status"><span>{fileSaveNotice.kind === "success" ? "✓" : "!"}</span><p>{fileSaveNotice.text}</p><button type="button" aria-label="Close" onClick={() => setFileSaveNotice(null)}>×</button></div>}
 
-      {!showResult && <nav className={`product-mode-switch${productMode === "translate" ? " translate-mode" : ""}`} aria-label="WhatNow? modes">
+      {!showResult && <>
+      <nav className={`product-mode-switch${productMode === "translate" ? " translate-mode" : ""}`} aria-label="WhatNow? modes">
         <button type="button" className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? "Понять документ" : interfaceCopyLanguage === "lv" ? "Saprast dokumentu" : "Understand"}</strong></button>
         <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => { setStudioPrefill(""); setProductMode("create"); }}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong></button>
         <button type="button" className={productMode === "translate" ? "active" : ""} aria-current={productMode === "translate" ? "page" : undefined} onClick={() => setProductMode("translate")}><span aria-hidden="true">↔</span><strong>{interfaceCopyLanguage === "ru" ? "Перевести" : interfaceCopyLanguage === "lv" ? "Tulkošana" : "Translate"}</strong></button>
-      </nav>}
+        <button type="button" className={`mode-pin-button${favoriteMode === productMode ? " pinned" : ""}`} aria-pressed={favoriteMode === productMode} aria-label={favoriteMode === productMode ? pin.unpin : pin.pin} data-tooltip={favoriteMode === productMode ? pin.unpin : pin.pin} onClick={() => void toggleFavoriteMode()}><span aria-hidden="true">{favoriteMode === productMode ? "★" : "☆"}</span><small>{favoriteMode === productMode ? pin.saved : pin.pin}</small></button>
+      </nav>
+      {favoriteMode && <p className="mode-pin-note" role="status"><span aria-hidden="true">★</span> {pin.note}</p>}
+      </>}
 
       {showResult && analysis ? (
         <AnalysisResultView key={`${savedHistoryId ?? "unsaved"}:${analysis.summary}`} result={analysis} onRestart={resetAnalysis} t={t} locale={language}

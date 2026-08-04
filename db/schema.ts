@@ -90,6 +90,14 @@ export const userSubscriptions = sqliteTable("user_subscriptions", {
   check("user_subscriptions_state_valid", sql`${table.state} in ('free', 'test_checkout_pending', 'active', 'past_due', 'canceled')`),
 ]);
 
+export const userFavoriteModes = sqliteTable("user_favorite_modes", {
+  userId: text("user_id").primaryKey().notNull(),
+  favoriteMode: text("favorite_mode"),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  check("user_favorite_modes_value_valid", sql`${table.favoriteMode} is null or ${table.favoriteMode} in ('understand', 'create', 'translate')`),
+]);
+
 export const stripeWebhookEvents = sqliteTable("stripe_webhook_events", {
   id: text("id").primaryKey().notNull(),
   type: text("type").notNull(),
