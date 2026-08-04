@@ -254,6 +254,10 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /additionalStatus/);
   assert.match(component, /api\/translate\/followup/);
   assert.match(component, /translation-transcription/);
+  assert.match(component, /hasAutoFocusedResultRef/);
+  assert.match(component, /scrollIntoView\(\{/);
+  assert.match(component, /prefers-reduced-motion: reduce/);
+  assert.match(component, /translation-shell\$\{result \? " has-result" : ""\}/);
   assert.match(component, /\.pdf.*\.docx.*\.odt/);
   assert.match(route, /verifySupabaseRequest/);
   assert.match(route, /checkAnalysisQuota/);
@@ -268,5 +272,7 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(styles, /translation-actions[\s\S]*grid-template-columns: 1fr;/);
   assert.match(styles, /translation-followup-input.*grid-template-columns: 1fr/);
   assert.match(styles, /translation-followup-exchange[\s\S]*max-height: none;/);
+  assert.match(styles, /translation-output-column \{[\s\S]*scroll-margin-top: 118px;/);
+  assert.match(styles, /translation-shell\.has-result \.translation-source-card \.text-panel textarea/);
   assert.match(studio, /initialPrompt/);
 });

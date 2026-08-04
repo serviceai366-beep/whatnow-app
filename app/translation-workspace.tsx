@@ -79,6 +79,8 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
   const [followupError, setFollowupError] = useState("");
   const [isAsking, setIsAsking] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resultPanelRef = useRef<HTMLElement>(null);
+  const hasAutoFocusedResultRef = useRef(false);
 
   const chooseFile = (nextFile: File | null) => {
     if (!nextFile) return;
@@ -104,7 +106,10 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
     if (requestedMode === "more" && !result) return;
     if (requestedMode === "additional" && !result) return;
     setError("");
-    if (requestedMode === "initial") setResult(null);
+    if (requestedMode === "initial") {
+      hasAutoFocusedResultRef.current = false;
+      setResult(null);
+    }
     setIsTranslating(requestedMode === "initial");
     if (requestedMode === "additional") {
       setIsGeneratingAdditional(true);
@@ -187,6 +192,18 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, additionalStatus]);
 
+  useEffect(() => {
+    if (!result || hasAutoFocusedResultRef.current || !window.matchMedia("(max-width: 820px)").matches) return;
+    hasAutoFocusedResultRef.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      resultPanelRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [result]);
+
   const selectedVariant = result?.variants[selectedVariantIndex] ?? result?.variants[0] ?? null;
 
   const copyTranslation = async () => {
@@ -249,11 +266,11 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
     {error && <p className="input-error analysis-error" role="alert">{error}</p>}
   </aside>;
 
-  return <section className="translation-shell" aria-labelledby="translation-title">
+  return <section className={`translation-shell${result ? " has-result" : ""}`} aria-labelledby="translation-title">
     <header className="translation-header"><div className="translation-title-block"><p className="eyebrow">WhatNow?</p><h1 id="translation-title">{t.title}</h1><p>{t.intro}</p></div><div className="translation-language-bar"><span className="translation-source-language">{t.sourceAuto}</span><span className="translation-language-arrow" aria-hidden="true">→</span><label className="translation-language-control"><span>{t.target}</span><select value={targetLanguage} onChange={(event) => { setTargetLanguage(event.target.value as SupportedLanguage); setResult(null); setFollowups([]); }} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{responseLanguageOptions.map((option) => <option key={option.code} value={option.code}>{option.nativeName} · {option.englishName}</option>)}</select></label></div></header>
     <div className="translation-workspace-grid">
       {renderSource()}
-      <main className="translation-output-column" aria-live="polite">
+      <main ref={resultPanelRef} className="translation-output-column" aria-live="polite">
         {!result ? <div className="translation-empty-state"><span aria-hidden="true">↔</span><p>{t.outputPanel}</p><small>{t.chooseVariant}</small></div> : <section className="translation-result" id="translation-result" aria-labelledby="translation-result-title">
           <div className="translation-result-heading"><div><p className="eyebrow">{t.outputPanel}</p><h2 id="translation-result-title">{result.sourceLanguage === "unknown" ? t.unknownSource : languageName(result.sourceLanguage)} → {languageName(result.targetLanguage)}</h2></div><span className="translation-variant-count">{result.variants.length}/5</span></div>
           {additionalStatus === "loading" || additionalStatus === "pending" ? <p className="translation-background-status" role="status"><span className="loading-spinner" aria-hidden="true" />{t.additionalPending}</p> : additionalStatus === "ready" ? <p className="translation-background-status is-ready" role="status">✓ {t.additionalReady}</p> : additionalStatus === "error" ? <div className="translation-background-status is-error" role="status"><span>{t.additionalFailed}</span><button type="button" className="secondary-button" onClick={() => void submitTranslation(undefined, "additional")} disabled={isGeneratingAdditional || isTranslating || isGeneratingMore}>{isGeneratingAdditional ? t.moreGenerating : t.additionalRetry}</button></div> : null}

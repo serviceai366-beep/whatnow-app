@@ -2245,7 +2245,14 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
     min-height: 50px;
     font-size: 1rem;
   }
-  .translation-page-root .translation-output-column { display: block; }
+  .translation-page-root .translation-output-column {
+    display: block;
+    scroll-margin-top: 118px;
+  }
+  .translation-page-root .translation-shell.has-result .translation-source-card .text-panel textarea {
+    min-height: 112px;
+    max-height: 150px;
+  }
   .translation-page-root .translation-empty-state {
     height: auto;
     min-height: 220px;
@@ -2359,6 +2366,10 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   .translation-page-root .translation-source-card .text-panel textarea {
     min-height: 210px;
     font-size: 1.08rem;
+  }
+  .translation-page-root .translation-shell.has-result .translation-source-card .text-panel textarea {
+    min-height: 104px;
+    max-height: 136px;
   }
   .translation-page-root .translation-output {
     min-height: 200px;
