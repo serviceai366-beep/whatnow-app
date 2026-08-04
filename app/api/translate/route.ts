@@ -13,13 +13,15 @@ import {
 import { hasSupportedRequestContentType, isRequestBodySizeAllowed, isSameOriginRequest } from "../../security.ts";
 import { checkAnalysisQuota, type AnalysisCostKind, type QuotaDecision } from "../../usage-control.ts";
 import { recordAnalysisCost, type AnalysisTokenUsage } from "../../analysis-cost.ts";
-import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
 import { checkAnalysisChallenge } from "../../analysis-challenge.ts";
 import { activePlanForUser } from "../../subscription-store.ts";
-import { selectedModelForUser } from "../../model-selection.ts";
 import { translationJsonSchema, validateTranslationResult, type TranslationVariantMode } from "../../translation-schema.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+// Translation stays on the fast, cost-conscious model even when a Pro user
+// selects Terra or Sol for the other WhatNow? modes.
+const TRANSLATION_MODEL = "gpt-5.6-luna" as const;
 // Translation is intentionally faster than long-form document generation. The
 // route still fails safely if a provider stalls instead of holding a request.
 const DEFAULT_REQUEST_TIMEOUT_MS = 180_000;
@@ -235,7 +237,6 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const limitHeaders = quotaHeaders(quota);
-  const selectedModel = await selectedModelForUser({ userId: auth.user.id, email: auth.user.email, token: requestBearerToken(request)!, planCode });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), requestTimeoutMs());
   try {
@@ -243,7 +244,7 @@ export async function POST(request: Request): Promise<Response> {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: selectedModel,
+        model: TRANSLATION_MODEL,
         reasoning: { effort: REASONING_EFFORT },
         instructions: getInstructions(targetLanguage, variantMode),
         input: [{ role: "user", content }],
@@ -268,8 +269,8 @@ export async function POST(request: Request): Promise<Response> {
     try { result = JSON.parse(outputText); } catch { return errorResponse("invalid_model_response", "Модель вернула некорректный формат перевода.", 502, true, limitHeaders); }
     if (!validateTranslationResult(result, targetLanguage, variantMode)) return errorResponse("invalid_model_response", "Результат перевода не прошёл проверку структуры.", 502, true, limitHeaders);
     const usage = extractTokenUsage(payload);
-    await recordAnalysisCost({ userKey: auth.user.id, model: selectedModel, costKind, usage });
-    return jsonResponse({ result, meta: { model: selectedModel, reasoningEffort: REASONING_EFFORT, usage } }, 200, limitHeaders);
+    await recordAnalysisCost({ userKey: auth.user.id, model: TRANSLATION_MODEL, costKind, usage });
+    return jsonResponse({ result, meta: { model: TRANSLATION_MODEL, reasoningEffort: REASONING_EFFORT, usage } }, 200, limitHeaders);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") return errorResponse("timeout", "Перевод занял слишком много времени. Попробуйте снова.", 504, true, limitHeaders);
     console.error("[translate] OpenAI transport error", { name: error instanceof Error ? error.name : "unknown" });

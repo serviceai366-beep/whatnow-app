@@ -262,6 +262,8 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /\.pdf.*\.docx.*\.odt/);
   assert.match(route, /verifySupabaseRequest/);
   assert.match(route, /checkAnalysisQuota/);
+  assert.match(route, /TRANSLATION_MODEL\s*=\s*["']gpt-5\.6-luna["']/);
+  assert.doesNotMatch(route, /selectedModelForUser/);
   assert.match(route, /store: false/);
   assert.match(styles, /\.translation-shell/);
   assert.match(styles, /\.translation-workspace-grid/);
@@ -276,5 +278,8 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(styles, /translation-followup-exchange[\s\S]*max-height: none;/);
   assert.match(styles, /translation-output-column \{[\s\S]*scroll-margin-top: 118px;/);
   assert.match(styles, /translation-shell\.has-result \.translation-source-card \.text-panel textarea/);
+  const followupRoute = await readFile(new URL("../app/api/translate/followup/route.ts", import.meta.url), "utf8");
+  assert.match(followupRoute, /TRANSLATION_MODEL\s*=\s*["']gpt-5\.6-luna["']/);
+  assert.doesNotMatch(followupRoute, /selectedModelForUser/);
   assert.match(studio, /initialPrompt/);
 });

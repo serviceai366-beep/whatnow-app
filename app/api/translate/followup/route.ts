@@ -4,11 +4,13 @@ import { recordAnalysisCost, type AnalysisTokenUsage } from "../../../analysis-c
 import { checkAnalysisQuota, type AnalysisCostKind, type QuotaDecision } from "../../../usage-control.ts";
 import { isSameOriginRequest } from "../../../security.ts";
 import { activePlanForUser } from "../../../subscription-store.ts";
-import { selectedModelForUser } from "../../../model-selection.ts";
 import { requestBearerToken, verifySupabaseRequest } from "../../../supabase-server-auth.ts";
 import { translationFollowupJsonSchema, validateTranslationFollowup } from "../../../translation-followup-schema.ts";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+// Translation follow-ups use the same fixed Luna model as the main translation
+// request, regardless of the user's Pro model preference.
+const TRANSLATION_MODEL = "gpt-5.6-luna" as const;
 const REQUEST_TIMEOUT_MS = 120_000;
 const MAX_BODY_BYTES = 24 * 1024;
 const languageNames: Record<SupportedLanguage, string> = {
@@ -147,7 +149,6 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const limitHeaders = quotaHeaders(quota);
-  const selectedModel = await selectedModelForUser({ userId: auth.user.id, email: auth.user.email, token, planCode });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -155,7 +156,7 @@ export async function POST(request: Request): Promise<Response> {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: selectedModel,
+        model: TRANSLATION_MODEL,
         reasoning: { effort: "low" },
         instructions: instructions(input.targetLanguage),
         input: [{ role: "user", content: [{ type: "input_text", text: JSON.stringify({ context: input.context, selectedVariant: input.selectedVariant, question: input.question }) }] }],
@@ -174,8 +175,8 @@ export async function POST(request: Request): Promise<Response> {
     let answer: unknown;
     try { answer = outputText ? JSON.parse(outputText) as unknown : null; } catch { answer = null; }
     if (!validateTranslationFollowup(answer)) return error("invalid_model_response", "Уточнение вернулось в некорректном формате.", 502, true, limitHeaders);
-    await recordAnalysisCost({ userKey: auth.user.id, model: selectedModel, costKind: "text", usage: extractTokenUsage(payload) });
-    return response({ answer, meta: { model: selectedModel, reasoningEffort: "low" } }, 200, limitHeaders);
+    await recordAnalysisCost({ userKey: auth.user.id, model: TRANSLATION_MODEL, costKind: "text", usage: extractTokenUsage(payload) });
+    return response({ answer, meta: { model: TRANSLATION_MODEL, reasoningEffort: "low" } }, 200, limitHeaders);
   } catch (cause) {
     if (cause instanceof Error && cause.name === "AbortError") return error("timeout", "Уточнение заняло слишком много времени. Попробуйте ещё раз.", 504, true, limitHeaders);
     console.error("[translate-followup] OpenAI transport error", { name: cause instanceof Error ? cause.name : "unknown" });
