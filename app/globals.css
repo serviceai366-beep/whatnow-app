@@ -2038,11 +2038,13 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 .translation-page-root .translation-no-transcription { margin: 6px 0 0; font-size: .65rem; }
 .translation-page-root .translation-actions { flex: 0 0 auto; gap: 6px; margin-top: 7px; }
 .translation-page-root .translation-actions .secondary-button { flex: 1 1 0; min-height: 34px; padding: 5px 7px; font-size: .67rem; line-height: 1.15; }
-.translation-page-root .translation-notes { flex: 0 0 auto; gap: 6px; max-height: 44px; margin-top: 7px; overflow: hidden; }
+.translation-page-root .translation-notes { flex: 0 0 auto; gap: 6px; max-height: 44px; margin-top: 7px; overflow: auto; scrollbar-width: none; overscroll-behavior: contain; }
+.translation-page-root .translation-notes::-webkit-scrollbar { display: none; }
 .translation-page-root .translation-notes > div { min-width: 0; padding: 6px 8px; border-radius: 9px; }
 .translation-page-root .translation-notes h3 { margin-bottom: 2px; font-size: .65rem; }
 .translation-page-root .translation-notes ul { max-height: 22px; overflow: hidden; padding-left: 12px; font-size: .62rem; line-height: 1.2; }
-.translation-page-root .translation-followup { flex: 0 0 auto; gap: 5px; max-height: 102px; margin-top: 7px; padding-top: 7px; overflow: hidden; }
+.translation-page-root .translation-followup { flex: 0 0 auto; gap: 5px; max-height: 102px; margin-top: 7px; padding-top: 7px; overflow: auto; scrollbar-width: none; overscroll-behavior: contain; }
+.translation-page-root .translation-followup::-webkit-scrollbar { display: none; }
 .translation-page-root .translation-followup .translation-card-heading { gap: 4px; }
 .translation-page-root .translation-followup .translation-card-heading h3 { font-size: .76rem; }
 .translation-page-root .translation-followup-empty { padding: 5px 7px; font-size: .65rem; line-height: 1.2; }
@@ -2083,10 +2085,17 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   .product-mode-switch.translate-mode button > span { display: none; }
   .translation-page-root .translation-shell { height: calc(100dvh - 126px); max-height: calc(100dvh - 126px); padding: 9px; }
   .translation-page-root .translation-header h1 { font-size: 1.2rem; }
-  .translation-page-root .translation-language-control select { min-height: 32px; font-size: .72rem; }
+  .translation-page-root .translation-language-control { flex-basis: 44%; min-width: 0; }
+  .translation-page-root .translation-language-control select { min-height: 32px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; }
   .translation-page-root .translation-card-heading h2 { font-size: .82rem; }
   .translation-page-root .translation-speed-hint { display: none; }
-  .translation-page-root .translation-actions .secondary-button { font-size: .61rem; }
+  .translation-page-root .translation-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .translation-page-root .translation-actions .secondary-button { width: 100%; min-width: 0; min-height: 35px; font-size: .64rem; }
+  .translation-page-root .translation-actions .secondary-button:nth-child(3) { grid-column: 1 / -1; }
+  .translation-page-root .translation-notes { max-height: 62px; }
+  .translation-page-root .translation-followup { max-height: 126px; }
+  .translation-page-root .translation-followup-input { grid-template-columns: 1fr; }
+  .translation-page-root .translation-followup-input .primary-button { width: 100%; }
 }
 .studio-history > div button { min-width: 0; padding: 9px; border: 1px solid var(--border); border-radius: 11px; color: var(--text); background: var(--surface); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-history > div button:last-child { color: #a33131; text-align: center; }

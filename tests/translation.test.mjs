@@ -259,5 +259,8 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(styles, /\.translation-followup/);
   assert.match(styles, /\.translation-page-root/);
   assert.match(styles, /grid-template-columns: repeat\(3/);
+  assert.match(styles, /translation-actions.*grid-template-columns: repeat\(2/);
+  assert.match(styles, /translation-followup-input.*grid-template-columns: 1fr/);
+  assert.match(styles, /translation-notes.*overscroll-behavior: contain/);
   assert.match(studio, /initialPrompt/);
 });
