@@ -572,8 +572,8 @@ export default function Home() {
   };
 
   return (
-    <main>
-      <header className={`site-header${headerCompact ? " compact" : ""}${headerRetreating ? " retreating" : ""}`}>
+    <main className={productMode === "translate" ? "translation-page-root" : undefined}>
+      <header className={`site-header${headerCompact ? " compact" : ""}${headerRetreating ? " retreating" : ""}${productMode === "translate" ? " translate-mode" : ""}`}>
         <a className="brand" href="#top" aria-label={t.homeAria} onClick={goHome}>
           <img className="brand-mark" src="/whatnow-logo.jpg" alt="" />
           <span>{headerPlan === "pro" ? "WhatNow Pro" : "WhatNow Free"}</span>
@@ -597,7 +597,7 @@ export default function Home() {
       {limitNotice && <LimitToast key={`${limitNotice.scope}:${limitNotice.observedAt}`} data={limitNotice} locale={language} onClose={() => setLimitNotice(null)} />}
       {fileSaveNotice && <div className={`storage-toast ${fileSaveNotice.kind}`} role="status"><span>{fileSaveNotice.kind === "success" ? "✓" : "!"}</span><p>{fileSaveNotice.text}</p><button type="button" aria-label="Close" onClick={() => setFileSaveNotice(null)}>×</button></div>}
 
-      {!showResult && <nav className="product-mode-switch" aria-label="WhatNow? modes">
+      {!showResult && <nav className={`product-mode-switch${productMode === "translate" ? " translate-mode" : ""}`} aria-label="WhatNow? modes">
         <button type="button" className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? "Понять документ" : interfaceCopyLanguage === "lv" ? "Saprast dokumentu" : "Understand"}</strong></button>
         <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => { setStudioPrefill(""); setProductMode("create"); }}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? "Создать и изменить" : interfaceCopyLanguage === "lv" ? "Izveidot un rediģēt" : "Create & edit"}</strong></button>
         <button type="button" className={productMode === "translate" ? "active" : ""} aria-current={productMode === "translate" ? "page" : undefined} onClick={() => setProductMode("translate")}><span aria-hidden="true">↔</span><strong>{interfaceCopyLanguage === "ru" ? "Перевести" : interfaceCopyLanguage === "lv" ? "Tulkošana" : "Translate"}</strong></button>

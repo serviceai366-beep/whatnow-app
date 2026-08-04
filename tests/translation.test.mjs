@@ -15,11 +15,18 @@ const validTranslation = {
   transcription: "This is a translated document.",
   variants: [
     { style: "literal", label: "Literal", translation: "This is a translated document.", transcription: "This iz a translaytid dokyument." },
-    { style: "conversational", label: "Conversational", translation: "Here is the translated document.", transcription: "Hir iz the translaytid dokyument." },
-    { style: "bold", label: "Bold", translation: "This document is translated and ready.", transcription: "This dokyument iz translaytid and redi." },
   ],
   notes: [],
   uncertainties: [],
+};
+
+const additionalTranslation = {
+  ...validTranslation,
+  variants: [
+    { style: "conversational", label: "Conversational", translation: "Here is the translated document.", transcription: "Hir iz the translaytid dokyument." },
+    { style: "official", label: "Official", translation: "This document has been translated.", transcription: "This dokyument haz bin translaytid." },
+    { style: "bold", label: "Bold", translation: "This document is translated and ready.", transcription: "This dokyument iz translaytid and redi." },
+  ],
 };
 
 function requestWithText(text = "Sveiki!", options = {}) {
@@ -76,13 +83,15 @@ async function withServerKey(callback) {
 
 test("translation schema accepts complete results and rejects invented fields or wrong targets", () => {
   assert.equal(validateTranslationResult(validTranslation, "en"), true);
+  assert.equal(validateTranslationResult(additionalTranslation, "en", "additional"), true);
   assert.equal(validateTranslationResult({ ...validTranslation, targetLanguage: "ru" }, "en"), false);
   assert.equal(validateTranslationResult({ ...validTranslation, extra: "no" }, "en"), false);
-  assert.equal(validateTranslationResult({ ...validTranslation, variants: validTranslation.variants.slice(0, 2) }, "en"), false);
+  assert.equal(validateTranslationResult({ ...validTranslation, variants: [...validTranslation.variants, ...additionalTranslation.variants] }, "en"), false);
   assert.equal(validateTranslationResult({ ...validTranslation, variants: [{ ...validTranslation.variants[0], style: "alternative" }] }, "en", "more"), true);
   assert.equal(validateTranslationFollowup({ answer: "It is a nuance.", uncertain: false, transcription: "" }), true);
   assert.equal(validateTranslationFollowup({ answer: "It is a nuance.", uncertain: false, transcription: "", extra: true }), false);
   assert.equal(translationJsonSchema.additionalProperties, false);
+  assert.equal(translationJsonSchema.properties.variants.items.properties.style.enum.includes("official"), true);
   assert.deepEqual(translationJsonSchema.properties.targetLanguage.enum, ["en", "ru", "lv", "es", "pt", "fr", "de", "it", "pl", "uk", "nl", "ro", "sv", "cs"]);
   assert.equal(translationFollowupJsonSchema.additionalProperties, false);
 });
@@ -108,7 +117,7 @@ test("translation route sends a structured, non-stored request for text", async 
     if (address.includes("/auth/v1/user")) return Response.json({ id: "translation-text-user", email: "translation@example.com", email_confirmed_at: "2026-08-03T10:00:00Z", is_anonymous: false });
     if (address.includes("challenges.cloudflare.com")) return Response.json({ success: true, hostname: "localhost", action: "analyze" });
     requests.push({ url: address, body: JSON.parse(init.body) });
-    return openAiResponse();
+    return openAiResponse(validTranslation);
   };
   try {
     const response = await POST(requestWithText("Labdien!", { userId: "translation-text-user" }));
@@ -124,7 +133,29 @@ test("translation route sends a structured, non-stored request for text", async 
     assert.equal(requests[0].body.text.format.strict, true);
     assert.equal(requests[0].body.input[0].content[0].type, "input_text");
     assert.match(requests[0].body.instructions, /Translate the supplied source material/);
-    assert.match(requests[0].body.instructions, /exactly three variants/);
+    assert.match(requests[0].body.instructions, /exactly one variant/);
+    assert.equal(requests[0].body.max_output_tokens, 2400);
+  } finally { globalThis.fetch = previousFetch; }
+}));
+
+test("translation route generates the three slower styles as a separate request", async () => withServerKey(async () => {
+  const previousFetch = globalThis.fetch;
+  const requests = [];
+  resetAnalysisChallengeStateForTests();
+  globalThis.fetch = async (url, init = {}) => {
+    const address = String(url);
+    if (address.includes("/auth/v1/user")) return Response.json({ id: "translation-additional-user", email: "additional@example.com", email_confirmed_at: "2026-08-03T10:00:00Z", is_anonymous: false });
+    requests.push({ url: address, body: JSON.parse(init.body) });
+    return openAiResponse(additionalTranslation);
+  };
+  try {
+    const response = await POST(requestWithText("Labdien!", { userId: "translation-additional-user", variantMode: "additional" }));
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(requests[0].body.max_output_tokens, 3600);
+    assert.match(requests[0].body.instructions, /conversational.*official.*bold/);
+    assert.equal(payload.result.variants.length, 3);
+    assert.equal(validateTranslationResult(payload.result, "en", "additional"), true);
   } finally { globalThis.fetch = previousFetch; }
 }));
 
@@ -215,6 +246,8 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /onUseInCreate/);
   assert.match(component, /translation-workspace-grid/);
   assert.match(component, /variantMode/);
+  assert.match(component, /official/);
+  assert.match(component, /additionalStatus/);
   assert.match(component, /api\/translate\/followup/);
   assert.match(component, /translation-transcription/);
   assert.match(component, /\.pdf.*\.docx.*\.odt/);
@@ -224,6 +257,7 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(styles, /\.translation-shell/);
   assert.match(styles, /\.translation-workspace-grid/);
   assert.match(styles, /\.translation-followup/);
+  assert.match(styles, /\.translation-page-root/);
   assert.match(styles, /grid-template-columns: repeat\(3/);
   assert.match(studio, /initialPrompt/);
 });

@@ -85,7 +85,9 @@ function requestTimeoutMs(): number {
 function getInstructions(targetLanguage: SupportedLanguage, variantMode: TranslationVariantMode): string {
   const variantRules = variantMode === "more"
     ? `Return exactly two additional alternatives in variants. Every item must use style "alternative" and a distinct wording. Do not repeat the literal, conversational, or bold versions.`
-    : `Return exactly three variants in variants: one style "literal" (close to the source), one style "conversational" (natural everyday language), and one style "bold" (more confident and expressive, without changing the meaning). Keep all three faithful to the source.`;
+    : variantMode === "additional"
+      ? `Return exactly three variants in variants: one style "conversational" (natural everyday language), one style "official" (formal, professional wording), and one style "bold" (more confident and expressive, without changing the meaning). Keep all three faithful to the source.`
+      : `Return exactly one variant in variants, using style "literal". Keep it close to the source and prioritize a fast, faithful translation. Do not generate conversational, official, bold, or alternative variants in this response.`;
   return `You are the WhatNow? document translation service. Translate the supplied source material into ${languageNames[targetLanguage]}.
 
 Rules:
@@ -161,7 +163,7 @@ export async function POST(request: Request): Promise<Response> {
     return errorResponse("invalid_request", "Выбран неподдерживаемый язык перевода.", 400);
   }
   if (mode !== "file" && mode !== "text") return errorResponse("invalid_request", "Не указан корректный способ добавления материала.", 400);
-  if (variantModeValue !== "initial" && variantModeValue !== "more") return errorResponse("invalid_request", "Не указан корректный вариант перевода.", 400);
+  if (variantModeValue !== "initial" && variantModeValue !== "additional" && variantModeValue !== "more") return errorResponse("invalid_request", "Не указан корректный вариант перевода.", 400);
   const targetLanguage = targetValue as SupportedLanguage;
   const variantMode = variantModeValue as TranslationVariantMode;
   const content: Array<Record<string, unknown>> = [];
@@ -246,7 +248,7 @@ export async function POST(request: Request): Promise<Response> {
         instructions: getInstructions(targetLanguage, variantMode),
         input: [{ role: "user", content }],
         text: { format: { type: "json_schema", name: "whatnow_translation", strict: true, schema: translationJsonSchema } },
-        max_output_tokens: variantMode === "more" ? 2_800 : 5_000,
+        max_output_tokens: variantMode === "initial" ? 2_400 : variantMode === "additional" ? 3_600 : 2_800,
         store: false,
       }),
       signal: controller.signal,

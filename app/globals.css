@@ -1959,6 +1959,135 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 .studio-history h3 { margin: 0 0 8px; }
 .studio-history > p { color: var(--muted); font-size: .82rem; }
 .studio-history > div { display: grid; grid-template-columns: minmax(0,1fr) 34px; gap: 6px; margin-top: 7px; }
+
+/* Translation mode is deliberately a single-viewport workspace. The first
+   literal response is useful immediately; secondary styles and the follow-up
+   tools stay inside the result card instead of making the page grow. */
+.translation-page-root { min-height: 100dvh; height: 100dvh; overflow: hidden; }
+.translation-page-root > footer { display: none; }
+.site-header.translate-mode { top: 6px; min-height: 52px; padding: 4px 8px 4px 10px; }
+.site-header.translate-mode .brand { gap: 7px; font-size: 15px; }
+.site-header.translate-mode .brand-mark { width: 30px; height: 30px; flex-basis: 30px; }
+.site-header.translate-mode .header-actions,
+.site-header.translate-mode .header-nav-actions,
+.site-header.translate-mode .header-utility-actions { gap: 4px; }
+.site-header.translate-mode .header-utility-actions { padding-left: 5px; }
+.site-header.translate-mode .header-optional-action { display: none; }
+.site-header.translate-mode .header-tool-button { width: 38px; height: 38px; min-height: 38px; flex: 0 0 38px; padding: 2px; border-radius: 50%; font-size: 0; }
+.site-header.translate-mode .tool-icon { width: 32px; height: 32px; flex-basis: 32px; border-radius: 50%; }
+.site-header.translate-mode .account-control { width: 38px; height: 38px; flex: 0 0 38px; padding: 3px; }
+.site-header.translate-mode .account-avatar { width: 30px; height: 30px; }
+.site-header.translate-mode .account-details, .site-header.translate-mode .account-chevron { display: none; }
+.product-mode-switch.translate-mode { margin-top: 8px; padding: 4px; width: min(100% - 32px, 620px); border-radius: 18px; }
+.product-mode-switch.translate-mode button { min-height: 38px; gap: 6px; padding: 5px 10px; border-radius: 13px; font-size: .8rem; }
+.product-mode-switch.translate-mode button > span { width: 23px; height: 23px; border-radius: 8px; }
+.translation-page-root .translation-shell { box-sizing: border-box; display: flex; flex-direction: column; width: min(100% - 32px, 1180px); height: calc(100dvh - 148px); max-height: calc(100dvh - 148px); min-height: 0; margin: 10px auto 12px; padding: 18px 20px; overflow: hidden; }
+.translation-page-root .translation-header { flex: 0 0 auto; gap: 16px; margin-bottom: 12px; }
+.translation-page-root .translation-header h1 { margin: 2px 0 4px; font-size: clamp(1.65rem, 3.4vw, 2.35rem); }
+.translation-page-root .translation-header p:not(.eyebrow) { font-size: .84rem; line-height: 1.35; }
+.translation-page-root .translation-language-control { flex-basis: min(230px, 32%); gap: 4px; }
+.translation-page-root .translation-language-control > span { font-size: .7rem; }
+.translation-page-root .translation-language-control select { min-height: 36px; padding: 5px 9px; border-radius: 11px; font-size: .82rem; }
+.translation-page-root .translation-workspace-grid { flex: 1 1 auto; min-height: 0; align-items: stretch; gap: 12px; }
+.translation-page-root .translation-source-card,
+.translation-page-root .translation-output-column { min-height: 0; height: 100%; padding: 14px; border-radius: 19px; overflow: hidden; }
+.translation-page-root .translation-source-card { grid-template-rows: auto auto minmax(0, 1fr) auto auto; gap: 9px; }
+.translation-page-root .translation-card-heading h2,
+.translation-page-root .translation-card-heading h3 { font-size: .98rem; }
+.translation-page-root .translation-speed-hint { max-width: 130px; font-size: .66rem; }
+.translation-page-root .source-tabs { margin: 0; }
+.translation-page-root .source-tabs button { min-height: 34px; padding: 6px 8px; font-size: .76rem; }
+.translation-page-root .translation-source-card > [role="tabpanel"] { min-height: 0; overflow: hidden; }
+.translation-page-root .translation-source-card .dropzone { min-height: 0; height: 100%; padding: 13px; border-radius: 17px; }
+.translation-page-root .translation-source-card .dropzone .document-icon { width: 42px; height: 42px; margin-bottom: 6px; }
+.translation-page-root .translation-source-card .dropzone > strong { font-size: .86rem; }
+.translation-page-root .translation-source-card .dropzone > p,
+.translation-page-root .translation-source-card .dropzone > small { font-size: .68rem; }
+.translation-page-root .translation-source-card .dropzone .secondary-button { min-height: 34px; padding: 6px 10px; font-size: .75rem; }
+.translation-page-root .translation-source-card .text-panel { display: flex; height: 100%; min-height: 0; flex-direction: column; gap: 5px; }
+.translation-page-root .translation-source-card .text-panel textarea { flex: 1; min-height: 0; height: auto; resize: none; padding: 11px; border-radius: 13px; line-height: 1.45; }
+.translation-page-root .translation-source-card .text-panel small { font-size: .66rem; }
+.translation-page-root .translation-file-preview { margin-top: 0; }
+.translation-page-root .translation-file-preview .file-preview-header { gap: 7px; }
+.translation-page-root .translation-file-preview .secondary-button { min-height: 32px; padding: 6px 8px; font-size: .7rem; }
+.translation-page-root .translation-submit { min-height: 40px; margin-top: 0; border-radius: 13px; font-size: .86rem; }
+.translation-page-root .translation-source-card .analysis-error { margin: 0; font-size: .72rem; }
+.translation-page-root .translation-output-column { display: flex; flex-direction: column; }
+.translation-page-root .translation-empty-state { min-height: 0; height: 100%; padding: 14px; }
+.translation-page-root .translation-empty-state > span { width: 42px; height: 42px; border-radius: 13px; font-size: 1.25rem; }
+.translation-page-root .translation-empty-state small { font-size: .72rem; }
+.translation-page-root .translation-result { display: flex; min-height: 0; height: 100%; flex-direction: column; overflow: hidden; }
+.translation-page-root .translation-result-heading { gap: 8px; }
+.translation-page-root .translation-result-heading h2 { font-size: 1rem; }
+.translation-page-root .translation-variant-count { padding: 4px 7px; font-size: .66rem; }
+.translation-page-root .translation-background-status { display: flex; align-items: center; gap: 6px; min-height: 28px; margin: 6px 0 0; padding: 6px 8px; border-radius: 10px; color: var(--accent-dark); background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .68rem; line-height: 1.25; }
+.translation-page-root .translation-background-status.is-ready { color: #24705d; }
+.translation-page-root .translation-background-status.is-error { justify-content: space-between; color: #8c4828; background: #fff1ed; }
+.translation-page-root .translation-background-status .secondary-button { min-height: 26px; padding: 4px 7px; border-radius: 8px; font-size: .65rem; white-space: nowrap; }
+.translation-page-root .translation-variant-tabs { gap: 5px; margin-top: 8px; overflow-x: auto; }
+.translation-page-root .translation-variant-tabs button { min-height: 30px; padding: 5px 9px; font-size: .68rem; }
+.translation-page-root .translation-selected-variant { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; margin-top: 8px; padding: 9px; overflow: hidden; border-radius: 14px; }
+.translation-page-root .translation-variant-heading h3 { font-size: .78rem; }
+.translation-page-root .translation-variant-heading .secondary-button { min-height: 28px; padding: 5px 7px; font-size: .65rem; }
+.translation-page-root .translation-output { flex: 1 1 auto; min-height: 70px; height: auto; margin-top: 8px; padding: 10px; resize: none; overflow: auto; scrollbar-width: none; font-size: .82rem; line-height: 1.42; }
+.translation-page-root .translation-output::-webkit-scrollbar { display: none; }
+.translation-page-root .translation-transcription { gap: 2px; margin-top: 6px; padding: 6px 8px; border-radius: 9px; }
+.translation-page-root .translation-transcription strong { font-size: .64rem; }
+.translation-page-root .translation-transcription p { font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.translation-page-root .translation-transcription small { display: none; }
+.translation-page-root .translation-no-transcription { margin: 6px 0 0; font-size: .65rem; }
+.translation-page-root .translation-actions { flex: 0 0 auto; gap: 6px; margin-top: 7px; }
+.translation-page-root .translation-actions .secondary-button { flex: 1 1 0; min-height: 34px; padding: 5px 7px; font-size: .67rem; line-height: 1.15; }
+.translation-page-root .translation-notes { flex: 0 0 auto; gap: 6px; max-height: 44px; margin-top: 7px; overflow: hidden; }
+.translation-page-root .translation-notes > div { min-width: 0; padding: 6px 8px; border-radius: 9px; }
+.translation-page-root .translation-notes h3 { margin-bottom: 2px; font-size: .65rem; }
+.translation-page-root .translation-notes ul { max-height: 22px; overflow: hidden; padding-left: 12px; font-size: .62rem; line-height: 1.2; }
+.translation-page-root .translation-followup { flex: 0 0 auto; gap: 5px; max-height: 102px; margin-top: 7px; padding-top: 7px; overflow: hidden; }
+.translation-page-root .translation-followup .translation-card-heading { gap: 4px; }
+.translation-page-root .translation-followup .translation-card-heading h3 { font-size: .76rem; }
+.translation-page-root .translation-followup-empty { padding: 5px 7px; font-size: .65rem; line-height: 1.2; }
+.translation-page-root .translation-followup-exchange { max-height: 42px; gap: 4px; overflow: hidden; }
+.translation-page-root .translation-followup-exchange > div { padding: 5px 7px; border-radius: 8px; }
+.translation-page-root .translation-followup-exchange strong { margin-bottom: 1px; font-size: .58rem; }
+.translation-page-root .translation-followup-exchange p { max-height: 17px; overflow: hidden; font-size: .65rem; line-height: 1.25; }
+.translation-page-root .translation-followup-input { grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
+.translation-page-root .translation-followup-input textarea { min-height: 32px; height: 32px; resize: none; padding: 7px 8px; border-radius: 9px; font-size: .68rem; }
+.translation-page-root .translation-followup-input .primary-button { min-height: 32px; padding: 5px 8px; border-radius: 9px; font-size: .68rem; }
+.translation-page-root .translation-followup .input-error { margin: 0; font-size: .64rem; }
+
+@media (max-width: 820px) {
+  .translation-page-root .translation-shell { width: calc(100% - 16px); height: calc(100dvh - 142px); max-height: calc(100dvh - 142px); margin-top: 8px; padding: 13px; border-radius: 20px; }
+  .translation-page-root .translation-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .translation-page-root .translation-header h1 { font-size: 1.45rem; }
+  .translation-page-root .translation-header p:not(.eyebrow) { display: none; }
+  .translation-page-root .translation-language-control { flex: 0 0 42%; }
+  .translation-page-root .translation-workspace-grid { grid-template-columns: 1fr; grid-template-rows: minmax(0, .82fr) minmax(0, 1.18fr); gap: 8px; }
+  .translation-page-root .translation-source-card, .translation-page-root .translation-output-column { padding: 10px; border-radius: 15px; }
+  .translation-page-root .translation-source-card .dropzone { padding: 8px; }
+  .translation-page-root .translation-source-card .dropzone > p { margin: 2px 0; }
+  .translation-page-root .translation-source-card .dropzone .document-icon { width: 34px; height: 34px; }
+  .translation-page-root .translation-source-card .dropzone .secondary-button { min-height: 30px; }
+  .translation-page-root .translation-output { font-size: .78rem; }
+}
+
+@media (max-width: 430px) {
+  .site-header.translate-mode { width: calc(100% - 12px); }
+  .site-header.translate-mode .brand span { display: none; }
+  .site-header.translate-mode .brand-mark { width: 28px; height: 28px; flex-basis: 28px; }
+  .site-header.translate-mode .header-tool-button { width: 34px; height: 34px; min-height: 34px; flex-basis: 34px; }
+  .site-header.translate-mode .tool-icon { width: 28px; height: 28px; flex-basis: 28px; }
+  .site-header.translate-mode .account-control { width: 34px; height: 34px; flex-basis: 34px; }
+  .site-header.translate-mode .account-avatar { width: 27px; height: 27px; }
+  .product-mode-switch.translate-mode { width: calc(100% - 12px); margin-top: 6px; }
+  .product-mode-switch.translate-mode button { min-height: 34px; padding: 4px 5px; font-size: .68rem; }
+  .product-mode-switch.translate-mode button > span { display: none; }
+  .translation-page-root .translation-shell { height: calc(100dvh - 126px); max-height: calc(100dvh - 126px); padding: 9px; }
+  .translation-page-root .translation-header h1 { font-size: 1.2rem; }
+  .translation-page-root .translation-language-control select { min-height: 32px; font-size: .72rem; }
+  .translation-page-root .translation-card-heading h2 { font-size: .82rem; }
+  .translation-page-root .translation-speed-hint { display: none; }
+  .translation-page-root .translation-actions .secondary-button { font-size: .61rem; }
+}
 .studio-history > div button { min-width: 0; padding: 9px; border: 1px solid var(--border); border-radius: 11px; color: var(--text); background: var(--surface); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .studio-history > div button:last-child { color: #a33131; text-align: center; }
 .studio-api-error { margin: 12px 0 0; padding: 12px 14px; border: 1px solid #df8c86; border-radius: 14px; background: color-mix(in srgb,#df8c86 14%,var(--surface)); color: #8a2828; font-weight: 700; }

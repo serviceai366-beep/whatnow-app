@@ -1,6 +1,6 @@
 import { supportedLanguages, type SupportedLanguage, type SourceLanguage } from "./analysis-schema.ts";
 
-export type TranslationVariantStyle = "literal" | "conversational" | "bold" | "alternative";
+export type TranslationVariantStyle = "literal" | "conversational" | "official" | "bold" | "alternative";
 export type TranslationVariant = {
   style: TranslationVariantStyle;
   label: string;
@@ -20,7 +20,7 @@ export type TranslationResult = {
   uncertainties: string[];
 };
 
-export type TranslationVariantMode = "initial" | "more";
+export type TranslationVariantMode = "initial" | "additional" | "more";
 
 const stringArraySchema = {
   type: "array",
@@ -31,7 +31,7 @@ const stringArraySchema = {
 const variantSchema = {
   type: "object",
   properties: {
-    style: { type: "string", enum: ["literal", "conversational", "bold", "alternative"] },
+    style: { type: "string", enum: ["literal", "conversational", "official", "bold", "alternative"] },
     label: { type: "string", minLength: 1, maxLength: 80 },
     translation: { type: "string", minLength: 1, maxLength: 100_000 },
     transcription: { type: "string", maxLength: 4_000 },
@@ -67,7 +67,7 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 function isVariantStyle(value: unknown): value is TranslationVariantStyle {
-  return value === "literal" || value === "conversational" || value === "bold" || value === "alternative";
+  return value === "literal" || value === "conversational" || value === "official" || value === "bold" || value === "alternative";
 }
 
 function isVariant(value: unknown): value is TranslationVariant {
@@ -98,7 +98,9 @@ export function validateTranslationResult(
   const styles = variants.map((variant) => variant.style);
   const styleValid = expectedMode === "more"
     ? variants.length <= 3 && variants.every((variant) => variant.style === "alternative")
-    : variants.length === 3 && ["literal", "conversational", "bold"].every((style) => styles.includes(style as TranslationVariantStyle));
+    : expectedMode === "additional"
+      ? variants.length === 3 && ["conversational", "official", "bold"].every((style) => styles.includes(style as TranslationVariantStyle))
+      : variants.length === 1 && variants[0]?.style === "literal";
   return candidate.schemaVersion === "1.1"
     && isSupportedSourceLanguage(candidate.sourceLanguage)
     && typeof target === "string"
