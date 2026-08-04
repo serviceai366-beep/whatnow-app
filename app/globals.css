@@ -2235,7 +2235,12 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
     font-size: 1.08rem;
     line-height: 1.55;
   }
-  .translation-page-root .translation-source-card .text-panel small { font-size: .72rem; }
+  .translation-page-root .translation-source-card .text-panel small {
+    display: block;
+    margin: 0 0 4px;
+    font-size: .72rem;
+    line-height: 1.2;
+  }
   .translation-page-root .translation-source-card .dropzone {
     height: auto;
     min-height: 190px;
