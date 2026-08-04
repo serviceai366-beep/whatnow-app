@@ -245,6 +245,10 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /onUseInUnderstand/);
   assert.match(component, /onUseInCreate/);
   assert.match(component, /translation-workspace-grid/);
+  assert.match(component, /translation-language-bar/);
+  assert.match(component, /sourceAuto/);
+  assert.match(component, /useState<"file" \| "text">\("text"\)/);
+  assert.match(component, /role="textbox"/);
   assert.match(component, /variantMode/);
   assert.match(component, /official/);
   assert.match(component, /additionalStatus/);
@@ -259,8 +263,10 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(styles, /\.translation-followup/);
   assert.match(styles, /\.translation-page-root/);
   assert.match(styles, /grid-template-columns: repeat\(3/);
-  assert.match(styles, /translation-actions.*grid-template-columns: repeat\(2/);
+  assert.match(styles, /translation-page-root[\s\S]*height: auto;[\s\S]*overflow: visible;/);
+  assert.match(styles, /translation-output[\s\S]*white-space: pre-wrap;/);
+  assert.match(styles, /translation-actions[\s\S]*grid-template-columns: 1fr;/);
   assert.match(styles, /translation-followup-input.*grid-template-columns: 1fr/);
-  assert.match(styles, /translation-notes.*overscroll-behavior: contain/);
+  assert.match(styles, /translation-followup-exchange[\s\S]*max-height: none;/);
   assert.match(studio, /initialPrompt/);
 });
