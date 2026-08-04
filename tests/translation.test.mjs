@@ -247,6 +247,7 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /translation-workspace-grid/);
   assert.match(component, /translation-language-bar/);
   assert.match(component, /sourceAuto/);
+  assert.doesNotMatch(component, /t\.intro/);
   assert.match(component, /useState<"file" \| "text">\("text"\)/);
   assert.match(component, /role="textbox"/);
   assert.match(component, /variantMode/);
