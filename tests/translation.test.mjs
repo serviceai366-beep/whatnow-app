@@ -259,6 +259,8 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /translation-transcription/);
   assert.match(component, /selectedVariant\.backTranslation/);
   assert.match(component, /translation-back-translation/);
+  assert.match(component, /translation-tools-drawer/);
+  assert.match(component, /moreTools/);
   assert.match(component, /hasAutoFocusedResultRef/);
   assert.match(component, /scrollIntoView\(\{/);
   assert.match(component, /prefers-reduced-motion: reduce/);
@@ -283,6 +285,8 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(styles, /translation-followup-exchange[\s\S]*max-height: none;/);
   assert.match(styles, /translation-output-column \{[\s\S]*scroll-margin-top: 118px;/);
   assert.match(styles, /translation-shell\.has-result \.translation-source-card \.text-panel textarea/);
+  assert.match(styles, /translation-shell\.has-result \.translation-workspace-grid[\s\S]*grid-template-rows: 152px minmax\(0, 1fr\)/);
+  assert.match(styles, /translation-tools-drawer\[open\][\s\S]*position: absolute/);
   const followupRoute = await readFile(new URL("../app/api/translate/followup/route.ts", import.meta.url), "utf8");
   assert.match(followupRoute, /TRANSLATION_MODEL\s*=\s*["']gpt-5\.6-luna["']/);
   assert.doesNotMatch(followupRoute, /selectedModelForUser/);
