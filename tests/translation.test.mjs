@@ -14,7 +14,7 @@ const validTranslation = {
   translation: "This is a translated document.",
   transcription: "This is a translated document.",
   variants: [
-    { style: "literal", label: "Literal", translation: "This is a translated document.", transcription: "This iz a translaytid dokyument." },
+    { style: "literal", label: "Literal", translation: "This is a translated document.", transcription: "This iz a translaytid dokyument.", backTranslation: "Labdien!" },
   ],
   notes: [],
   uncertainties: [],
@@ -23,9 +23,9 @@ const validTranslation = {
 const additionalTranslation = {
   ...validTranslation,
   variants: [
-    { style: "conversational", label: "Conversational", translation: "Here is the translated document.", transcription: "Hir iz the translaytid dokyument." },
-    { style: "official", label: "Official", translation: "This document has been translated.", transcription: "This dokyument haz bin translaytid." },
-    { style: "bold", label: "Bold", translation: "This document is translated and ready.", transcription: "This dokyument iz translaytid and redi." },
+    { style: "conversational", label: "Conversational", translation: "Here is the translated document.", transcription: "Hir iz the translaytid dokyument.", backTranslation: "Te ir tulkotais dokuments." },
+    { style: "official", label: "Official", translation: "This document has been translated.", transcription: "This dokyument haz bin translaytid.", backTranslation: "Šis dokuments ir iztulkots." },
+    { style: "bold", label: "Bold", translation: "This document is translated and ready.", transcription: "This dokyument iz translaytid and redi.", backTranslation: "Šis dokuments ir iztulkots un gatavs." },
   ],
 };
 
@@ -86,12 +86,14 @@ test("translation schema accepts complete results and rejects invented fields or
   assert.equal(validateTranslationResult(additionalTranslation, "en", "additional"), true);
   assert.equal(validateTranslationResult({ ...validTranslation, targetLanguage: "ru" }, "en"), false);
   assert.equal(validateTranslationResult({ ...validTranslation, extra: "no" }, "en"), false);
+  assert.equal(validateTranslationResult({ ...validTranslation, variants: [{ ...validTranslation.variants[0], backTranslation: "" }] }, "en"), false);
   assert.equal(validateTranslationResult({ ...validTranslation, variants: [...validTranslation.variants, ...additionalTranslation.variants] }, "en"), false);
   assert.equal(validateTranslationResult({ ...validTranslation, variants: [{ ...validTranslation.variants[0], style: "alternative" }] }, "en", "more"), true);
   assert.equal(validateTranslationFollowup({ answer: "It is a nuance.", uncertain: false, transcription: "" }), true);
   assert.equal(validateTranslationFollowup({ answer: "It is a nuance.", uncertain: false, transcription: "", extra: true }), false);
   assert.equal(translationJsonSchema.additionalProperties, false);
   assert.equal(translationJsonSchema.properties.variants.items.properties.style.enum.includes("official"), true);
+  assert.equal(translationJsonSchema.properties.variants.items.properties.backTranslation.type, "string");
   assert.deepEqual(translationJsonSchema.properties.targetLanguage.enum, ["en", "ru", "lv", "es", "pt", "fr", "de", "it", "pl", "uk", "nl", "ro", "sv", "cs"]);
   assert.equal(translationFollowupJsonSchema.additionalProperties, false);
 });
@@ -165,7 +167,7 @@ test("translation route requests alternative variants without changing the schem
   resetAnalysisChallengeStateForTests();
   const alternatives = {
     ...validTranslation,
-    variants: [{ style: "alternative", label: "Alternative 1", translation: "Another clear version.", transcription: "Another klir version." }],
+    variants: [{ style: "alternative", label: "Alternative 1", translation: "Another clear version.", transcription: "Another klir version.", backTranslation: "Vēl viena skaidra versija." }],
     translation: "Another clear version.",
     transcription: "Another klir version.",
   };
@@ -255,6 +257,8 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /additionalStatus/);
   assert.match(component, /api\/translate\/followup/);
   assert.match(component, /translation-transcription/);
+  assert.match(component, /selectedVariant\.backTranslation/);
+  assert.match(component, /translation-back-translation/);
   assert.match(component, /hasAutoFocusedResultRef/);
   assert.match(component, /scrollIntoView\(\{/);
   assert.match(component, /prefers-reduced-motion: reduce/);
@@ -264,6 +268,7 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(route, /checkAnalysisQuota/);
   assert.match(route, /TRANSLATION_MODEL\s*=\s*["']gpt-5\.6-luna["']/);
   assert.doesNotMatch(route, /selectedModelForUser/);
+  assert.match(route, /backTranslation/);
   assert.match(route, /store: false/);
   assert.match(styles, /\.translation-shell/);
   assert.match(styles, /\.translation-workspace-grid/);

@@ -6,6 +6,7 @@ export type TranslationVariant = {
   label: string;
   translation: string;
   transcription: string;
+  backTranslation: string;
 };
 
 export type TranslationResult = {
@@ -35,8 +36,9 @@ const variantSchema = {
     label: { type: "string", minLength: 1, maxLength: 80 },
     translation: { type: "string", minLength: 1, maxLength: 100_000 },
     transcription: { type: "string", maxLength: 4_000 },
+    backTranslation: { type: "string", minLength: 1, maxLength: 100_000 },
   },
-  required: ["style", "label", "translation", "transcription"],
+  required: ["style", "label", "translation", "transcription", "backTranslation"],
   additionalProperties: false,
 } as const;
 
@@ -82,7 +84,10 @@ function isVariant(value: unknown): value is TranslationVariant {
     && candidate.translation.length <= 100_000
     && typeof candidate.transcription === "string"
     && candidate.transcription.length <= 4_000
-    && Object.keys(candidate).every((key) => ["style", "label", "translation", "transcription"].includes(key));
+    && typeof candidate.backTranslation === "string"
+    && candidate.backTranslation.trim().length > 0
+    && candidate.backTranslation.length <= 100_000
+    && Object.keys(candidate).every((key) => ["style", "label", "translation", "transcription", "backTranslation"].includes(key));
 }
 
 export function validateTranslationResult(

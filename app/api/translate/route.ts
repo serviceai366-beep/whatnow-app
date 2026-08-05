@@ -100,6 +100,7 @@ Rules:
 - Identify the source language only when reasonably clear; otherwise use unknown.
 - Put only brief terminology observations in notes, not in the translation.
 - For each variant, provide a short pronunciation/transcription guide in Latin letters when it is useful for reading the translated words. For long passages, transcribe only the first useful sentence or key terms; do not duplicate the entire document.
+- For every variant, also provide backTranslation: a faithful translation of that variant back into the detected source language. Keep it below the translated result in the user's view. If the source language truly cannot be determined, keep sourceLanguage as "unknown" and repeat the original source wording as backTranslation rather than inventing a language.
 - schemaVersion must be "1.1" and targetLanguage must be "${targetLanguage}".
 - ${variantRules}
 - Set the top-level translation and transcription to the first variant's values.`;
