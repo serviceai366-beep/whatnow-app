@@ -2500,7 +2500,10 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   .product-mode-switch.translate-mode {
     grid-template-columns: repeat(3, minmax(0, 1fr)) 30px;
     width: calc(100% - 12px);
-    margin-top: 5px;
+    top: 57px;
+    /* Keep the mode control close to the compact header so the translator
+       gets the largest possible first viewport without touching the header. */
+    margin-top: -2px;
     padding: 3px;
     gap: 3px;
     border-radius: 15px;
