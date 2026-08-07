@@ -276,6 +276,11 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /Choose photo or document/);
   assert.match(component, /translation-image-preview/);
   assert.match(component, /imagePreviewHint/);
+  assert.match(component, /handleSourcePaste/);
+  assert.match(component, /clipboardData\.items/);
+  assert.match(component, /screenshot-\$\{new Date\(\)\.toISOString\(\)/);
+  assert.match(component, /onPaste=\{handleSourcePaste\}/);
+  assert.match(component, /pasteImageHint/);
   assert.match(component, /translation-language-bar/);
   assert.match(component, /sourceAuto/);
   assert.doesNotMatch(component, /t\.intro/);
