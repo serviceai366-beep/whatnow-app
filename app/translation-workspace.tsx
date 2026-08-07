@@ -353,7 +353,7 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
   };
 
   const renderSource = () => <aside className="translation-source-card" aria-labelledby="translation-source-title">
-    <div className="translation-card-heading"><div><p className="eyebrow">{t.sourcePanel}</p><h2 id="translation-source-title">{t.sourceLabel}</h2></div><span className="translation-speed-hint">{t.fastHint}</span></div>
+    <div className="translation-card-heading"><div><p className="eyebrow">{t.sourcePanel}</p><h2 id="translation-source-title">{t.sourceLabel}</h2></div></div>
     <div className="source-tabs" role="tablist" aria-label={t.title}>
       <button type="button" role="tab" aria-selected={inputMode === "file"} className={inputMode === "file" ? "active" : ""} onClick={() => { setInputMode("file"); setError(""); }} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{t.upload}</button>
       <button type="button" role="tab" aria-selected={inputMode === "text"} className={inputMode === "text" ? "active" : ""} onClick={() => { setInputMode("text"); setError(""); }} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{t.paste}</button>
