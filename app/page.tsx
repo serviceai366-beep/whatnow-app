@@ -724,8 +724,9 @@ export default function Home() {
             </div>
           </fieldset>
 
-          <div className="source-tabs" role="tablist" aria-label={t.sourceMethod}>
+          <SlidingSegmentedControl className="source-tabs" activeKey={inputMode} ariaLabel={t.sourceMethod}>
             <button
+              data-segment-active={inputMode === "file"}
               className={inputMode === "file" ? "active" : ""}
               onClick={() => {
                 setInputMode("file");
@@ -740,6 +741,7 @@ export default function Home() {
               {t.uploadFile}
             </button>
             <button
+              data-segment-active={inputMode === "text"}
               className={inputMode === "text" ? "active" : ""}
               onClick={() => {
                 setInputMode("text");
@@ -753,7 +755,7 @@ export default function Home() {
             >
               {t.pasteText}
             </button>
-          </div>
+          </SlidingSegmentedControl>
 
           {inputMode === "file" ? (
             <div role="tabpanel">

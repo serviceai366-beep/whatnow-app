@@ -25,6 +25,9 @@ test("linked mode controls share one horizontal mouse and touch slider", () => {
 test("the slider is limited to related controls and leaves pinning separate", () => {
   assert.match(page, /className="product-mode-segments"/);
   assert.match(page, /<\/SlidingSegmentedControl>\s*\n\s*<button type="button" className={`mode-pin-button/);
+  assert.match(page, /<SlidingSegmentedControl className="source-tabs" activeKey={inputMode}/);
+  assert.match(page, /data-segment-active={inputMode === "file"}/);
+  assert.match(page, /data-segment-active={inputMode === "text"}/);
   assert.match(translator, /className="source-tabs"/);
   assert.match(translator, /className="translation-variant-tabs"/);
   assert.match(studio, /className="studio-workflow-switch"/);
