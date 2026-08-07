@@ -3387,3 +3387,71 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
     min-height: 0;
   }
 }
+
+/* Shared Liquid Glass segmented control. */
+.sliding-segmented-control {
+  position: relative;
+  isolation: isolate;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.sliding-segmented-control > .sliding-segment-indicator {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  top: 0;
+  width: var(--segment-width);
+  height: var(--segment-height);
+  border: 1px solid var(--glass-line);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(var(--segment-x), var(--segment-y), 0);
+  background: var(--glass-strong);
+  box-shadow: 0 8px 22px rgb(14 69 58 / 11%), inset 0 1px 0 rgb(255 255 255 / 72%);
+  transition: transform 360ms cubic-bezier(.2,.9,.25,1), width 320ms cubic-bezier(.2,.9,.25,1), height 320ms cubic-bezier(.2,.9,.25,1), opacity 120ms ease;
+  will-change: transform, width;
+}
+.sliding-segmented-control.indicator-ready > .sliding-segment-indicator { opacity: 1; }
+.sliding-segmented-control.is-dragging > .sliding-segment-indicator { transition: none; }
+.sliding-segmented-control > button { position: relative; z-index: 1; }
+.sliding-segmented-control > button[data-segment-active="true"] { cursor: grab; }
+.sliding-segmented-control.is-dragging > button[data-segment-active="true"] { cursor: grabbing; }
+.sliding-segmented-control > button.active {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.product-mode-switch { grid-template-columns: minmax(0, 1fr) auto; }
+.product-mode-switch.translate-mode { grid-template-columns: minmax(0, 1fr) 30px; }
+.product-mode-segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+.product-mode-segments > .sliding-segment-indicator { border-radius: 16px; }
+.auth-mode-switch > .sliding-segment-indicator { border-radius: 9px; }
+.source-tabs > .sliding-segment-indicator { border-radius: 12px; }
+.theme-switch > .sliding-segment-indicator,
+.hub-tabs > .sliding-segment-indicator,
+.studio-action-switch > .sliding-segment-indicator { border-radius: 14px; }
+.studio-workflow-switch > .sliding-segment-indicator { border-radius: 20px; }
+.translation-variant-tabs > .sliding-segment-indicator {
+  border-color: var(--accent);
+  border-radius: 999px;
+  background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  box-shadow: 0 8px 18px rgb(8 105 89 / 16%);
+}
+.translation-variant-tabs > button.active { color: #fff; }
+@media (max-width: 620px) {
+  .product-mode-switch { grid-template-columns: minmax(0, 1fr) 38px; }
+  .product-mode-switch.translate-mode { grid-template-columns: minmax(0, 1fr) 30px; }
+  .product-mode-segments { gap: 4px; }
+  .product-mode-segments > .sliding-segment-indicator { border-radius: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sliding-segmented-control > .sliding-segment-indicator { transition-duration: 1ms; }
+}

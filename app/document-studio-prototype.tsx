@@ -6,6 +6,7 @@ import { guideFor, guideText, requiredRegionFor, type StudioGuideLocale } from "
 import { studioCountries, type GeneratedDocument, type StudioMode } from "./document-studio-schema";
 import type { ProfileLanguage } from "./profile-types";
 import { getAccessToken, type SupabaseAccount } from "./supabase-auth";
+import { SlidingSegmentedControl } from "./sliding-segmented-control";
 
 type Readiness = "green" | "yellow" | "red";
 type Saved = { id: string; createdAt: number; result: GeneratedDocument };
@@ -235,11 +236,11 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
 
   return <section className="studio-shell" aria-labelledby="studio-title">
     <div className="studio-heading"><div><div className="studio-heading-labels"><span className="studio-prototype-pill">{t.live}</span><span className="studio-pro-badge">{quota.planCode === "pro" ? "Pro" : "Free"}</span></div><h1 id="studio-title">{t.title}</h1><p>{t.subtitle}</p></div><div className="studio-heading-actions"><button className="studio-history-toggle" type="button" onClick={() => document.getElementById("studio-history")?.scrollIntoView({ behavior: "smooth", block: "start" })}>{t.historyButton}</button></div></div>
-    <div className="studio-workflow-switch" role="tablist" aria-label={t.workflowLabel}>
-      <button type="button" role="tab" aria-selected={workflow === "guided"} className={workflow === "guided" ? "active" : ""} onClick={() => { setWorkflow("guided"); setWarning(false); setError(""); }}><span>☷</span><div><strong>{t.guidedMode}</strong><small>{t.guidedModeHint}</small></div></button>
-      <button type="button" role="tab" aria-selected={workflow === "quick"} className={workflow === "quick" ? "active" : ""} onClick={() => { setWorkflow("quick"); setWarning(false); setError(""); }}><span>⚡</span><div><strong>{t.quickMode}</strong><small>{t.quickModeHint}</small></div></button>
-    </div>
-    <div className="studio-action-switch" role="tablist">{(["create", "improve", "review"] as StudioMode[]).map((value) => <button key={value} type="button" role="tab" aria-selected={mode === value} className={mode === value ? "active" : ""} onClick={() => { setMode(value); setFields({}); setSourceFile(null); setAssistantMessages([]); }}>{t[value]}</button>)}</div>
+    <SlidingSegmentedControl className="studio-workflow-switch" activeKey={workflow} ariaLabel={t.workflowLabel}>
+      <button type="button" role="tab" data-segment-active={workflow === "guided"} aria-selected={workflow === "guided"} className={workflow === "guided" ? "active" : ""} onClick={() => { setWorkflow("guided"); setWarning(false); setError(""); }}><span>☷</span><div><strong>{t.guidedMode}</strong><small>{t.guidedModeHint}</small></div></button>
+      <button type="button" role="tab" data-segment-active={workflow === "quick"} aria-selected={workflow === "quick"} className={workflow === "quick" ? "active" : ""} onClick={() => { setWorkflow("quick"); setWarning(false); setError(""); }}><span>⚡</span><div><strong>{t.quickMode}</strong><small>{t.quickModeHint}</small></div></button>
+    </SlidingSegmentedControl>
+    <SlidingSegmentedControl className="studio-action-switch" activeKey={mode}>{(["create", "improve", "review"] as StudioMode[]).map((value) => <button key={value} type="button" role="tab" data-segment-active={mode === value} aria-selected={mode === value} className={mode === value ? "active" : ""} onClick={() => { setMode(value); setFields({}); setSourceFile(null); setAssistantMessages([]); }}>{t[value]}</button>)}</SlidingSegmentedControl>
     {workflow === "guided" ? <div className="studio-workspace">
       <aside className="template-library"><div className="template-library-heading"><h2>{t.templates}</h2></div><div className="template-grid">{templates.map(([key, icon]) => <button type="button" className={template === key ? "active" : ""} key={key} onClick={() => switchTemplate(key)}><span>{icon}</span><strong>{t[key]}</strong></button>)}</div><div className="studio-history" id="studio-history"><h3>{t.history}</h3>{quota && <p>{t.limit}: {quota.remaining} · 24h {quota.dailyUsed}/{quota.dailyLimit} · 30d {quota.monthlyUsed}/{quota.monthlyLimit}</p>}{history.length ? history.map((document) => <div key={document.id}><button type="button" onClick={() => setCurrent(document)}>{document.result.title}</button><button type="button" aria-label={t.delete} onClick={() => void remove(document.id)}>×</button></div>) : <p>{t.empty}</p>}</div></aside>
       <div className="studio-form-panel">

@@ -27,6 +27,7 @@ import { interfaceCopyFallback, languageOption, responseLanguageOptions } from "
 import { DocumentChat } from "./document-chat";
 import { DocumentStudioPrototype } from "./document-studio-prototype";
 import { TranslationWorkspace } from "./translation-workspace";
+import { SlidingSegmentedControl } from "./sliding-segmented-control";
 import { loadFavoriteMode, readLocalFavoriteMode, updateFavoriteMode, writeLocalFavoriteMode } from "./favorite-mode-client";
 import type { FavoriteMode } from "./favorite-mode-store";
 
@@ -646,9 +647,11 @@ export default function Home() {
 
       {!showResult && <>
       <nav className={`product-mode-switch${productMode === "translate" ? " translate-mode" : ""}`} aria-label="WhatNow? modes">
-        <button type="button" className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? (productMode === "translate" ? "Понять" : "Понять документ") : interfaceCopyLanguage === "lv" ? (productMode === "translate" ? "Saprast" : "Saprast dokumentu") : "Understand"}</strong></button>
-        <button type="button" className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => { setStudioPrefill(""); setProductMode("create"); }}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? (productMode === "translate" ? "Создать" : "Создать и изменить") : interfaceCopyLanguage === "lv" ? (productMode === "translate" ? "Izveidot" : "Izveidot un rediģēt") : productMode === "translate" ? "Create" : "Create & edit"}</strong></button>
-        <button type="button" className={productMode === "translate" ? "active" : ""} aria-current={productMode === "translate" ? "page" : undefined} onClick={() => setProductMode("translate")}><span aria-hidden="true">↔</span><strong>{interfaceCopyLanguage === "ru" ? "Перевести" : interfaceCopyLanguage === "lv" ? "Tulkot" : "Translate"}</strong></button>
+        <SlidingSegmentedControl className="product-mode-segments" activeKey={productMode} ariaLabel="WhatNow? modes">
+          <button type="button" data-segment-active={productMode === "understand"} className={productMode === "understand" ? "active" : ""} aria-current={productMode === "understand" ? "page" : undefined} onClick={() => setProductMode("understand")}><span aria-hidden="true">⌕</span><strong>{interfaceCopyLanguage === "ru" ? (productMode === "translate" ? "Понять" : "Понять документ") : interfaceCopyLanguage === "lv" ? (productMode === "translate" ? "Saprast" : "Saprast dokumentu") : "Understand"}</strong></button>
+          <button type="button" data-segment-active={productMode === "create"} className={productMode === "create" ? "active" : ""} aria-current={productMode === "create" ? "page" : undefined} onClick={() => { setStudioPrefill(""); setProductMode("create"); }}><span aria-hidden="true">✦</span><strong>{interfaceCopyLanguage === "ru" ? (productMode === "translate" ? "Создать" : "Создать и изменить") : interfaceCopyLanguage === "lv" ? (productMode === "translate" ? "Izveidot" : "Izveidot un rediģēt") : productMode === "translate" ? "Create" : "Create & edit"}</strong></button>
+          <button type="button" data-segment-active={productMode === "translate"} className={productMode === "translate" ? "active" : ""} aria-current={productMode === "translate" ? "page" : undefined} onClick={() => setProductMode("translate")}><span aria-hidden="true">↔</span><strong>{interfaceCopyLanguage === "ru" ? "Перевести" : interfaceCopyLanguage === "lv" ? "Tulkot" : "Translate"}</strong></button>
+        </SlidingSegmentedControl>
         <button type="button" className={`mode-pin-button${favoriteMode === productMode ? " pinned" : ""}`} aria-pressed={favoriteMode === productMode} aria-label={favoriteMode === productMode ? pin.unpin : pin.pin} data-tooltip={favoriteMode === productMode ? pin.unpin : pin.pin} onClick={() => void toggleFavoriteMode()}><span aria-hidden="true">{favoriteMode === productMode ? "★" : "☆"}</span><small>{favoriteMode === productMode ? pin.saved : pin.pin}</small></button>
       </nav>
       </>}

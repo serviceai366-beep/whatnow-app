@@ -16,6 +16,7 @@ import {
 import { TurnstileWidget } from "./turnstile";
 import type { QuotaSnapshot, WindowQuota } from "./quota-types";
 import { ReminderProfileSection } from "./reminder-profile-section";
+import { SlidingSegmentedControl } from "./sliding-segmented-control";
 
 export type ColorTheme = "light" | "dark";
 
@@ -243,10 +244,10 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onPlanChan
                 <div className="profile-security"><span aria-hidden="true">✓</span><div><strong>{t.secure}</strong><small>{t.securityText}</small></div></div>
                 <section className="profile-section" aria-labelledby="appearance-title">
                   <h3 id="appearance-title">{t.appearance}</h3>
-                  <div className="theme-switch" role="group" aria-label={t.appearance}>
-                    <button type="button" className={theme === "light" ? "active" : ""} aria-pressed={theme === "light"} onClick={() => onThemeChange("light")}>☀ {t.light}</button>
-                    <button type="button" className={theme === "dark" ? "active" : ""} aria-pressed={theme === "dark"} onClick={() => onThemeChange("dark")}>☾ {t.dark}</button>
-                  </div>
+                  <SlidingSegmentedControl className="theme-switch" activeKey={theme} ariaLabel={t.appearance}>
+                    <button type="button" data-segment-active={theme === "light"} className={theme === "light" ? "active" : ""} aria-pressed={theme === "light"} onClick={() => onThemeChange("light")}>☀ {t.light}</button>
+                    <button type="button" data-segment-active={theme === "dark"} className={theme === "dark" ? "active" : ""} aria-pressed={theme === "dark"} onClick={() => onThemeChange("dark")}>☾ {t.dark}</button>
+                  </SlidingSegmentedControl>
                 </section>
                 <section className="profile-section quota-summary" aria-labelledby="quota-title">
                   <h3 id="quota-title">{t.quota}</h3>
@@ -273,10 +274,10 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onPlanChan
             ) : (
               <>
                 <img className="auth-mark" src="/whatnow-logo.jpg" alt="" />
-                <div className="auth-mode-switch" role="tablist" aria-label={t.title}>
-                  <button type="button" role="tab" aria-selected={authMode === "sign-in"} className={authMode === "sign-in" ? "active" : ""} onClick={() => { setAuthMode("sign-in"); setLegalAccepted(false); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); }}>{t.signInTab}</button>
-                  <button type="button" role="tab" aria-selected={authMode === "create-account"} className={authMode === "create-account" ? "active" : ""} onClick={() => { setAuthMode("create-account"); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); }}>{t.createTab}</button>
-                </div>
+                <SlidingSegmentedControl className="auth-mode-switch" activeKey={authMode} ariaLabel={t.title}>
+                  <button type="button" role="tab" data-segment-active={authMode === "sign-in"} aria-selected={authMode === "sign-in"} className={authMode === "sign-in" ? "active" : ""} onClick={() => { setAuthMode("sign-in"); setLegalAccepted(false); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); }}>{t.signInTab}</button>
+                  <button type="button" role="tab" data-segment-active={authMode === "create-account"} aria-selected={authMode === "create-account"} className={authMode === "create-account" ? "active" : ""} onClick={() => { setAuthMode("create-account"); setAuthCaptchaToken(null); setAuthCaptchaResetKey((value) => value + 1); setError(null); }}>{t.createTab}</button>
+                </SlidingSegmentedControl>
                 <h2 id="account-dialog-title">{authMode === "create-account" ? t.createTitle : t.title}</h2>
                 <p className="auth-intro">{t.intro}</p>
                 {authMode === "create-account" && <>
