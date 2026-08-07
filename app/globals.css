@@ -3391,6 +3391,7 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 /* Shared Liquid Glass segmented control. */
 .sliding-segmented-control {
   position: relative;
+  min-width: 0;
   isolation: isolate;
   touch-action: pan-y;
   -webkit-user-select: none;
@@ -3425,7 +3426,7 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   transform: none !important;
 }
 .product-mode-switch { grid-template-columns: minmax(0, 1fr) auto; }
-.product-mode-switch.translate-mode { grid-template-columns: minmax(0, 1fr) 30px; }
+.product-mode-switch.translate-mode { grid-template-columns: minmax(0, 1fr) auto; }
 .product-mode-segments {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3446,11 +3447,57 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   box-shadow: 0 8px 18px rgb(8 105 89 / 16%);
 }
 .translation-variant-tabs > button.active { color: #fff; }
+
+/* Keep modal navigation in its own track. The panel content scrolls below it,
+   so headings and actions never slide underneath the tabs. */
+.user-hub {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+.user-hub > .hub-panel-header,
+.user-hub > .hub-tabs {
+  position: relative;
+  top: auto;
+  flex: 0 0 auto;
+}
+.user-hub > .hub-tabs {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  align-items: center;
+}
+.user-hub > .hub-content {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.user-hub > .hub-content::-webkit-scrollbar { display: none; }
+
+/* The pin action is intentionally outside the sliding group. On desktop its
+   descriptive label needs intrinsic width; only compact layouts collapse it. */
+.product-mode-switch.translate-mode > .mode-pin-button {
+  width: auto;
+  min-width: 54px;
+  max-width: 150px;
+  white-space: normal;
+}
 @media (max-width: 620px) {
   .product-mode-switch { grid-template-columns: minmax(0, 1fr) 38px; }
   .product-mode-switch.translate-mode { grid-template-columns: minmax(0, 1fr) 30px; }
   .product-mode-segments { gap: 4px; }
   .product-mode-segments > .sliding-segment-indicator { border-radius: 13px; }
+  .product-mode-switch.translate-mode > .mode-pin-button {
+    width: 30px;
+    min-width: 30px;
+    max-width: 30px;
+  }
+  .user-hub > .hub-tabs {
+    min-height: 58px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .sliding-segmented-control > .sliding-segment-indicator { transition-duration: 1ms; }
