@@ -198,7 +198,7 @@ export async function POST(request: Request): Promise<Response> {
       costKind = "pdf";
     } else if (validation.kind === "image") {
       if (!mimeType) return errorResponse("invalid_file_content", "Не удалось определить тип изображения.", 400);
-      content.push({ type: "input_text", text: "Read the uploaded document image and translate all legible text faithfully." });
+      content.push({ type: "input_text", text: "This source is a photo or scanned document. Read all clearly visible text in natural reading order and translate it faithfully as text. Preserve headings, paragraphs, lists, tables, and line breaks where possible. Do not invent missing words; mark an unreadable fragment as [unreadable]. Ignore decorative elements that are not part of the document." });
       content.push({ type: "input_image", image_url: `data:${mimeType};base64,${bytesToBase64(bytes)}`, detail: "high" });
       costKind = "image";
     } else {

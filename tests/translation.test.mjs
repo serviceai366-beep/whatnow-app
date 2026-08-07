@@ -207,6 +207,32 @@ test("translation route validates file signatures and forwards a safe PDF filena
   } finally { globalThis.fetch = previousFetch; }
 }));
 
+test("translation route reads a photo through the vision input and returns text translation", async () => withServerKey(async () => {
+  const previousFetch = globalThis.fetch;
+  const requests = [];
+  resetAnalysisChallengeStateForTests();
+  globalThis.fetch = async (url, init = {}) => {
+    const address = String(url);
+    if (address.includes("/auth/v1/user")) return Response.json({ id: "translation-image-user", email: "image@example.com", email_confirmed_at: "2026-08-03T10:00:00Z", is_anonymous: false });
+    requests.push({ url: address, body: JSON.parse(init.body) });
+    return openAiResponse({ ...validTranslation, targetLanguage: "ru", translation: "Текст с фотографии." });
+  };
+  try {
+    const photo = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])], "letter.jpg", { type: "image/jpeg" });
+    const response = await POST(requestWithFile(photo, { targetLanguage: "ru", userId: "translation-image-user" }));
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.result.translation, "Текст с фотографии.");
+    assert.equal(requests.length, 1);
+    const content = requests[0].body.input[0].content;
+    assert.equal(content[1].type, "input_image");
+    assert.equal(content[1].detail, "high");
+    assert.match(content[1].image_url, /^data:image\/jpeg;base64,/);
+    assert.match(content[0].text, /photo or scanned document/);
+    assert.match(content[0].text, /Do not invent missing words/);
+  } finally { globalThis.fetch = previousFetch; }
+}));
+
 test("translation follow-up answers from the saved translation context", async () => withServerKey(async () => {
   const previousFetch = globalThis.fetch;
   const requests = [];
@@ -247,6 +273,9 @@ test("translation UI exposes the dedicated mode and handoff actions", async () =
   assert.match(component, /onUseInUnderstand/);
   assert.match(component, /onUseInCreate/);
   assert.match(component, /translation-workspace-grid/);
+  assert.match(component, /Choose photo or document/);
+  assert.match(component, /translation-image-preview/);
+  assert.match(component, /imagePreviewHint/);
   assert.match(component, /translation-language-bar/);
   assert.match(component, /sourceAuto/);
   assert.doesNotMatch(component, /t\.intro/);
