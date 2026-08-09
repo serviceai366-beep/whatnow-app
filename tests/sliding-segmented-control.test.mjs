@@ -45,6 +45,12 @@ test("translation mode keeps the three segments wide without crushing the pin ac
   assert.match(styles, /\.product-mode-segments\s*\{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
 });
 
+test("create-edit makes the selected workflow unmistakable", () => {
+  assert.match(styles, /\.studio-workflow-switch > \.sliding-segment-indicator\s*\{[\s\S]*border:\s*2px solid[\s\S]*linear-gradient/);
+  assert.match(styles, /\.studio-workflow-switch > button\[data-segment-active="true"\] > span\s*\{[\s\S]*background:\s*linear-gradient/);
+  assert.match(styles, /\.studio-workflow-switch > button\[data-segment-active="true"\]::after\s*\{[\s\S]*content:\s*"✓"/);
+});
+
 test("profile tabs stay visible while only the profile content scrolls", () => {
   assert.match(styles, /\.user-hub\s*\{[\s\S]*flex-direction:\s*column;[\s\S]*overflow:\s*hidden;/);
   assert.match(styles, /\.user-hub > \.hub-tabs\s*\{[\s\S]*width:\s*100%;[\s\S]*min-height:\s*64px;[\s\S]*align-items:\s*center;/);
