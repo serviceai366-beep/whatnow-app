@@ -123,7 +123,7 @@ test("translated header labels never collapse into individual letters", async ()
 
 test("mobile header controls hide overflowing labels after desktop overrides", async () => {
   const [, , css] = await files;
-  const mobileOverride = css.lastIndexOf("@media (max-width: 720px)");
+  const mobileOverride = css.indexOf("/* Mobile header: keep every navigation label");
   const desktopGlassOverride = css.lastIndexOf(".site-header:not(.compact) .header-tool-button {");
   assert.ok(mobileOverride > desktopGlassOverride);
   assert.match(css.slice(mobileOverride), /\.site-header:not\(\.compact\) \.header-tool-button,[\s\S]*font-size: 0/);

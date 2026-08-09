@@ -137,10 +137,17 @@ test("settings component is internally localized, responsive, and exposes access
   assert.match(component, /role="alert"/);
   assert.match(component, /profile-setting-row/);
   assert.match(component, /settings-toggle/);
+  assert.match(component, /function SettingsPicker/);
+  assert.match(component, /settings-picker-trigger/);
+  assert.match(component, /settings-choice-grid settings-theme-grid/);
+  assert.match(component, /settings-theme-preview-/);
+  assert.match(component, /SlidingSegmentedControl/);
   assert.match(styles, /\.hub-tabs button[^}]*min-width:\s*max-content[^}]*white-space:\s*nowrap/s);
   assert.match(styles, /\.profile-setting-row[^}]*grid-template-columns:\s*minmax\(180px[^}]*minmax\(240px/s);
   assert.match(styles, /@media \(max-width:\s*720px\)[\s\S]*\.profile-setting-row[^}]*grid-template-columns:\s*1fr/);
   assert.match(styles, /\.profile-settings select[^}]*width:\s*100%[^}]*min-width:\s*0/s);
+  assert.match(styles, /\.settings-picker-menu[^}]*backdrop-filter:\s*saturate\(185%\) blur\(30px\)/s);
+  assert.match(styles, /\.settings-choice-grid[^}]*border:\s*1px solid var\(--glass-line\)/s);
   assert.match(hub, /data-tab="settings"/);
   assert.match(hub, /onOpenPlan=\{\(\) => setTab\("plan"\)\}/);
   assert.match(client, /Authorization: `Bearer \$\{token\}`/);

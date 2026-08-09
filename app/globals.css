@@ -3698,3 +3698,322 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
 @media (prefers-reduced-motion: reduce) {
   .document-composer, .attachment-button, .composer-submit, .composer-attachment-remove { transition-duration: 1ms; }
 }
+
+/* Account preferences share the same green-and-white Liquid Glass language as
+   the rest of WhatNow. Native menus are replaced by accessible glass pickers
+   and related choices use the same sliding selection surface. */
+.profile-settings { max-width: 940px; }
+.profile-settings > header {
+  position: relative;
+  padding: 18px 20px;
+  overflow: hidden;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface) 88%, #fff), color-mix(in srgb, var(--accent-soft) 38%, var(--surface)));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 74%), 0 14px 34px rgb(14 69 58 / 7%);
+}
+.profile-settings > header::after {
+  position: absolute;
+  top: -34px;
+  right: -24px;
+  width: 118px;
+  height: 118px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-soft) 38%, transparent);
+  content: "";
+  pointer-events: none;
+}
+.profile-settings > header h3,
+.profile-settings > header p { position: relative; z-index: 1; }
+.profile-settings fieldset {
+  position: relative;
+  margin-top: 18px;
+  padding: 15px 18px 8px;
+  overflow: visible;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--surface) 88%, #fff), color-mix(in srgb, var(--accent-soft) 18%, var(--surface)));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 72%), 0 14px 34px rgb(14 69 58 / 7%);
+  backdrop-filter: saturate(155%) blur(18px);
+  -webkit-backdrop-filter: saturate(155%) blur(18px);
+}
+.profile-settings fieldset::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(110deg, rgb(255 255 255 / 22%), transparent 32%, transparent 72%, color-mix(in srgb, var(--accent) 5%, transparent));
+  content: "";
+  pointer-events: none;
+}
+.profile-settings legend {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 9px;
+  margin-left: -4px;
+  padding: 4px 12px 4px 5px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: color-mix(in srgb, var(--glass-strong) 94%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 78%), 0 7px 18px rgb(12 83 70 / 8%);
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: .015em;
+  backdrop-filter: saturate(170%) blur(18px);
+  -webkit-backdrop-filter: saturate(170%) blur(18px);
+}
+.settings-section-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 88%, #44d7c0), var(--accent-dark));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 38%), 0 5px 13px rgb(8 105 89 / 18%);
+  font-family: Georgia, serif;
+  font-size: 13px;
+  line-height: 1;
+}
+.profile-setting-row {
+  grid-template-columns: minmax(190px, .72fr) minmax(300px, 1.28fr);
+  gap: 22px;
+  padding: 14px 0;
+}
+.profile-setting-row + .profile-setting-row,
+.profile-setting-row + .profile-settings-check { border-color: color-mix(in srgb, var(--border) 58%, transparent); }
+.profile-settings label,
+.settings-row-label { min-width: 0; color: var(--foreground); font-weight: 760; line-height: 1.35; }
+
+.settings-picker { position: relative; min-width: 0; }
+.settings-picker-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 72%), 0 8px 21px rgb(14 69 58 / 6%);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: saturate(155%) blur(14px);
+  -webkit-backdrop-filter: saturate(155%) blur(14px);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.settings-picker-trigger:hover,
+.settings-picker.is-open .settings-picker-trigger {
+  border-color: color-mix(in srgb, var(--accent) 54%, var(--glass-line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent), inset 0 1px 0 rgb(255 255 255 / 78%), 0 11px 25px rgb(14 89 75 / 9%);
+  transform: translateY(-1px);
+}
+.settings-picker-trigger:focus-visible,
+.settings-picker-menu button:focus-visible,
+.settings-choice-grid button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); outline-offset: 2px; }
+.settings-picker-badge {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: 12px;
+  color: var(--accent-dark);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-soft) 82%, #fff), color-mix(in srgb, var(--surface) 88%, transparent));
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .055em;
+}
+.settings-picker-copy { min-width: 0; display: grid; gap: 1px; }
+.settings-picker-copy strong,
+.settings-picker-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-picker-copy strong { font-size: 14px; }
+.settings-picker-copy small { color: var(--muted); font-size: 11px; font-weight: 600; }
+.settings-picker-chevron { color: var(--accent-dark); font-size: 20px; line-height: 1; text-align: center; transition: transform .18s ease; }
+.settings-picker.is-open .settings-picker-chevron { transform: rotate(180deg); }
+.settings-picker-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  max-height: 292px;
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--glass-line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--glass-strong) 96%, transparent);
+  box-shadow: var(--glass-shadow-raised);
+  scrollbar-width: none;
+  backdrop-filter: saturate(185%) blur(30px);
+  -webkit-backdrop-filter: saturate(185%) blur(30px);
+  animation: liquid-pop .25s var(--liquid-ease) both;
+}
+.settings-picker-menu::-webkit-scrollbar { display: none; }
+.settings-picker-menu button {
+  min-width: 0;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--foreground);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-picker-menu button:hover { border-color: var(--glass-line); background: color-mix(in srgb, var(--accent-soft) 38%, var(--surface)); }
+.settings-picker-menu button.selected {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--glass-line));
+  background: color-mix(in srgb, var(--accent-soft) 68%, var(--surface));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 58%);
+}
+.settings-picker-check { color: var(--accent-dark); font-size: 15px; font-weight: 900; text-align: center; }
+
+.settings-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid var(--glass-line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 68%), 0 8px 21px rgb(14 69 58 / 6%);
+  backdrop-filter: saturate(150%) blur(14px);
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+}
+.settings-choice-grid-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.settings-choice-grid > .sliding-segment-indicator {
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--glass-line));
+  border-radius: 13px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 92%, #fff), color-mix(in srgb, var(--accent-soft) 40%, var(--surface)));
+  box-shadow: 0 8px 18px rgb(14 69 58 / 10%), inset 0 1px 0 rgb(255 255 255 / 82%);
+}
+.settings-choice-grid > button {
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.settings-choice-grid > button.active { color: var(--accent-dark); }
+.settings-theme-preview {
+  width: 30px;
+  height: 21px;
+  flex: 0 0 30px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, #fff);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 55%);
+}
+.settings-theme-preview-system { background: linear-gradient(125deg, #f7fbfa 0 49%, #16322d 51% 100%); }
+.settings-theme-preview-light { background: linear-gradient(145deg, #fff, #dcf2ed); }
+.settings-theme-preview-dark { background: linear-gradient(145deg, #284840, #10241f); }
+.settings-type-sample { color: var(--accent-dark); font-family: Georgia, serif; font-size: 15px; font-weight: 800; }
+.settings-type-sample.is-large { font-size: 20px; }
+.settings-density-preview { width: 28px; display: grid; gap: 4px; }
+.settings-density-preview i { display: block; height: 3px; border-radius: 999px; background: var(--accent); }
+.settings-density-preview.compact { gap: 2px; }
+
+.profile-settings-check {
+  min-height: 58px;
+  margin: 7px 0 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 64%);
+}
+.profile-model-choice {
+  border-color: var(--glass-line);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 66%), 0 8px 21px rgb(14 69 58 / 5%);
+  backdrop-filter: saturate(150%) blur(12px);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
+}
+.profile-model-choice.selected {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 90%, #fff), color-mix(in srgb, var(--accent-soft) 68%, var(--surface)));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 78%), 0 12px 28px rgb(12 108 92 / 11%);
+}
+.profile-settings-status { position: sticky; bottom: 0; z-index: 20; pointer-events: none; }
+.profile-settings-status p {
+  width: max-content;
+  max-width: 100%;
+  margin: 10px auto 0;
+  padding: 8px 13px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+@media (max-width: 720px) {
+  .profile-settings > header { padding: 15px 16px; border-radius: 19px; }
+  .profile-settings > header h3 { font-size: 24px; }
+  .profile-settings > header p { margin-top: 3px; font-size: 13px; line-height: 1.4; }
+  .profile-settings fieldset { margin-top: 15px; padding: 12px 12px 6px; border-radius: 20px; }
+  .profile-settings legend { min-height: 36px; padding-right: 11px; }
+  .settings-section-icon { width: 26px; height: 26px; flex-basis: 26px; }
+  .profile-setting-row { grid-template-columns: 1fr; gap: 8px; padding: 12px 0; }
+  .settings-picker-trigger { min-height: 54px; border-radius: 15px; }
+  .settings-picker-menu {
+    position: fixed;
+    z-index: 240;
+    top: auto;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 8px;
+    max-height: min(64dvh, 520px);
+    border-radius: 24px;
+    background: var(--surface);
+  }
+  .settings-choice-grid { border-radius: 16px; }
+  .settings-choice-grid > button { min-height: 50px; padding-inline: 6px; }
+  .settings-theme-grid > button { flex-direction: column; gap: 4px; }
+  .profile-settings-check { margin-bottom: 8px; }
+}
+
+@media (max-width: 430px) {
+  .settings-choice-grid > button { font-size: 11px; }
+  .settings-theme-preview { width: 27px; height: 18px; flex-basis: 27px; }
+  .settings-picker-copy strong { font-size: 13px; }
+  .settings-picker-copy small { font-size: 10px; }
+  .profile-model-picker { gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-picker-trigger, .settings-picker-chevron { transition-duration: 1ms; }
+  .settings-picker-menu { animation: none; }
+}

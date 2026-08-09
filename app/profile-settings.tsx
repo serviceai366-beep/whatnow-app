@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   profileReminderMinutes,
   type ProfileDefaultModel,
@@ -15,6 +15,7 @@ import {
 } from "./profile-types";
 import type { SupportedLanguage } from "./analysis-schema";
 import { interfaceLanguageOptions, responseLanguageOptions } from "./language-options";
+import { SlidingSegmentedControl } from "./sliding-segmented-control";
 
 type ProfileSettingsProps = {
   locale: ProfileLanguage;
@@ -153,15 +154,63 @@ const modelDescriptions: Record<ProfileLanguage, Record<ProfileDefaultModel, str
   },
 };
 
-const languageLabels: Record<ProfileLanguage, string> = Object.fromEntries(
-  interfaceLanguageOptions.map((option) => [option.code, option.nativeName]),
-) as Record<ProfileLanguage, string>;
-
 const models: Array<{ value: ProfileDefaultModel; label: string }> = [
   { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
   { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
   { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
 ];
+
+type PickerOption<T extends string | number> = {
+  value: T;
+  label: string;
+  detail?: string;
+  badge?: string;
+};
+
+function SettingsPicker<T extends string | number>({ id, value, options, onChange }: {
+  id: string;
+  value: T;
+  options: readonly PickerOption<T>[];
+  onChange: (value: T) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+  const selectedDetail = selected?.detail && selected.detail !== selected.label ? selected.detail : null;
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeWithEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeWithEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeWithEscape);
+    };
+  }, [open]);
+
+  return <div className={`settings-picker${open ? " is-open" : ""}`} ref={rootRef}>
+    <button id={id} className="settings-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded={open}
+      aria-controls={`${id}-options`} onClick={() => setOpen((current) => !current)}>
+      {selected?.badge && <span className="settings-picker-badge" aria-hidden="true">{selected.badge}</span>}
+      <span className="settings-picker-copy"><strong>{selected?.label}</strong>{selectedDetail && <small>{selectedDetail}</small>}</span>
+      <span className="settings-picker-chevron" aria-hidden="true">⌄</span>
+    </button>
+    {open && <div id={`${id}-options`} className="settings-picker-menu" role="listbox" aria-labelledby={id}>
+      {options.map((option) => <button key={String(option.value)} type="button" role="option" aria-selected={option.value === value}
+        className={option.value === value ? "selected" : ""} onClick={() => { setOpen(false); onChange(option.value); }}>
+        {option.badge && <span className="settings-picker-badge" aria-hidden="true">{option.badge}</span>}
+        <span className="settings-picker-copy"><strong>{option.label}</strong>{option.detail && option.detail !== option.label && <small>{option.detail}</small>}</span>
+        <span className="settings-picker-check" aria-hidden="true">{option.value === value ? "✓" : ""}</span>
+      </button>)}
+    </div>}
+  </div>;
+}
 
 export function ProfileSettings({ locale, preferences, modelSelectionAvailable, onChange, onOpenPlan, disabled = false }: ProfileSettingsProps) {
   const t = copy[locale];
@@ -188,89 +237,112 @@ export function ProfileSettings({ locale, preferences, modelSelectionAvailable, 
   };
 
   const reminderLabel = (minutes: number) => minutes === 60 ? t.hour : minutes === 1_440 ? t.day : minutes === 10_080 ? t.week : t.month;
+  const interfaceOptions: PickerOption<ProfileLanguage>[] = interfaceLanguageOptions.map((option) => ({
+    value: option.code,
+    label: option.nativeName,
+    detail: option.englishName,
+    badge: option.code.toUpperCase(),
+  }));
+  const analysisOptions: PickerOption<SupportedLanguage>[] = responseLanguageOptions.map((option) => ({
+    value: option.code,
+    label: option.nativeName,
+    detail: option.englishName,
+    badge: option.code.toUpperCase(),
+  }));
+  const reminderOptions: PickerOption<UserProfilePreferences["defaultReminderMinutes"]>[] = profileReminderMinutes.map((minutes) => ({
+    value: minutes,
+    label: reminderLabel(minutes),
+    badge: "@",
+  }));
 
   return (
     <section className="profile-settings" aria-labelledby={`${id}-title`} aria-busy={saving}>
       <header><h3 id={`${id}-title`}>{t.title}</h3><p>{t.intro}</p></header>
 
       <fieldset className="settings-card settings-card-languages" disabled={locked}>
-        <legend>{t.language}</legend>
+        <legend><span className="settings-section-icon" aria-hidden="true">A</span><span>{t.language}</span></legend>
         <div className="profile-setting-row">
           <label htmlFor={`${id}-ui-language`}>{t.interfaceLanguage}</label>
-          <select id={`${id}-ui-language`} value={preferences.uiLanguage}
-            onChange={(event) => void apply("uiLanguage", event.target.value as ProfileLanguage)}>
-            {Object.entries(languageLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
+          <SettingsPicker id={`${id}-ui-language`} value={preferences.uiLanguage} options={interfaceOptions}
+            onChange={(value) => void apply("uiLanguage", value)} />
         </div>
         <div className="profile-setting-row">
           <label htmlFor={`${id}-analysis-language`}>{t.analysisLanguage}</label>
-          <select id={`${id}-analysis-language`} value={preferences.analysisLanguage}
-            onChange={(event) => void apply("analysisLanguage", event.target.value as SupportedLanguage)}>
-            {responseLanguageOptions.map((option) => <option key={option.code} value={option.code}>{option.nativeName} — {option.englishName}</option>)}
-          </select>
+          <SettingsPicker id={`${id}-analysis-language`} value={preferences.analysisLanguage} options={analysisOptions}
+            onChange={(value) => void apply("analysisLanguage", value)} />
         </div>
       </fieldset>
 
       <fieldset className="settings-card settings-card-appearance" disabled={locked}>
-        <legend>{t.appearance}</legend>
+        <legend><span className="settings-section-icon" aria-hidden="true">◐</span><span>{t.appearance}</span></legend>
         <div className="profile-setting-row">
-          <label htmlFor={`${id}-theme`}>{t.theme}</label>
-          <select id={`${id}-theme`} value={preferences.theme}
-            onChange={(event) => void apply("theme", event.target.value as ProfileTheme)}>
-            <option value="system">{t.system}</option><option value="light">{t.light}</option><option value="dark">{t.dark}</option>
-          </select>
+          <span className="settings-row-label">{t.theme}</span>
+          <SlidingSegmentedControl className="settings-choice-grid settings-theme-grid" activeKey={preferences.theme} ariaLabel={t.theme}>
+            {(["system", "light", "dark"] as const).map((value) => <button key={value} type="button" data-segment-active={preferences.theme === value}
+              className={preferences.theme === value ? "active" : ""} aria-pressed={preferences.theme === value}
+              onClick={() => void apply("theme", value as ProfileTheme)}>
+              <span className={`settings-theme-preview settings-theme-preview-${value}`} aria-hidden="true" />
+              <span>{value === "system" ? t.system : value === "light" ? t.light : t.dark}</span>
+            </button>)}
+          </SlidingSegmentedControl>
         </div>
         <div className="profile-setting-row">
-          <label htmlFor={`${id}-font-scale`}>{t.fontScale}</label>
-          <select id={`${id}-font-scale`} value={preferences.fontScale}
-            onChange={(event) => void apply("fontScale", event.target.value as ProfileFontScale)}>
-            <option value="normal">{t.normal}</option><option value="large">{t.large}</option>
-          </select>
+          <span className="settings-row-label">{t.fontScale}</span>
+          <SlidingSegmentedControl className="settings-choice-grid settings-choice-grid-two" activeKey={preferences.fontScale} ariaLabel={t.fontScale}>
+            <button type="button" data-segment-active={preferences.fontScale === "normal"} className={preferences.fontScale === "normal" ? "active" : ""}
+              aria-pressed={preferences.fontScale === "normal"} onClick={() => void apply("fontScale", "normal" as ProfileFontScale)}><span className="settings-type-sample">Aa</span><span>{t.normal}</span></button>
+            <button type="button" data-segment-active={preferences.fontScale === "large"} className={preferences.fontScale === "large" ? "active" : ""}
+              aria-pressed={preferences.fontScale === "large"} onClick={() => void apply("fontScale", "large" as ProfileFontScale)}><span className="settings-type-sample is-large">Aa</span><span>{t.large}</span></button>
+          </SlidingSegmentedControl>
         </div>
         <div className="profile-setting-row">
-          <label htmlFor={`${id}-density`}>{t.density}</label>
-          <select id={`${id}-density`} value={preferences.density}
-            onChange={(event) => void apply("density", event.target.value as ProfileDensity)}>
-            <option value="comfortable">{t.comfortable}</option><option value="compact">{t.compact}</option>
-          </select>
+          <span className="settings-row-label">{t.density}</span>
+          <SlidingSegmentedControl className="settings-choice-grid settings-choice-grid-two" activeKey={preferences.density} ariaLabel={t.density}>
+            <button type="button" data-segment-active={preferences.density === "comfortable"} className={preferences.density === "comfortable" ? "active" : ""}
+              aria-pressed={preferences.density === "comfortable"} onClick={() => void apply("density", "comfortable" as ProfileDensity)}><span className="settings-density-preview comfortable" aria-hidden="true"><i /><i /></span><span>{t.comfortable}</span></button>
+            <button type="button" data-segment-active={preferences.density === "compact"} className={preferences.density === "compact" ? "active" : ""}
+              aria-pressed={preferences.density === "compact"} onClick={() => void apply("density", "compact" as ProfileDensity)}><span className="settings-density-preview compact" aria-hidden="true"><i /><i /></span><span>{t.compact}</span></button>
+          </SlidingSegmentedControl>
         </div>
         <label className="profile-settings-check"><input type="checkbox" checked={preferences.reducedMotion}
           onChange={(event) => void apply("reducedMotion", event.target.checked)} /><span className="settings-toggle" aria-hidden="true"><span /></span><span>{t.reducedMotion}</span></label>
       </fieldset>
 
       <fieldset className="settings-card settings-card-planning" disabled={locked}>
-        <legend>{t.planning}</legend>
+        <legend><span className="settings-section-icon" aria-hidden="true">◷</span><span>{t.planning}</span></legend>
         <div className="profile-setting-row">
-          <label htmlFor={`${id}-week-start`}>{t.weekStartsOn}</label>
-          <select id={`${id}-week-start`} value={preferences.weekStartsOn}
-            onChange={(event) => void apply("weekStartsOn", event.target.value as ProfileWeekStartsOn)}>
-            <option value="monday">{t.monday}</option><option value="sunday">{t.sunday}</option>
-          </select>
+          <span className="settings-row-label">{t.weekStartsOn}</span>
+          <SlidingSegmentedControl className="settings-choice-grid settings-choice-grid-two" activeKey={preferences.weekStartsOn} ariaLabel={t.weekStartsOn}>
+            <button type="button" data-segment-active={preferences.weekStartsOn === "monday"} className={preferences.weekStartsOn === "monday" ? "active" : ""}
+              aria-pressed={preferences.weekStartsOn === "monday"} onClick={() => void apply("weekStartsOn", "monday" as ProfileWeekStartsOn)}>{t.monday}</button>
+            <button type="button" data-segment-active={preferences.weekStartsOn === "sunday"} className={preferences.weekStartsOn === "sunday" ? "active" : ""}
+              aria-pressed={preferences.weekStartsOn === "sunday"} onClick={() => void apply("weekStartsOn", "sunday" as ProfileWeekStartsOn)}>{t.sunday}</button>
+          </SlidingSegmentedControl>
         </div>
         <div className="profile-setting-row">
-          <label htmlFor={`${id}-time-format`}>{t.timeFormat}</label>
-          <select id={`${id}-time-format`} value={preferences.timeFormat}
-            onChange={(event) => void apply("timeFormat", event.target.value as ProfileTimeFormat)}>
-            <option value="12">12</option><option value="24">24</option>
-          </select>
+          <span className="settings-row-label">{t.timeFormat}</span>
+          <SlidingSegmentedControl className="settings-choice-grid settings-choice-grid-two" activeKey={preferences.timeFormat} ariaLabel={t.timeFormat}>
+            <button type="button" data-segment-active={preferences.timeFormat === "12"} className={preferences.timeFormat === "12" ? "active" : ""}
+              aria-pressed={preferences.timeFormat === "12"} onClick={() => void apply("timeFormat", "12" as ProfileTimeFormat)}>12 h</button>
+            <button type="button" data-segment-active={preferences.timeFormat === "24"} className={preferences.timeFormat === "24" ? "active" : ""}
+              aria-pressed={preferences.timeFormat === "24"} onClick={() => void apply("timeFormat", "24" as ProfileTimeFormat)}>24 h</button>
+          </SlidingSegmentedControl>
         </div>
         <div className="profile-setting-row">
           <label htmlFor={`${id}-default-reminder`}>{t.defaultReminder}</label>
-          <select id={`${id}-default-reminder`} value={preferences.defaultReminderMinutes}
-            onChange={(event) => void apply("defaultReminderMinutes", Number(event.target.value) as UserProfilePreferences["defaultReminderMinutes"])}>
-            {profileReminderMinutes.map((minutes) => <option value={minutes} key={minutes}>{reminderLabel(minutes)}</option>)}
-          </select>
+          <SettingsPicker id={`${id}-default-reminder`} value={preferences.defaultReminderMinutes} options={reminderOptions}
+            onChange={(value) => void apply("defaultReminderMinutes", value)} />
         </div>
       </fieldset>
 
       <fieldset className="settings-card settings-card-files" disabled={locked}>
-        <legend>{t.files}</legend>
+        <legend><span className="settings-section-icon" aria-hidden="true">▣</span><span>{t.files}</span></legend>
         <label className="profile-settings-check"><input type="checkbox" checked={preferences.autoSaveFiles}
           onChange={(event) => void apply("autoSaveFiles", event.target.checked)} /><span className="settings-toggle" aria-hidden="true"><span /></span><span>{t.autoSaveFiles}</span></label>
       </fieldset>
 
       <fieldset className="settings-card settings-card-model" disabled={locked}>
-        <legend>{modelT.title}</legend>
+        <legend><span className="settings-section-icon" aria-hidden="true">✦</span><span>{modelT.title}</span></legend>
         <div className="profile-model-picker" role="group" aria-label={modelT.label}>
           {models.map((model) => {
             const isProOnly = model.value !== "gpt-5.6-luna";
