@@ -26,7 +26,7 @@ test("analysis is gated by a verified account and sends the fresh bearer token",
 
 test("successful analyses are saved automatically and the UI offers a retry on failure", async () => {
   const [page] = await files;
-  assert.match(page, /void persistAnalysisHistory\(payload\.result, inputMode, analysisLanguage, accessToken\)/);
+  assert.match(page, /void persistAnalysisHistory\(payload\.result, requestMode, analysisLanguage, accessToken\)/);
   assert.match(page, /Automatically saved to history/);
   assert.match(page, /Retry saving/);
 });
@@ -76,12 +76,13 @@ test("profile offers themes and displays live server-backed quota counters", asy
   assert.match(css, /:root\[data-theme="dark"\]/);
 });
 
-test("rich text files use a safe non-iframe preview", async () => {
+test("attached documents use a compact safe non-iframe preview", async () => {
   const [page] = await files;
   assert.match(page, /\.txt,.rtf,.docx,.odt/);
-  assert.match(page, /document\.kind === "pdf" \? \(/);
-  assert.match(page, /document-preview-message/);
-  assert.match(page, /t\.officePreviewNote/);
+  assert.match(page, /className="composer-attachment"/);
+  assert.match(page, /className="composer-attachment-thumb"/);
+  assert.match(page, /className="composer-attachment-type"/);
+  assert.doesNotMatch(page, /<iframe/);
 });
 
 test("adaptive CAPTCHA and every modal stay inside small dynamic viewports", async () => {
@@ -123,7 +124,7 @@ test("translated header labels never collapse into individual letters", async ()
 test("mobile header controls hide overflowing labels after desktop overrides", async () => {
   const [, , css] = await files;
   const mobileOverride = css.lastIndexOf("@media (max-width: 720px)");
-  const desktopGlassOverride = css.lastIndexOf("font-size: 13px;");
+  const desktopGlassOverride = css.lastIndexOf(".site-header:not(.compact) .header-tool-button {");
   assert.ok(mobileOverride > desktopGlassOverride);
   assert.match(css.slice(mobileOverride), /\.site-header:not\(\.compact\) \.header-tool-button,[\s\S]*font-size: 0/);
   assert.match(css.slice(mobileOverride), /overflow: hidden/);

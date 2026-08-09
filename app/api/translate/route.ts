@@ -169,6 +169,10 @@ export async function POST(request: Request): Promise<Response> {
   if (variantModeValue !== "initial" && variantModeValue !== "additional" && variantModeValue !== "more") return errorResponse("invalid_request", "Не указан корректный вариант перевода.", 400);
   const targetLanguage = targetValue as SupportedLanguage;
   const variantMode = variantModeValue as TranslationVariantMode;
+  const promptValue = formData.get("prompt");
+  if (promptValue !== null && typeof promptValue !== "string") return errorResponse("invalid_request", "Дополнительная инструкция должна быть текстом.", 400);
+  const filePrompt = typeof promptValue === "string" ? promptValue.trim() : "";
+  if (filePrompt.length > MAX_TEXT_LENGTH) return errorResponse("invalid_request", "Дополнительная инструкция превышает 50 000 символов.", 413);
   const content: Array<Record<string, unknown>> = [];
   let costKind: AnalysisCostKind;
 
@@ -206,6 +210,12 @@ export async function POST(request: Request): Promise<Response> {
       content.push({ type: "input_text", text: "Translate all text in this uploaded document. Preserve its structure where possible." });
       content.push({ type: "input_file", filename: safeFilename, file_data: `data:${mimeType};base64,${bytesToBase64(bytes)}` });
       costKind = "document";
+    }
+    if (filePrompt) {
+      content.push({
+        type: "input_text",
+        text: `The user added this optional translation preference or context. Apply it only where it does not conflict with faithful translation, safety rules, or the required output schema. Do not translate this instruction as part of the source document.\n\n<user_instruction>\n${filePrompt}\n</user_instruction>`,
+      });
     }
   }
 

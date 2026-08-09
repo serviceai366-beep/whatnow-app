@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChangeEvent, ClipboardEvent, DragEvent, MouseEvent as ReactMouseEvent } from "react";
+import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
   formatFileSize,
   MAX_TEXT_LENGTH,
@@ -119,7 +119,7 @@ export default function Home() {
   const [analysisLanguage, setAnalysisLanguage] = useState<SupportedLanguage>("en");
   const [preferences, setPreferences] = useState<UserProfilePreferences>({ ...DEFAULT_PROFILE_PREFERENCES });
   const [modelSelectionAvailable, setModelSelectionAvailable] = useState(false);
-  const [inputMode, setInputMode] = useState<"file" | "text">("file");
+  const [inputMode, setInputMode] = useState<"file" | "text">("text");
   const [showResult, setShowResult] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -363,6 +363,7 @@ export default function Home() {
     }
 
     setSelectedDocument({ file, kind: validation.kind, previewUrl: URL.createObjectURL(file) });
+    setInputMode("file");
     setFileError(null);
   };
 
@@ -392,7 +393,6 @@ export default function Home() {
       `screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`,
       { type: pastedImage.type, lastModified: Date.now() },
     );
-    setInputMode("file");
     setTextError(null);
     selectDocument(file);
   };
@@ -403,7 +403,14 @@ export default function Home() {
     setAnalysis(null);
     setAnalysisError(null);
     setShowResult(false);
+    setInputMode("text");
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleComposerKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || !event.ctrlKey) return;
+    event.preventDefault();
+    void analyzeDocument();
   };
 
   const persistAnalysisHistory = async (
@@ -443,12 +450,8 @@ export default function Home() {
       setAuthOpen(true);
       return;
     }
-    if (inputMode === "file" && !selectedDocument) {
-      setFileError(t.fileMissing);
-      return;
-    }
-
-    if (inputMode === "text" && !documentText.trim()) {
+    const requestMode: "file" | "text" = selectedDocument ? "file" : "text";
+    if (requestMode === "text" && !documentText.trim()) {
       setTextError(t.textMissing);
       return;
     }
@@ -457,8 +460,8 @@ export default function Home() {
     setAnalysisError(null);
     setLimitNotice(null);
 
-    const fingerprint = inputMode === "file"
-      ? `${analysisLanguage}:file:${selectedDocument!.file.name}:${selectedDocument!.file.size}:${selectedDocument!.file.lastModified}`
+    const fingerprint = requestMode === "file"
+      ? `${analysisLanguage}:file:${selectedDocument!.file.name}:${selectedDocument!.file.size}:${selectedDocument!.file.lastModified}:${fingerprintText(documentText.trim())}`
       : `${analysisLanguage}:text:${fingerprintText(documentText.trim())}`;
 
     if (lastAnalysisRef.current?.fingerprint === fingerprint) {
@@ -470,10 +473,14 @@ export default function Home() {
 
     const formData = new FormData();
     formData.set("language", analysisLanguage);
-    formData.set("mode", inputMode);
+    formData.set("mode", requestMode);
     if (challengeToken) formData.set("turnstileToken", challengeToken);
-    if (inputMode === "file") formData.set("file", selectedDocument!.file);
-    else formData.set("text", documentText.trim());
+    if (requestMode === "file") {
+      formData.set("file", selectedDocument!.file);
+      if (documentText.trim()) formData.set("prompt", documentText.trim());
+    } else {
+      formData.set("text", documentText.trim());
+    }
 
     const controller = new AbortController();
     // Keep the browser aligned with the server-side ten-minute ceiling.
@@ -531,11 +538,12 @@ export default function Home() {
 
       lastAnalysisRef.current = { fingerprint, result: payload.result };
       setAnalysis(payload.result);
+      setInputMode(requestMode);
       setSavedHistoryId(null);
       setShowResult(true);
       scrollToResult();
-      void persistAnalysisHistory(payload.result, inputMode, analysisLanguage, accessToken);
-      if (inputMode === "file" && selectedDocument && preferences.autoSaveFiles) {
+      void persistAnalysisHistory(payload.result, requestMode, analysisLanguage, accessToken);
+      if (requestMode === "file" && selectedDocument && preferences.autoSaveFiles) {
         const file = selectedDocument.file;
         void uploadStoredFile(file).then((savedFile) => {
           setFileSaveNotice({ kind: "success", text: savedFile.deduplicated ? w.fileDuplicate : w.fileSaved });
@@ -726,118 +734,75 @@ export default function Home() {
             </div>
           </fieldset>
 
-          <SlidingSegmentedControl className="source-tabs" activeKey={inputMode} ariaLabel={t.sourceMethod}>
-            <button
-              data-segment-active={inputMode === "file"}
-              className={inputMode === "file" ? "active" : ""}
-              onClick={() => {
-                setInputMode("file");
+          <input
+            ref={fileInputRef}
+            className="visually-hidden"
+            data-testid="document-file-input"
+            aria-label={t.chooseDocument}
+            tabIndex={-1}
+            type="file"
+            accept="application/pdf,image/jpeg,image/png,image/webp,text/plain,application/rtf,text/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,.pdf,.jpg,.jpeg,.png,.webp,.txt,.rtf,.docx,.odt"
+            onChange={handleFileChange}
+            disabled={isAnalyzing}
+          />
+          <div
+            className={`document-composer${selectedDocument ? " has-attachment" : ""}${isDragging ? " is-dragging" : ""}${fileError || textError ? " has-error" : ""}`}
+            onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsDragging(false);
+            }}
+            onDrop={handleDrop}
+          >
+            {selectedDocument && <FilePreview document={selectedDocument} onRemove={clearSelectedDocument} t={t} locale={language} />}
+            <label className="visually-hidden" htmlFor="document-text">{selectedDocument ? t.filePromptLabel : t.textLabel}</label>
+            <textarea
+              id="document-text"
+              value={documentText}
+              maxLength={MAX_TEXT_LENGTH}
+              placeholder={selectedDocument ? t.filePromptPlaceholder : t.textPlaceholder}
+              aria-describedby={`composer-hint text-counter${textError ? " text-error" : ""}`}
+              aria-invalid={Boolean(textError)}
+              aria-keyshortcuts="Control+Enter"
+              disabled={isAnalyzing}
+              onChange={(event) => {
+                setDocumentText(event.target.value);
                 setTextError(null);
+                setAnalysis(null);
+                setAnalysisError(null);
                 setShowResult(false);
               }}
-              type="button"
-              role="tab"
-              aria-selected={inputMode === "file"}
-              disabled={isAnalyzing}
-            >
-              {t.uploadFile}
-            </button>
-            <button
-              data-segment-active={inputMode === "text"}
-              className={inputMode === "text" ? "active" : ""}
-              onClick={() => {
-                setInputMode("text");
-                setFileError(null);
-                setShowResult(false);
-              }}
-              type="button"
-              role="tab"
-              aria-selected={inputMode === "text"}
-              disabled={isAnalyzing}
-            >
-              {t.pasteText}
-            </button>
-          </SlidingSegmentedControl>
-
-          {inputMode === "file" ? (
-            <div role="tabpanel">
-              <input
-                ref={fileInputRef}
-                className="visually-hidden"
-                data-testid="document-file-input"
-                aria-label={t.chooseDocument}
-                tabIndex={-1}
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,image/webp,text/plain,application/rtf,text/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,.pdf,.jpg,.jpeg,.png,.webp,.txt,.rtf,.docx,.odt"
-                onChange={handleFileChange}
+              onKeyDown={handleComposerKeyDown}
+              onPaste={handleTextPaste}
+            />
+            <div className="document-composer-toolbar">
+              <button
+                className="attachment-button"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 disabled={isAnalyzing}
-              />
-              {selectedDocument ? (
-                <FilePreview document={selectedDocument} onRemove={clearSelectedDocument} t={t} locale={language} />
-              ) : (
-                <div
-                  className={`dropzone${isDragging ? " is-dragging" : ""}${fileError ? " has-error" : ""}`}
-                  onDragEnter={(event) => {
-                    event.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDragLeave={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsDragging(false);
-                  }}
-                  onDrop={handleDrop}
-                >
-                  <div className="document-icon" aria-hidden="true"><span>DOC</span></div>
-                  <strong>{isDragging ? t.releaseHere : t.dropHere}</strong>
-                  <p>{t.orChoose}</p>
-                  <div className="dropzone-actions">
-                    <button className="secondary-button" type="button" onClick={() => fileInputRef.current?.click()}>
-                      {t.chooseFile}
-                    </button>
-                  </div>
-                  <small>{t.allowedFiles}</small>
-                </div>
-              )}
-              {fileError && <p className="input-error" role="alert">{fileError}</p>}
+                aria-label={t.attachFile}
+                title={t.attachFile}
+              >
+                <span className="paperclip-icon" aria-hidden="true" />
+              </button>
+              <small id="composer-hint" className="composer-hint">{selectedDocument ? t.filePromptHint : t.composerHint}</small>
+              <small id="text-counter" className="composer-counter">{documentText.length.toLocaleString(localeTag(language))} / 50 000</small>
+              <button
+                className="composer-submit"
+                type="button"
+                onClick={() => void analyzeDocument()}
+                disabled={isAnalyzing || (!selectedDocument && !documentText.trim())}
+                aria-label={isAnalyzing ? t.analyzing : selectedDocument ? t.analyzeFile : t.analyzeText}
+                title={isAnalyzing ? t.analyzing : selectedDocument ? t.analyzeFile : t.analyzeText}
+              >
+                {isAnalyzing ? <span className="loading-spinner" aria-hidden="true" /> : <span aria-hidden="true">↑</span>}
+              </button>
             </div>
-          ) : (
-            <div className="text-panel" role="tabpanel">
-              <label htmlFor="document-text">{t.textLabel}</label>
-              <textarea
-                id="document-text"
-                value={documentText}
-                maxLength={MAX_TEXT_LENGTH}
-                placeholder={t.textPlaceholder}
-                aria-describedby={`text-help text-counter${textError ? " text-error" : ""}`}
-                aria-invalid={Boolean(textError)}
-                disabled={isAnalyzing}
-                onChange={(event) => {
-                  setDocumentText(event.target.value);
-                  setTextError(null);
-                  setAnalysis(null);
-                  setAnalysisError(null);
-                  setShowResult(false);
-                }}
-                onPaste={handleTextPaste}
-              />
-              <div className="text-meta">
-                <small id="text-help">{t.textPrivacy}</small>
-                <small id="text-counter">{documentText.length.toLocaleString(localeTag(language))} / 50 000</small>
-              </div>
-              <div className="text-input-actions">
-                <small className="clipboard-image-hint">{t.pasteScreenshotHint}</small>
-              </div>
-              {textError && <p className="input-error" id="text-error" role="alert">{textError}</p>}
-            </div>
-          )}
-
-          <button className="primary-button" type="button" onClick={() => void analyzeDocument()} disabled={isAnalyzing}>
-            {isAnalyzing
-              ? t.analyzing
-              : inputMode === "file"
-                ? t.analyzeFile
-                : t.analyzeText} {!isAnalyzing && <span aria-hidden="true">→</span>}
-          </button>
+            {isDragging && <div className="document-composer-drop" aria-hidden="true"><span className="paperclip-icon" />{t.releaseHere}</div>}
+          </div>
+          {fileError && <p className="input-error" role="alert">{fileError}</p>}
+          {textError && <p className="input-error" id="text-error" role="alert">{textError}</p>}
           {isAnalyzing && <AnalysisProgress t={t} />}
           {analysisError && <p className="input-error analysis-error" role="alert">{analysisError}</p>}
           <button className="privacy-shortcut" type="button" onClick={() => setInfoOpen(true)}><span aria-hidden="true">⌁</span>{w.privateHint}</button>
@@ -977,29 +942,19 @@ function FilePreview({
   locale: ProfileLanguage;
 }) {
   return (
-    <div className="file-preview" data-testid="file-preview">
-      <div className="file-preview-header">
-        <div className="file-summary">
-          <span className="file-type" aria-hidden="true">{document.kind === "pdf" ? "PDF" : document.kind === "image" ? "IMG" : document.file.name.split(".").pop()?.toUpperCase()}</span>
-          <div>
-            <strong>{document.file.name}</strong>
-            <p>{document.kind === "pdf" ? t.pdfDocument : document.kind === "image" ? t.imageDocument : document.kind === "text" ? t.textDocument : t.officeDocument} · {formatFileSize(document.file.size, locale)}</p>
-          </div>
-        </div>
-        <button type="button" className="remove-file" onClick={onRemove} aria-label={`${t.removeFileAria}: ${document.file.name}`}>{t.removeFile}</button>
-      </div>
-      <div className={`preview-frame ${document.kind}`}>
-        {document.kind === "image" ? (
-          // Blob URLs exist only in the browser and cannot use the server-side Next image loader.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={document.previewUrl} alt={`${t.previewFile}: ${document.file.name}`} />
-        ) : document.kind === "pdf" ? (
-          <iframe src={document.previewUrl} title={`${t.previewPdf}: ${document.file.name}`} />
-        ) : (
-          <div className="document-preview-message"><span aria-hidden="true">Aa</span><strong>{t.textFileReady}</strong><p>{t.officePreviewNote}</p></div>
-        )}
-      </div>
-      <p className="preview-note"><span aria-hidden="true">✓</span> {t.fileReady}</p>
+    <div className="composer-attachment" data-testid="file-preview">
+      {document.kind === "image" ? (
+        // Blob URLs exist only in the browser and cannot use the server-side Next image loader.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="composer-attachment-thumb" src={document.previewUrl} alt="" />
+      ) : (
+        <span className="composer-attachment-type" aria-hidden="true">{document.kind === "pdf" ? "PDF" : document.file.name.split(".").pop()?.toUpperCase()}</span>
+      )}
+      <span className="composer-attachment-copy">
+        <strong>{document.file.name}</strong>
+        <small>{document.kind === "pdf" ? t.pdfDocument : document.kind === "image" ? t.imageDocument : document.kind === "text" ? t.textDocument : t.officeDocument} · {formatFileSize(document.file.size, locale)}</small>
+      </span>
+      <button type="button" className="composer-attachment-remove" onClick={onRemove} aria-label={`${t.removeFileAria}: ${document.file.name}`} title={t.removeFile}>×</button>
     </div>
   );
 }

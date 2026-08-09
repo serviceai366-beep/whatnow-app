@@ -31,8 +31,9 @@ test("server-renders the WhatNow prototype", async () => {
   const html = await response.text();
   assert.match(html, /<title>WhatNow\? — know what to do next<\/title>/i);
   assert.doesNotMatch(html, /Don’t just translate the document/);
-  assert.match(html, /Analyze document/);
-  assert.match(html, /PDF, photo, TXT, RTF, DOCX, or ODT/);
+  assert.match(html, /Analyze text/);
+  assert.match(html, /Attach a file/);
+  assert.match(html, /Text, photo, or document · Ctrl\+Enter/);
   assert.match(html, /Private processing · Check important decisions/);
   assert.doesNotMatch(html, /How the document is handled/);
   assert.doesNotMatch(html, /does not replace a lawyer, doctor/);
@@ -72,8 +73,9 @@ test("keeps the home screen focused and moves explanatory content into the infor
   assert.match(page, /const handleTextPaste/);
   assert.match(page, /onPaste=\{handleTextPaste\}/);
   assert.match(page, /image\/jpeg/, "Clipboard screenshots should use the same validated image formats as uploads.");
-  assert.match(page, /setInputMode\("file"\)/, "A pasted screenshot should continue through the secure file-analysis flow.");
-  assert.match(page, /pasteScreenshotHint/);
+  assert.match(page, /selectDocument\(file\)/, "A pasted screenshot should continue through the secure file-analysis flow.");
+  assert.match(page, /className="attachment-button"/);
+  assert.match(page, /className={`document-composer/);
   assert.match(page, /className="info-panel"/);
   assert.doesNotMatch(page, /<section className="benefits"/);
   assert.doesNotMatch(page, /className="privacy-notice"/);

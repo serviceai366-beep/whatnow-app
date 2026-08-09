@@ -22,7 +22,7 @@ import { SlidingSegmentedControl } from "./sliding-segmented-control";
 
 type Copy = {
   title: string; target: string; sourceAuto: string; upload: string; paste: string; drop: string; release: string; orChoose: string;
-  choose: string; allowed: string; imagePreview: string; imagePreviewHint: string; remove: string; sourceLabel: string; sourcePlaceholder: string; translate: string;
+  choose: string; attach: string; composerAria: string; filePromptPlaceholder: string; attachedHint: string; allowed: string; imagePreview: string; imagePreviewHint: string; remove: string; sourceLabel: string; sourcePlaceholder: string; translate: string;
   translating: string; result: string; sourceLanguage: string; unknownSource: string; copy: string; copied: string;
   useUnderstand: string; useCreate: string; notes: string; uncertainties: string; signIn: string; legal: string;
   empty: string; invalid: string; failed: string; timeout: string; limit: string; auth: string; transcription: string;
@@ -36,12 +36,15 @@ type Copy = {
 
 const copy: Record<"en" | "ru" | "lv", Copy> = {
   en: {
+    attach: "Attach a photo or document", composerAria: "Source text and optional file", filePromptPlaceholder: "Add an optional instruction for this file…", attachedHint: "File attached · instruction is optional",
     title: "Translate a document", target: "Translate into", sourceAuto: "Detect language", upload: "Upload file", paste: "Paste text", drop: "Drop a photo or document here", release: "Release to add the photo or document", orChoose: "or choose a photo or document from your device", choose: "Choose photo or document", allowed: "PDF, JPG, PNG, WebP, TXT, RTF, DOCX, or ODT · up to 10 MB", imagePreview: "Photo ready for text recognition", imagePreviewHint: "Visible text will be read from this image and translated as text.", remove: "Remove file", sourceLabel: "Text to translate", sourcePlaceholder: "Paste the text you want to translate…", translate: "Translate", translating: "Translating…", result: "Translation", sourceLanguage: "Detected source language", unknownSource: "Unknown source language", copy: "Copy selected translation", copied: "Copied", useUnderstand: "Use in Understand", useCreate: "Use in Create & edit", notes: "Notes", uncertainties: "Unclear parts", signIn: "Sign in to translate documents.", legal: "Please accept the privacy terms in your account before translating.", empty: "Add a file or paste text first.", invalid: "This file cannot be used. Check its format and size.", failed: "The translation could not be completed. Try again.", timeout: "The translation took too long. Try again with a shorter document.", limit: "Your request limit has been reached. Try again after it resets.", auth: "Your session has expired. Sign in again.", transcription: "Pronunciation / transcription", noTranscription: "No short pronunciation guide was needed for this passage.", literal: "Literal", conversational: "Conversational", official: "Official", bold: "Bold", alternative: "Alternative", more: "Generate more variants", moreGenerating: "Generating variants…", moreLimit: "You already have the maximum five variants.", additionalPending: "Literal translation is ready. Generating conversational, official, and bold versions…", additionalReady: "All translation styles are ready.", additionalFailed: "The first translation is ready, but the other styles could not be generated.", additionalRetry: "Retry styles", askTitle: "Ask about this translation", askPlaceholder: "Ask about a word, nuance, or why this wording was chosen…", askSend: "Ask AI", asking: "Thinking…", you: "You", assistant: "AI", followupEmpty: "Ask a question to clarify the selected translation.", followupError: "The clarification could not be generated. Try again.", followupLimit: "Your request limit has been reached.", sourcePanel: "Source", outputPanel: "Result", chooseVariant: "Choose a version", pronunciationHint: "For long text, pronunciation is limited to useful words or the first sentence.", fastHint: "Shorter documents translate faster.", backTranslation: "Back translation", moreTools: "Tools and questions", history: "Translation history", historyEmpty: "No saved translations on this device yet.", historyLocal: "Stored only in this browser · latest 10", historyOpen: "Open", historyDelete: "Delete", pasteImageHint: "Tip: press Ctrl+V here to add a screenshot.",
   },
   ru: {
+    attach: "Прикрепить фото или документ", composerAria: "Исходный текст и дополнительный файл", filePromptPlaceholder: "Добавьте уточнение к файлу — необязательно…", attachedHint: "Файл прикреплён · уточнение необязательно",
     title: "Перевести документ", target: "Перевести на", sourceAuto: "Определить язык", upload: "Загрузить файл", paste: "Вставить текст", drop: "Перетащите фото или документ сюда", release: "Отпустите, чтобы добавить фото или документ", orChoose: "или выберите фото или документ на устройстве", choose: "Выбрать фото или документ", allowed: "PDF, JPG, PNG, WebP, TXT, RTF, DOCX или ODT · до 10 МБ", imagePreview: "Фото готово к распознаванию текста", imagePreviewHint: "Видимый текст будет прочитан на изображении и переведён в текстовом виде.", remove: "Удалить файл", sourceLabel: "Текст для перевода", sourcePlaceholder: "Вставьте текст, который нужно перевести…", translate: "Перевести", translating: "Переводим…", result: "Перевод", sourceLanguage: "Определённый исходный язык", unknownSource: "Исходный язык не определён", copy: "Скопировать выбранный перевод", copied: "Скопировано", useUnderstand: "Использовать в «Понять документ»", useCreate: "Использовать в «Создать и изменить»", notes: "Заметки", uncertainties: "Неясные места", signIn: "Войдите, чтобы переводить документы.", legal: "Перед переводом примите условия конфиденциальности в аккаунте.", empty: "Сначала добавьте файл или вставьте текст.", invalid: "Этот файл нельзя использовать. Проверьте формат и размер.", failed: "Не удалось выполнить перевод. Попробуйте ещё раз.", timeout: "Перевод занял слишком много времени. Попробуйте более короткий документ.", limit: "Лимит запросов исчерпан. Попробуйте после его обновления.", auth: "Сессия истекла. Войдите снова.", transcription: "Произношение / транскрипция", noTranscription: "Для этого фрагмента короткая транскрипция не понадобилась.", literal: "Дословный", conversational: "Разговорный", official: "Официальный", bold: "Дерзкий", alternative: "Альтернатива", more: "Ещё варианты", moreGenerating: "Создаём варианты…", moreLimit: "Уже доступны максимум пять вариантов.", additionalPending: "Дословный перевод уже готов. Создаём разговорный, официальный и дерзкий варианты…", additionalReady: "Все варианты перевода готовы.", additionalFailed: "Первый перевод готов, но остальные варианты создать не удалось.", additionalRetry: "Повторить варианты", askTitle: "Задать вопрос по переводу", askPlaceholder: "Спросите о слове, оттенке смысла или выборе формулировки…", askSend: "Спросить ИИ", asking: "Думаем…", you: "Вы", assistant: "ИИ", followupEmpty: "Задайте вопрос, чтобы уточнить выбранный вариант.", followupError: "Не удалось получить уточнение. Попробуйте ещё раз.", followupLimit: "Лимит запросов исчерпан.", sourcePanel: "Исходник", outputPanel: "Результат", chooseVariant: "Выберите вариант", pronunciationHint: "Для длинного текста транскрипция ограничена полезными словами или первым предложением.", fastHint: "Короткие документы переводятся быстрее.", backTranslation: "Обратный перевод", moreTools: "Инструменты и вопросы", history: "История переводов", historyEmpty: "Сохранённых переводов на этом устройстве пока нет.", historyLocal: "Хранится только в этом браузере · последние 10", historyOpen: "Открыть", historyDelete: "Удалить", pasteImageHint: "Подсказка: нажмите Ctrl+V здесь, чтобы добавить скриншот.",
   },
   lv: {
+    attach: "Pievienot foto vai dokumentu", composerAria: "Avota teksts un papildu fails", filePromptPlaceholder: "Pievienojiet norādi failam — nav obligāti…", attachedHint: "Fails pievienots · norāde nav obligāta",
     title: "Iztulkot dokumentu", target: "Tulko uz", sourceAuto: "Noteikt valodu", upload: "Augšupielādēt failu", paste: "Ielīmēt tekstu", drop: "Ievietojiet foto vai dokumentu šeit", release: "Atlaidiet, lai pievienotu foto vai dokumentu", orChoose: "vai izvēlieties foto vai dokumentu ierīcē", choose: "Izvēlēties foto vai dokumentu", allowed: "PDF, JPG, PNG, WebP, TXT, RTF, DOCX vai ODT · līdz 10 MB", imagePreview: "Foto ir gatavs teksta atpazīšanai", imagePreviewHint: "Redzamais teksts tiks nolasīts no attēla un iztulkots teksta veidā.", remove: "Noņemt failu", sourceLabel: "Tulkojamais teksts", sourcePlaceholder: "Ielīmējiet tekstu, kuru vēlaties tulkot…", translate: "Tulkot", translating: "Tulkojam…", result: "Tulkojums", sourceLanguage: "Noteiktā avota valoda", unknownSource: "Avota valoda nav noteikta", copy: "Kopēt izvēlēto tulkojumu", copied: "Nokopēts", useUnderstand: "Izmantot sadaļā “Saprast dokumentu”", useCreate: "Izmantot sadaļā “Izveidot un rediģēt”", notes: "Piezīmes", uncertainties: "Neskaidras vietas", signIn: "Pierakstieties, lai tulkotu dokumentus.", legal: "Pirms tulkošanas pieņemiet privātuma noteikumus savā kontā.", empty: "Vispirms pievienojiet failu vai ielīmējiet tekstu.", invalid: "Šo failu nevar izmantot. Pārbaudiet formātu un izmēru.", failed: "Tulkojumu neizdevās pabeigt. Mēģiniet vēlreiz.", timeout: "Tulkošana aizņēma pārāk daudz laika. Izmēģiniet īsāku dokumentu.", limit: "Pieprasījumu limits ir sasniegts. Mēģiniet pēc tā atjaunošanas.", auth: "Sesija ir beigusies. Pierakstieties vēlreiz.", transcription: "Izruna / transkripcija", noTranscription: "Šim fragmentam īsa izrunas norāde nebija vajadzīga.", literal: "Burtisks", conversational: "Sarunvalodas", official: "Oficiāls", bold: "Drosmīgs", alternative: "Alternatīva", more: "Vairāk variantu", moreGenerating: "Veidojam variantus…", moreLimit: "Jau pieejami ne vairāk kā pieci varianti.", additionalPending: "Burtiskais tulkojums ir gatavs. Veidojam sarunvalodas, oficiālo un drosmīgo versiju…", additionalReady: "Visas tulkojuma versijas ir gatavas.", additionalFailed: "Pirmais tulkojums ir gatavs, bet pārējās versijas neizdevās izveidot.", additionalRetry: "Mēģināt versijas vēlreiz", askTitle: "Uzdot jautājumu par tulkojumu", askPlaceholder: "Jautājiet par vārdu, nozīmes niansi vai formulējuma izvēli…", askSend: "Jautāt AI", asking: "Domājam…", you: "Jūs", assistant: "AI", followupEmpty: "Uzdodiet jautājumu, lai precizētu izvēlēto variantu.", followupError: "Neizdevās iegūt skaidrojumu. Mēģiniet vēlreiz.", followupLimit: "Pieprasījumu limits ir sasniegts.", sourcePanel: "Avots", outputPanel: "Rezultāts", chooseVariant: "Izvēlieties variantu", pronunciationHint: "Garā tekstā transkripcija attiecas tikai uz noderīgiem vārdiem vai pirmo teikumu.", fastHint: "Īsāki dokumenti tiek tulkoti ātrāk.", backTranslation: "Atpakaļtulkojums", moreTools: "Rīki un jautājumi", history: "Tulkojumu vēsture", historyEmpty: "Šajā ierīcē vēl nav saglabātu tulkojumu.", historyLocal: "Saglabāts tikai šajā pārlūkā · pēdējie 10", historyOpen: "Atvērt", historyDelete: "Dzēst", pasteImageHint: "Padoms: nospiediet Ctrl+V, lai pievienotu ekrānuzņēmumu.",
   },
 };
@@ -73,7 +76,6 @@ function isImageFile(file: File): boolean {
 export function TranslationWorkspace({ locale, defaultLanguage, account, onRequireAccount, onChallengeRequired, onUseInUnderstand, onUseInCreate }: Props) {
   const uiLocale = interfaceCopyFallback(locale);
   const t = copy[uiLocale];
-  const [inputMode, setInputMode] = useState<"file" | "text">("text");
   const [targetLanguage, setTargetLanguage] = useState<SupportedLanguage>(defaultLanguage);
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState("");
@@ -143,8 +145,8 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
   const submitTranslation = async (challengeToken?: string, requestedMode: TranslationVariantMode = "initial") => {
     if (!account) { onRequireAccount(); return; }
     if (account.requiresLegalAcceptance) { setError(t.legal); onRequireAccount(); return; }
-    if (requestedMode === "initial" && inputMode === "file" && !file) { setError(t.empty); return; }
-    if (requestedMode === "initial" && inputMode === "text" && !text.trim()) { setError(t.empty); return; }
+    const requestMode: "file" | "text" = file ? "file" : "text";
+    if (requestedMode === "initial" && requestMode === "text" && !text.trim()) { setError(t.empty); return; }
     if (requestedMode === "more" && !result) return;
     if (requestedMode === "additional" && !result) return;
     setError("");
@@ -161,11 +163,15 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
     setIsGeneratingMore(requestedMode === "more");
     const formData = new FormData();
     formData.set("targetLanguage", targetLanguage);
-    formData.set("mode", inputMode);
+    formData.set("mode", requestMode);
     formData.set("variantMode", requestedMode);
     if (challengeToken) formData.set("turnstileToken", challengeToken);
-    if (inputMode === "file") formData.set("file", file!);
-    else formData.set("text", text.trim());
+    if (requestMode === "file") {
+      formData.set("file", file!);
+      if (text.trim()) formData.set("prompt", text.trim());
+    } else {
+      formData.set("text", text.trim());
+    }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 180_000);
     try {
@@ -222,9 +228,9 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
         setAdditionalStatus("pending");
         const saved = saveTranslationHistory(account.id, {
           result: next,
-          sourceKind: inputMode,
-          sourceName: inputMode === "file" ? file?.name : undefined,
-          sourcePreview: inputMode === "text" ? text : file?.name,
+          sourceKind: requestMode,
+          sourceName: requestMode === "file" ? file?.name : undefined,
+          sourcePreview: requestMode === "text" ? text : file?.name,
         });
         setHistoryItemId(saved?.id ?? null);
         setTranslationHistory(listTranslationHistory(account.id));
@@ -268,7 +274,6 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
       `screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`,
       { type: pastedImage.type, lastModified: Date.now() },
     );
-    setInputMode("file");
     chooseFile(pastedFile);
   };
 
@@ -358,20 +363,34 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
     }
   };
 
+  const translationBusy = isTranslating || isGeneratingMore || isGeneratingAdditional;
   const renderSource = () => <aside className="translation-source-card" aria-labelledby="translation-source-title">
     <div className="translation-card-heading"><div><p className="eyebrow">{t.sourcePanel}</p><h2 id="translation-source-title">{t.sourceLabel}</h2></div></div>
-    <SlidingSegmentedControl className="source-tabs" activeKey={inputMode} ariaLabel={t.title}>
-      <button type="button" role="tab" data-segment-active={inputMode === "file"} aria-selected={inputMode === "file"} className={inputMode === "file" ? "active" : ""} onClick={() => { setInputMode("file"); setError(""); }} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{t.upload}</button>
-      <button type="button" role="tab" data-segment-active={inputMode === "text"} aria-selected={inputMode === "text"} className={inputMode === "text" ? "active" : ""} onClick={() => { setInputMode("text"); setError(""); }} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{t.paste}</button>
-    </SlidingSegmentedControl>
-    {inputMode === "file" ? <div role="tabpanel">
-      <input ref={fileInputRef} className="visually-hidden" type="file" aria-label={t.choose} accept="application/pdf,image/jpeg,image/png,image/webp,text/plain,application/rtf,text/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,.pdf,.jpg,.jpeg,.png,.webp,.txt,.rtf,.docx,.odt" onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFile(event.target.files?.[0] ?? null)} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional} />
-      {file ? <div className="translation-file-preview file-preview">{filePreviewUrl && <figure className="translation-image-preview"><img src={filePreviewUrl} alt={t.imagePreview} /><figcaption><strong>{t.imagePreview}</strong><span>{t.imagePreviewHint}</span></figcaption></figure>}<div className="file-preview-header"><div><strong>{file.name}</strong><small>{formatFileSize(file.size, targetLanguage)}</small></div><button type="button" className="secondary-button" onClick={() => { setFile(null); setResult(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{t.remove}</button></div></div> : <div className={`dropzone${isDragging ? " is-dragging" : ""}${fileError ? " has-error" : ""}`} onDragEnter={(event: DragEvent<HTMLDivElement>) => { event.preventDefault(); setIsDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsDragging(false); }} onDrop={(event: DragEvent<HTMLDivElement>) => { event.preventDefault(); setIsDragging(false); chooseFile(event.dataTransfer.files?.[0] ?? null); }}>
-        <div className="document-icon" aria-hidden="true"><span>↔</span></div><strong>{isDragging ? t.release : t.drop}</strong><p>{t.orChoose}</p><button className="secondary-button" type="button" onClick={() => fileInputRef.current?.click()} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{t.choose}</button><small>{t.allowed}</small>
+    <input ref={fileInputRef} className="visually-hidden" type="file" aria-label={t.choose} accept="application/pdf,image/jpeg,image/png,image/webp,text/plain,application/rtf,text/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,.pdf,.jpg,.jpeg,.png,.webp,.txt,.rtf,.docx,.odt" onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFile(event.target.files?.[0] ?? null)} disabled={translationBusy} />
+    <div
+      className={`document-composer translation-composer${file ? " has-attachment" : ""}${isDragging ? " is-dragging" : ""}${fileError || error ? " has-error" : ""}`}
+      onDragEnter={(event: DragEvent<HTMLDivElement>) => { event.preventDefault(); setIsDragging(true); }}
+      onDragOver={(event) => event.preventDefault()}
+      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsDragging(false); }}
+      onDrop={(event: DragEvent<HTMLDivElement>) => { event.preventDefault(); setIsDragging(false); chooseFile(event.dataTransfer.files?.[0] ?? null); }}
+      aria-label={t.composerAria}
+    >
+      {file && <div className="composer-attachment translation-composer-attachment">
+        {filePreviewUrl ? <img className="composer-attachment-thumb" src={filePreviewUrl} alt="" /> : <span className="composer-attachment-type" aria-hidden="true">{file.name.split(".").pop()?.toUpperCase() || "DOC"}</span>}
+        <span className="composer-attachment-copy"><strong>{file.name}</strong><small>{formatFileSize(file.size, targetLanguage)}</small></span>
+        <button type="button" className="composer-attachment-remove" onClick={() => { setFile(null); setResult(null); setFileError(""); if (fileInputRef.current) fileInputRef.current.value = ""; }} disabled={translationBusy} aria-label={`${t.remove}: ${file.name}`} title={t.remove}>×</button>
       </div>}
-      {fileError && <p className="input-error" role="alert">{fileError}</p>}
-    </div> : <div className="text-panel" role="tabpanel"><label htmlFor="translation-text">{t.sourceLabel}</label><textarea id="translation-text" value={text} onChange={(event) => { setText(event.target.value); setError(""); setResult(null); setHistoryItemId(null); setFollowups([]); }} onKeyDown={handleSourceKeyDown} onPaste={handleSourcePaste} aria-keyshortcuts="Control+Enter" maxLength={50_000} rows={12} placeholder={t.sourcePlaceholder} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional} /><div className="text-input-actions"><small>{text.length.toLocaleString(locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-US")} / 50 000</small><small className="clipboard-image-hint">{t.pasteImageHint}</small></div></div>}
-    <button className="primary-button translation-submit" type="button" onClick={() => void submitTranslation()} disabled={isTranslating || isGeneratingMore || isGeneratingAdditional}>{isTranslating ? t.translating : t.translate}<span aria-hidden="true">→</span></button>
+      <label className="visually-hidden" htmlFor="translation-text">{t.sourceLabel}</label>
+      <textarea id="translation-text" value={text} onChange={(event) => { setText(event.target.value); setError(""); setResult(null); setHistoryItemId(null); setFollowups([]); }} onKeyDown={handleSourceKeyDown} onPaste={handleSourcePaste} aria-keyshortcuts="Control+Enter" maxLength={50_000} rows={12} placeholder={file ? t.filePromptPlaceholder : t.sourcePlaceholder} disabled={translationBusy} />
+      <div className="document-composer-toolbar">
+        <button className="attachment-button" type="button" onClick={() => fileInputRef.current?.click()} disabled={translationBusy} aria-label={t.attach} title={t.attach}><span className="paperclip-icon" aria-hidden="true" /></button>
+        <small className="composer-hint">{file ? t.attachedHint : t.pasteImageHint}</small>
+        <small className="composer-counter">{text.length.toLocaleString(locale === "ru" ? "ru-RU" : locale === "lv" ? "lv-LV" : "en-US")} / 50 000</small>
+        <button className="composer-submit" type="button" onClick={() => void submitTranslation()} disabled={translationBusy || (!file && !text.trim())} aria-label={isTranslating ? t.translating : t.translate} title={isTranslating ? t.translating : t.translate}>{isTranslating ? <span className="loading-spinner" aria-hidden="true" /> : <span aria-hidden="true">↑</span>}</button>
+      </div>
+      {isDragging && <div className="document-composer-drop" aria-hidden="true"><span className="paperclip-icon" />{t.release}</div>}
+    </div>
+    {fileError && <p className="input-error" role="alert">{fileError}</p>}
     {error && <p className="input-error analysis-error" role="alert">{error}</p>}
   </aside>;
 
