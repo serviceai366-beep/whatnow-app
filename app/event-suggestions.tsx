@@ -31,7 +31,7 @@ export function EventSuggestions({ result, analysisId, locale, preferences }: { 
   const [times, setTimes] = useState<Record<string, string>>(() => Object.fromEntries(events.map((event) => [event.id, event.localTime ?? ""])));
   const [allDay, setAllDay] = useState<Record<string, boolean>>(() => Object.fromEntries(events.map((event) => [event.id, !event.localTime])));
   const [zones, setZones] = useState<Record<string, string>>(() => Object.fromEntries(events.map((event) => [event.id, event.documentTimeZone && supportedReminderTimeZones.includes(event.documentTimeZone as never) ? event.documentTimeZone : "Europe/Riga"])));
-  const [offsets, setOffsets] = useState<Record<string, "none" | `${ReminderOffsetMinutes}`>>(() => Object.fromEntries(events.map((event) => [event.id, event.localTime ? String(preferences.defaultReminderMinutes) : "none"])));
+  const [offsets, setOffsets] = useState<Record<string, "none" | `${ReminderOffsetMinutes}`>>(() => Object.fromEntries(events.map((event) => [event.id, event.localTime ? String(preferences.defaultReminderMinutes) : "none"]) ) as Record<string, "none" | `${ReminderOffsetMinutes}`>);
   const [busy, setBusy] = useState<string | null>(null);
   const [added, setAdded] = useState(new Set<string>());
   const [error, setError] = useState<string | null>(null);

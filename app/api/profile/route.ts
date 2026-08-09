@@ -1,6 +1,6 @@
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../../supabase-config.ts";
 import { isSameOriginRequest } from "../../security.ts";
-import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { requestBearerToken, verifySupabaseRequest, type VerifiedSupabaseUser } from "../../supabase-server-auth.ts";
 import {
   parseUserProfilePatch,
   profilePatchToRpcPayload,
@@ -28,7 +28,9 @@ function apiError(code: string, message: string, status: number): Response {
   return jsonResponse({ error: { code, message } }, status);
 }
 
-async function authenticate(request: Request) {
+type AuthenticatedRequest = { user: VerifiedSupabaseUser; token: string } | { response: Response };
+
+async function authenticate(request: Request): Promise<AuthenticatedRequest> {
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return { response: apiError(auth.code, "A confirmed account is required.", auth.status) } as const;
   const token = requestBearerToken(request);

@@ -178,7 +178,7 @@ export async function startGoogleSignIn(mode: AccountAccessMode, acceptedLegalTe
       redirectTo: authRedirectUrl(),
       scopes: "openid email profile",
       captchaToken: captchaToken ?? undefined,
-    },
+    } as { redirectTo?: string; scopes?: string; captchaToken?: string },
   });
   if (error) throw error;
 }

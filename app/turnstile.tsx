@@ -79,7 +79,7 @@ export function TurnstileWidget({
   onToken,
   onError,
 }: {
-  action: "analyze" | "email-login" | "account-create";
+  action: "analyze" | "email-login" | "account-create" | "account-login";
   language: ProfileLanguage;
   theme: "light" | "dark";
   resetKey: number;
@@ -133,7 +133,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [action, language, resetKey, theme]);
+  }, [action, appearance, language, resetKey, theme]);
 
   return <div className="turnstile-widget" ref={containerRef} />;
 }

@@ -3,7 +3,7 @@ import { supportedLanguages, type SupportedLanguage } from "../../analysis-schem
 import { parseReminderAction } from "../../reminder-validation.ts";
 import { REMINDER_ACTIVE_LIMIT, REMINDER_WEEKLY_LIMIT, type ReminderAvailability, type ReminderQuota, type ReminderState, type ScheduledReminder } from "../../reminder-types.ts";
 import { isSameOriginRequest } from "../../security.ts";
-import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { requestBearerToken, verifySupabaseRequest, type VerifiedSupabaseUser } from "../../supabase-server-auth.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_TIMEZONE = "Europe/Riga";
@@ -128,7 +128,9 @@ async function loadReminderState(userId: string, email: string, token: string): 
   };
 }
 
-async function authenticate(request: Request) {
+type AuthenticatedRequest = { user: VerifiedSupabaseUser; token: string } | { response: Response };
+
+async function authenticate(request: Request): Promise<AuthenticatedRequest> {
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return { response: apiError(auth.code, "Требуется подтверждённый аккаунт.", auth.status) } as const;
   const token = requestBearerToken(request);

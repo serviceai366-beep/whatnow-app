@@ -29,6 +29,8 @@ export function UserHub({ open, locale, preferences, modelSelectionAvailable, on
 }) {
   const t = copy[interfaceCopyFallback(locale)];
   const [tab, setTab] = useState<HubTab>(initialTab);
+  // Re-open on the tab requested by the parent (for example, Plan).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (open) setTab(initialTab); }, [initialTab, open]);
   useEffect(() => { if (!open) return; const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); }; document.addEventListener("keydown", onKey); return () => document.removeEventListener("keydown", onKey); }, [onClose, open]);
   if (!open) return null;

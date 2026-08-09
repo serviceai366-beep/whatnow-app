@@ -101,6 +101,8 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
 
   useEffect(() => {
     if (!file || !isImageFile(file)) {
+      // Clear a stale object URL when an image is replaced by text or a document.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilePreviewUrl("");
       return;
     }
@@ -109,6 +111,7 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- account-scoped translation history is intentionally reloaded from local storage. */
   useEffect(() => {
     if (!account?.id) {
       setTranslationHistory([]);
@@ -118,6 +121,7 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
     setTranslationHistory(listTranslationHistory(account.id));
     setHistoryItemId(null);
   }, [account?.id]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const chooseFile = (nextFile: File | null) => {
     if (!nextFile) return;
@@ -342,8 +346,9 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
         if (code === "user_limit_reached" || code === "service_limit_reached") { setFollowupError(t.followupLimit); return; }
         throw new Error(code === "timeout" ? t.timeout : t.followupError);
       }
-      if (!validateTranslationFollowup(payload.answer)) throw new Error(t.followupError);
-      setFollowups((previous) => [...previous.slice(-7), { question: question.trim(), answer: payload.answer! }]);
+      const answer = payload.answer;
+      if (!validateTranslationFollowup(answer)) throw new Error(t.followupError);
+      setFollowups((previous) => [...previous.slice(-7), { question: question.trim(), answer }]);
       setQuestion("");
     } catch (caught) {
       setFollowupError(caught instanceof Error && caught.name === "AbortError" ? t.timeout : caught instanceof Error ? caught.message : t.followupError);
@@ -395,7 +400,7 @@ export function TranslationWorkspace({ locale, defaultLanguage, account, onRequi
       <main ref={resultPanelRef} className="translation-output-column" aria-live="polite">
         {!result ? <div className="translation-empty-state"><span aria-hidden="true">↔</span><p>{t.outputPanel}</p><small>{t.chooseVariant}</small></div> : <section className="translation-result" id="translation-result" aria-labelledby="translation-result-title">
           <div className="translation-result-heading"><div><p className="eyebrow">{t.outputPanel}</p><h2 id="translation-result-title">{result.sourceLanguage === "unknown" ? t.unknownSource : languageName(result.sourceLanguage)} → {languageName(result.targetLanguage)}</h2></div><span className="translation-variant-count">{result.variants.length}/5</span></div>
-          {additionalStatus === "loading" || additionalStatus === "pending" ? <p className="translation-background-status" role="status"><span className="loading-spinner" aria-hidden="true" />{t.additionalPending}</p> : additionalStatus === "ready" ? <p className="translation-background-status is-ready" role="status">✓ {t.additionalReady}</p> : additionalStatus === "error" ? <div className="translation-background-status is-error" role="status"><span>{t.additionalFailed}</span><button type="button" className="secondary-button" onClick={() => void submitTranslation(undefined, "additional")} disabled={isGeneratingAdditional || isTranslating || isGeneratingMore}>{isGeneratingAdditional ? t.moreGenerating : t.additionalRetry}</button></div> : null}
+          {additionalStatus === "loading" || additionalStatus === "pending" ? <p className="translation-background-status" role="status"><span className="loading-spinner" aria-hidden="true" />{t.additionalPending}</p> : additionalStatus === "ready" ? <p className="translation-background-status is-ready" role="status">✓ {t.additionalReady}</p> : additionalStatus === "error" ? <div className="translation-background-status is-error" role="status"><span>{additionalError || t.additionalFailed}</span><button type="button" className="secondary-button" onClick={() => void submitTranslation(undefined, "additional")} disabled={isGeneratingAdditional || isTranslating || isGeneratingMore}>{isGeneratingAdditional ? t.moreGenerating : t.additionalRetry}</button></div> : null}
           <SlidingSegmentedControl className="translation-variant-tabs" activeKey={selectedVariantIndex} ariaLabel={t.chooseVariant}>{result.variants.map((variant, index) => <button key={`${variant.style}-${index}`} type="button" role="tab" data-segment-active={index === selectedVariantIndex} aria-selected={index === selectedVariantIndex} className={index === selectedVariantIndex ? "active" : ""} onClick={() => setSelectedVariantIndex(index)}>{variantLabel(variant.style, t)}</button>)}</SlidingSegmentedControl>
           {selectedVariant && <article className="translation-selected-variant"><div className="translation-variant-heading"><h3>{variantLabel(selectedVariant.style, t)}</h3><button type="button" className="secondary-button" onClick={() => void copyTranslation()}>{copied ? t.copied : t.copy}</button></div><div className="translation-output" role="textbox" aria-readonly="true" aria-label={`${t.result}: ${variantLabel(selectedVariant.style, t)}`}>{selectedVariant.translation}</div>{selectedVariant.transcription ? <div className="translation-transcription"><strong>{t.transcription}</strong><p>{selectedVariant.transcription}</p><small>{t.pronunciationHint}</small></div> : <p className="translation-no-transcription">{t.noTranscription}</p>}<details className="translation-back-translation"><summary><span>{t.backTranslation}</span><small>{result.sourceLanguage === "unknown" ? t.unknownSource : languageName(result.sourceLanguage)}</small></summary><div className="translation-back-translation-body"><p>{selectedVariant.backTranslation}</p></div></details></article>}
           <details className="translation-tools-drawer">

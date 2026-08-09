@@ -77,7 +77,7 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
-export function DocumentStudioPrototype({ locale, account, initialPrompt = "", onRequireAccount, onOpenPlan }: { locale: ProfileLanguage; account: SupabaseAccount | null; initialPrompt?: string; onRequireAccount: () => void; onOpenPlan: () => void }) {
+export function DocumentStudioPrototype({ locale, account, initialPrompt = "", onRequireAccount }: { locale: ProfileLanguage; account: SupabaseAccount | null; initialPrompt?: string; onRequireAccount: () => void }) {
   const copyLocale: StudioGuideLocale = locale === "ru" || locale === "lv" ? locale : "en";
   const t = { ...text[copyLocale], preSignChecks: text[copyLocale].reviewChecks, preSignDone: text[copyLocale].reviewDone } as Copy;
   const [workflow, setWorkflow] = useState<"guided" | "quick">("guided");
@@ -106,6 +106,7 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
   const guide = useMemo(() => guideFor(template), [template]);
   const jurisdictionNeedsRegion = requiredRegionFor(country);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- a prompt supplied by the parent intentionally starts quick mode. */
   useEffect(() => {
     if (!initialPrompt.trim()) return;
     setCurrent(null);
@@ -114,6 +115,7 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
     setQuickPrompt(initialPrompt);
     setError("");
   }, [initialPrompt]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const missingFields = useMemo(() => {
     const critical: { key: string; label: string }[] = [];
@@ -150,7 +152,8 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
     confirmedInsufficient,
     preSignatureCheck: mode === "review",
   });
-  const load = async () => {
+  const load = useCallback(async () => {
+    setPlanLoaded(false); setPlanError(false); setQuota(null);
     if (!account) { setPlanLoaded(true); return; }
     const token = await getAccessToken(); if (!token) { setPlanError(true); setPlanLoaded(true); return; }
     const controller = new AbortController();
@@ -163,10 +166,12 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
       } else setPlanError(true);
     } catch { setPlanError(true); }
     finally { window.clearTimeout(timeout); setPlanLoaded(true); }
-  };
-  useEffect(() => { setPlanLoaded(false); setPlanError(false); setQuota(null); void load(); }, [account]);
+  }, [account]);
+  // Loading account-scoped quota/history is an intentional external synchronization.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    if (!busy) { setElapsed(0); return; }
+    if (!busy) return;
     const started = Date.now();
     const timer = window.setInterval(() => setElapsed(Math.min(600, Math.floor((Date.now() - started) / 1000))), 1000);
     return () => window.clearInterval(timer);
@@ -185,7 +190,7 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
     if (!account) { onRequireAccount(); return; }
     if (!quota) return;
     if (readiness !== "green" && !confirmed) { setWarning(true); return; }
-    const controller = new AbortController(); generationController.current = controller; setBusy(true); setError("");
+    const controller = new AbortController(); generationController.current = controller; setElapsed(0); setBusy(true); setError("");
     try {
       const token = await getAccessToken(); if (!token) throw new Error();
       const payload = requestData(confirmed);
@@ -347,6 +352,8 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
   }, [focusedPanel]);
   useEffect(() => {
     if (focusedPanel) {
+      // Focused mode deliberately restores the dock so its controls remain reachable.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDockRetreating(false);
       window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat: false } }));
     }

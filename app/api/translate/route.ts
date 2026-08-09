@@ -33,7 +33,7 @@ const languageNames: Record<SupportedLanguage, string> = {
 };
 
 type ApiErrorCode =
-  | "invalid_request" | "forbidden" | "authentication_required" | "authentication_invalid" | "authentication_unavailable"
+  | "invalid_request" | "forbidden" | "authentication_required" | "authentication_invalid" | "authentication_unavailable" | "legal_acceptance_required"
   | "captcha_required" | "captcha_failed" | "captcha_unavailable" | "invalid_file_content" | "not_configured"
   | "user_limit_reached" | "service_limit_reached" | "usage_control_unavailable" | "openai_auth" | "rate_limited"
   | "upstream_error" | "timeout" | "invalid_model_response";

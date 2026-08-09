@@ -53,6 +53,8 @@ type ReserveResult =
   | { kind: "duplicate"; row: StoredFileRow }
   | { kind: "rejected"; code: "file_count_limit" | "file_bytes_limit" | "global_file_bytes_limit" | "file_upload_in_progress" | "file_storage_conflict" };
 
+type ReserveRejectionCode = Extract<ReserveResult, { kind: "rejected" }>["code"];
+
 type UsageRow = { count: number; bytes: number };
 
 export type FileMetadataStore = {
@@ -364,7 +366,7 @@ export function attachmentContentDisposition(name: string, extension: SupportedD
 
 async function sha256(value: Uint8Array | string): Promise<string> {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : value;
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as unknown as BufferSource));
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -380,7 +382,7 @@ async function cleanupStalePending(runtime: FileStoreRuntime, now: number): Prom
   }
 }
 
-function quotaError(code: ReserveResult extends { kind: "rejected"; code: infer Code } ? Code : never): FileStoreError {
+function quotaError(code: ReserveRejectionCode): FileStoreError {
   if (code === "file_count_limit") return new FileStoreError(code, 409);
   if (code === "file_bytes_limit") return new FileStoreError(code, 409);
   if (code === "global_file_bytes_limit") return new FileStoreError(code, 503);

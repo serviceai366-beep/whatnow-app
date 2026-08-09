@@ -5,7 +5,7 @@ import { getSupportStore, SupportStoreError } from "../../support-store.ts";
 import type { SupportSnapshot } from "../../support-types.ts";
 import { parseSupportAction } from "../../support-validation.ts";
 import { isSameOriginRequest } from "../../security.ts";
-import { verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { verifySupabaseRequest, type VerifiedSupabaseUser } from "../../supabase-server-auth.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +46,9 @@ function error(code: SupportErrorCode, status: number, headers: HeadersInit = {}
   return json({ error: { code } }, status, headers);
 }
 
-async function authenticated(request: Request) {
+type AuthenticatedSupportRequest = { user: VerifiedSupabaseUser; isAdmin: boolean } | { response: Response };
+
+async function authenticated(request: Request): Promise<AuthenticatedSupportRequest> {
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return { response: error(auth.code, auth.status) } as const;
   return { user: auth.user, isAdmin: isSupportAdministrator(auth.user.email) } as const;
@@ -115,10 +117,10 @@ export async function GET(request: Request): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   if (!isSameOriginRequest(request)) return error("forbidden", 403);
   const parsed = await parseRequest(request);
-  const action = parsed?.action ?? null;
-  if (!action) return error("invalid_request", 400);
-  if (parsed.files.length > 0 && action.action !== "create" && action.action !== "reply") return error("invalid_request", 400);
-  try { validateSupportAttachmentUploads(parsed.files); }
+  if (!parsed || !parsed.action) return error("invalid_request", 400);
+  const { action, files } = parsed;
+  if (files.length > 0 && action.action !== "create" && action.action !== "reply") return error("invalid_request", 400);
+  try { validateSupportAttachmentUploads(files); }
   catch (cause) { return error(attachmentError(cause), cause instanceof SupportAttachmentError ? cause.status : 400); }
   const auth = await authenticated(request);
   if ("response" in auth) return auth.response;
@@ -150,11 +152,11 @@ export async function POST(request: Request): Promise<Response> {
       await drainSupportAttachmentDeletions().catch(() => undefined);
       conversation = null;
     }
-    if (parsed.files.length > 0 && conversation && (action.action === "create" || action.action === "reply")) {
+    if (files.length > 0 && conversation && (action.action === "create" || action.action === "reply")) {
       const messageId = conversation.messages.at(-1)?.id;
       if (messageId) {
         try {
-          await saveSupportAttachments({ conversationId: conversation.id, messageId, files: parsed.files });
+          await saveSupportAttachments({ conversationId: conversation.id, messageId, files });
           conversation = await store.getConversation(auth.user.id, conversation.id, auth.isAdmin) ?? conversation;
         } catch (cause) {
           attachmentWarning = attachmentError(cause);

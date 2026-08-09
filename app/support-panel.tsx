@@ -131,11 +131,11 @@ export function SupportPanel({ open, locale, onClose }: Props) {
       setDetail(payload.conversation);
       if (conversationId && !payload.conversation) setSelectedId(null);
     } catch (cause) {
-      setError(errorText(cause instanceof SupportRequestError ? cause.code : "support_error", copy[interfaceCopyFallback(locale)]));
+      setError(errorText(cause instanceof SupportRequestError ? cause.code : "support_error", t));
     } finally {
       setLoading(false);
     }
-  }, [locale]);
+  }, [t]);
 
   useEffect(() => {
     if (!open) return;
@@ -269,7 +269,7 @@ export function SupportPanel({ open, locale, onClose }: Props) {
               <span className="support-card-badges"><span className={`support-status support-status-${conversation.status}`}>{statusLabel(conversation.status, t)}</span>{snapshot?.isAdmin ? <span className={`support-priority support-priority-${conversation.priority}`}>{priorityLabel(conversation.priority, t)}</span> : null}</span>
               <strong>{conversation.subject}</strong>
               <small>{categoryLabel(conversation.category, t)} · {localDate(conversation.lastMessageAt, locale)}</small>
-              {snapshot.isAdmin && conversation.ownerReference ? <em>{t.member}: {conversation.ownerReference.replace(/^Member\s/, "")}</em> : null}
+              {snapshot?.isAdmin && conversation.ownerReference ? <em>{t.member}: {conversation.ownerReference.replace(/^Member\s/, "")}</em> : null}
               {conversation.lastMessagePreview ? <span>{conversation.lastMessagePreview}</span> : null}
             </button>)}
           </div>

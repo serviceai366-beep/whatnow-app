@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChangeEvent, ClipboardEvent, DragEvent, MouseEvent } from "react";
+import type { ChangeEvent, ClipboardEvent, DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
   formatFileSize,
   MAX_TEXT_LENGTH,
@@ -292,7 +292,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!languagePickerOpen) return;
-    const closeWhenOutside = (event: MouseEvent) => {
+    const closeWhenOutside = (event: globalThis.MouseEvent) => {
       if (!languagePickerRef.current?.contains(event.target as Node)) setLanguagePickerOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -517,6 +517,8 @@ export default function Home() {
           && typeof limit.resetAt === "number"
           && limit.limits?.daily && limit.limits?.weekly
         ) {
+          // Record when the notice was observed; this is intentionally read in the async event handler.
+          // eslint-disable-next-line react-hooks/purity
           setLimitNotice({ scope: limit.scope, resetAt: limit.resetAt, observedAt: Date.now(), daily: limit.limits.daily, weekly: limit.limits.weekly });
           return;
         }
@@ -570,7 +572,7 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const goHome = (event: MouseEvent<HTMLAnchorElement>) => {
+  const goHome = (event: ReactMouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     resetAnalysis();
     setInfoOpen(false);
@@ -660,7 +662,7 @@ export default function Home() {
         <AnalysisResultView key={`${savedHistoryId ?? "unsaved"}:${analysis.summary}`} result={analysis} onRestart={resetAnalysis} t={t} locale={language}
           account={account} analysisId={savedHistoryId} preferences={preferences} onSave={() => void persistAnalysisHistory(analysis, inputMode, analysisLanguage)} saving={savingHistory} saved={Boolean(savedHistoryId)} historyError={historyError} h={h} />
       ) : productMode === "create" ? (
-        <DocumentStudioPrototype locale={language} account={account} initialPrompt={studioPrefill} onRequireAccount={() => setAuthOpen(true)} onOpenPlan={() => { setUserHubInitialTab("plan"); setUserHubOpen(true); }} />
+        <DocumentStudioPrototype locale={language} account={account} initialPrompt={studioPrefill} onRequireAccount={() => setAuthOpen(true)} />
       ) : productMode === "translate" ? (
         <TranslationWorkspace locale={language} defaultLanguage={analysisLanguage} account={account} onRequireAccount={() => setAuthOpen(true)}
           onChallengeRequired={(retry) => { pendingChallengeRef.current = retry; setCaptchaError(null); setCaptchaChallengeOpen(true); setCaptchaResetKey((current) => current + 1); }}

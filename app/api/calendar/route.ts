@@ -4,7 +4,7 @@ import { parseCalendarAction, parseCalendarRange } from "../../calendar-validati
 import type { CalendarEvent, CalendarEventReminder, CalendarState } from "../../calendar-types.ts";
 import { REMINDER_ACTIVE_LIMIT, REMINDER_WEEKLY_LIMIT, type ReminderAvailability } from "../../reminder-types.ts";
 import { isSameOriginRequest } from "../../security.ts";
-import { requestBearerToken, verifySupabaseRequest } from "../../supabase-server-auth.ts";
+import { requestBearerToken, verifySupabaseRequest, type VerifiedSupabaseUser } from "../../supabase-server-auth.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_TIMEZONE = "Europe/Riga";
@@ -38,7 +38,9 @@ function availabilityFor(email: string): ReminderAvailability {
     : "pilot_only";
 }
 
-async function authenticate(request: Request) {
+type AuthenticatedRequest = { user: VerifiedSupabaseUser; token: string } | { response: Response };
+
+async function authenticate(request: Request): Promise<AuthenticatedRequest> {
   const auth = await verifySupabaseRequest(request);
   if (!auth.ok) return { response: error(auth.code, "A confirmed account is required.", auth.status) } as const;
   const token = requestBearerToken(request);

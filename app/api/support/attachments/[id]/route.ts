@@ -27,7 +27,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const attachment = await getSupportAttachment(id);
     if (!attachment) return unavailable(404);
     const isAdmin = isSupportAdministrator(auth.user.email);
-    const conversation = await (await getSupportStore()).getConversation(auth.user.id, attachment.conversationId, isAdmin);
+    const store = await getSupportStore();
+    if (!store) return unavailable(503);
+    const conversation = await store.getConversation(auth.user.id, attachment.conversationId, isAdmin);
     if (!conversation) return unavailable(404);
     return new Response(attachment.body as BodyInit, {
       status: 200,

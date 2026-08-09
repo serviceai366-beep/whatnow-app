@@ -60,6 +60,7 @@ type ApiErrorCode =
   | "authentication_required"
   | "authentication_invalid"
   | "authentication_unavailable"
+  | "legal_acceptance_required"
   | "captcha_required"
   | "captcha_failed"
   | "captcha_unavailable"

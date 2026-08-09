@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ProfileLanguage } from "./profile-types";
 import { interfaceCopyFallback } from "./language-options";
 import {
@@ -210,7 +211,7 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onPlanChan
         <button className="account-sign-in" type="button" onClick={() => onOpenChange(true)}>{t.signIn}</button>
       )}
 
-      {open && (
+      {open && typeof document !== "undefined" ? createPortal(
         <div className="auth-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) onOpenChange(false);
         }}>
@@ -312,8 +313,9 @@ export function AccountWidget({ locale, accountAria, onAccountChange, onPlanChan
               </>
             )}
           </section>
-        </div>
-      )}
+        </div>,
+        document.body,
+      ) : null}
     </>
   );
 }

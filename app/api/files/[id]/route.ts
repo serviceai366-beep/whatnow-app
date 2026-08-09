@@ -5,7 +5,7 @@ import {
   getUserFileDownload,
 } from "../../../file-store.ts";
 import { isSameOriginRequest } from "../../../security.ts";
-import { verifySupabaseRequest } from "../../../supabase-server-auth.ts";
+import { verifySupabaseRequest, type VerifiedSupabaseUser } from "../../../supabase-server-auth.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,9 @@ function storageError(error: unknown): Response {
   return json({ error: { code: "file_storage_unavailable", retryable: true } }, 503);
 }
 
-async function authenticate(request: Request) {
+type AuthenticatedRequest = { user: VerifiedSupabaseUser } | { response: Response };
+
+async function authenticate(request: Request): Promise<AuthenticatedRequest> {
   if (!isSameOriginRequest(request)) {
     return { response: json({ error: { code: "forbidden", retryable: false } }, 403) } as const;
   }
