@@ -40,6 +40,8 @@ export type GeneratedDocument = {
   readiness: { level: StudioReadinessLevel; score: number; missingCritical: string[]; missingHelpful: string[] };
   sections: { heading: string; body: string }[];
   plainText: string;
+  /** Safe, user-edited rich text. AI responses never provide this field. */
+  editorHtml?: string;
   assumptions: string[];
   changes: { summary: string; reason: string }[];
   unresolvedIssues: { issue: string; severity: "low" | "medium" | "high"; recommendation: string }[];
@@ -113,7 +115,7 @@ export function validateGeneratedDocument(value: unknown): value is GeneratedDoc
   if (!supportedLanguages.includes(value.outputLanguage as SupportedLanguage) || !studioCountries.includes(value.country as (typeof studioCountries)[number]) || !studioTemplateIds.includes(value.templateId as (typeof studioTemplateIds)[number])) return false;
   if (!(value.region === null || typeof value.region === "string")) return false;
   if (!Array.isArray(value.sections) || value.sections.length < 1 || value.sections.length > 80 || !value.sections.every((s) => record(s) && typeof s.heading === "string" && typeof s.body === "string")) return false;
-  if (typeof value.plainText !== "string" || value.plainText.length > 100_000 || !stringArray(value.assumptions) || !stringArray(value.reviewChecklist)) return false;
+  if (typeof value.plainText !== "string" || value.plainText.length > 100_000 || !(value.editorHtml === undefined || typeof value.editorHtml === "string" && value.editorHtml.length <= 180_000 && isSafeStudioEditorHtml(value.editorHtml)) || !stringArray(value.assumptions) || !stringArray(value.reviewChecklist)) return false;
   if (!Array.isArray(value.changes) || !value.changes.every((x) => record(x) && typeof x.summary === "string" && typeof x.reason === "string")) return false;
   if (!Array.isArray(value.unresolvedIssues) || !value.unresolvedIssues.every((x) => record(x) && typeof x.issue === "string" && ["low", "medium", "high"].includes(String(x.severity)) && typeof x.recommendation === "string")) return false;
   if (!Array.isArray(value.legalSources) || !value.legalSources.every((x) => record(x) && typeof x.title === "string" && typeof x.url === "string" && /^https:\/\//.test(x.url) && typeof x.accessedAt === "string" && typeof x.claim === "string")) return false;
@@ -121,6 +123,36 @@ export function validateGeneratedDocument(value: unknown): value is GeneratedDoc
   return record(value.readiness) && ["red", "yellow", "green"].includes(String(value.readiness.level)) && Number.isInteger(value.readiness.score) && Number(value.readiness.score) >= 0 && Number(value.readiness.score) <= 100
     && stringArray(value.readiness.missingCritical) && stringArray(value.readiness.missingHelpful)
     && ["low", "medium", "high"].includes(String(value.confidence)) && typeof value.safetyNotice === "string";
+}
+
+const editorTag = /^(?:<\/?(?:p|h1|h2|h3|ul|ol|li|strong|em|u|br)\s*\/?\s*>|<\/?span(?:\s+class="editor-color-(?:accent|red|blue|gray)")?\s*>)$/i;
+
+export function isSafeStudioEditorHtml(value: string) {
+  if (value.length > 180_000 || /<(?:script|style|iframe|object|embed|svg|math|img|a)\b/i.test(value) || /\son[a-z]+\s*=|\sstyle\s*=|javascript:/i.test(value)) return false;
+  return (value.match(/<[^>]*>/g) ?? []).every((tag) => editorTag.test(tag));
+}
+
+export function parseManualStudioDocument(value: unknown, original: GeneratedDocument): GeneratedDocument | null {
+  if (!record(value)) return null;
+  const title = text(value.title, 300);
+  const plainText = text(value.plainText, 100_000);
+  const editorHtml = typeof value.editorHtml === "string" ? value.editorHtml.trim().slice(0, 180_000) : "";
+  if (!title || !plainText || !editorHtml || !isSafeStudioEditorHtml(editorHtml) || !Array.isArray(value.sections) || value.sections.length < 1 || value.sections.length > 80) return null;
+  const sections = value.sections.flatMap((section) => {
+    if (!record(section)) return [];
+    const heading = text(section.heading, 500), body = text(section.body, 30_000);
+    return heading && body ? [{ heading, body }] : [];
+  });
+  if (!sections.length) return null;
+  const next: GeneratedDocument = {
+    ...original,
+    title,
+    plainText,
+    editorHtml,
+    sections,
+    annotations: (original.annotations ?? []).filter((annotation) => plainText.includes(annotation.excerpt)),
+  };
+  return validateGeneratedDocument(next) ? next : null;
 }
 
 const str = { type: "string" };

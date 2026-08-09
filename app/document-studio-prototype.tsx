@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { guideFor, guideText, requiredRegionFor, type StudioGuideLocale } from "./document-studio-guides";
 import { studioCountries, type GeneratedDocument, type StudioMode } from "./document-studio-schema";
 import type { ProfileLanguage } from "./profile-types";
@@ -22,11 +22,11 @@ const text = {
     goal: "What should the AI change, check, or explain?", goalHint: "Be specific: name the clauses, risks, tone, missing information, or desired result.", existing: "Paste the existing document", existingHint: "Paste the complete text, or attach the original file below.",
     readiness: "Information completeness", readinessHint: "Based on the details already provided and the important facts still missing.", missingDetails: "What is still missing", missingDetailsHint: "Choose an item to jump straight to the field and complete it.", green: "Ready for a strong draft", yellow: "Useful, but more detail is recommended", red: "Critical facts are still missing", critical: "Required before a reliable result", helpful: "Helpful for a more complete document",
     generate: "Create near-final document", generating: "Creating your document…", signin: "Sign in to continue", stop: "Stop generation", stopped: "Generation stopped. Your answers are still here.", warning: "Review the missing information", warningBody: "The AI can continue with visible placeholders, but the result will need more manual checking.", add: "Add information", continue: "Continue with placeholders",
-    back: "Back to details", draft: "Working document", copy: "Copy", docx: "DOCX", pdf: "PDF", history: "Recent documents", historyButton: "Document history", empty: "Your latest 10 generated documents will appear here.", limit: "Usage", delete: "Delete", sources: "Official sources consulted", issues: "Check before use", error: "The document could not be generated. Try again.",
+    back: "Back to details", newDocument: "New document", newDocumentConfirm: "Start a new blank document? Your saved document will stay in history.", draft: "Working document", editDocument: "Edit document", save: "Save", saving: "Saving…", saved: "Saved", unsaved: "Unsaved changes", copy: "Copy", docx: "DOCX", pdf: "PDF", history: "Recent documents", historyButton: "Document history", empty: "Your latest 10 generated documents will appear here.", limit: "Usage", delete: "Delete", sources: "Official sources consulted", issues: "Check before use", error: "The document could not be generated. Try again.",
     disclaimer: "AI-generated document for informational purposes only. Completeness, legal validity, enforceability, and suitability are not guaranteed. Verify all facts and local rules before signing, sending, filing, or relying on it.",
     proTitle: "Document Studio", proBody: "Create, review, and edit documents with guided AI assistance.", proButton: "View plan", loadingPlan: "Checking your plan…", planError: "We could not load your workspace. Please try again.", retryPlan: "Try again",
     assistantTitle: "Preparation assistant", assistantIntro: "Ask what information is missing, why a detail matters, or how to answer a question before generation.", assistantPlaceholder: "Ask about this document brief…", ask: "Ask", suggested: "Suggested questions", suggestion1: "What important information is still missing?", suggestion2: "Which answers matter most in my jurisdiction?", suggestion3: "Explain the questions in simpler words.",
-    selected: "Selected passage", clearSelection: "Clear", documentAssistant: "Work with AI", documentAssistantIntro: "Select a passage or tap a highlighted uncertainty. Ask why it is needed or request an exact change.", editPlaceholder: "Ask a question or describe the change…", send: "Send", expand: "Focus", collapse: "Exit focus", uncertain: "Needs clarification", missingInfo: "Missing information", confidence: "AI confidence", lowConfidence: "Low confidence — review the highlighted passages before use.", noIssues: "No unresolved passages were identified, but important documents still need review.",
+    selected: "Selected passage", clearSelection: "Clear", documentAssistant: "Work with AI", documentAssistantIntro: "Select a passage or tap a highlighted uncertainty. Ask why it is needed or request an exact change.", editPlaceholder: "Ask a question or describe the change…", send: "Send", polish: "Polish layout with AI", polishPrompt: "Improve the document's professional formatting and structure. Preserve every fact and term. Use clear headings, short readable paragraphs, consistent lists, and a logical section order.", expand: "Focus", collapse: "Exit focus", uncertain: "Needs clarification", missingInfo: "Missing information", confidence: "AI confidence", lowConfidence: "Low confidence — review the highlighted passages before use.", noIssues: "No unresolved passages were identified, but important documents still need review.",
     layout: "Workspace layout", layoutHint: "Drag panel headers to reorder them. Hide, restore, or focus any panel.", insightsPanel: "Checks & guidance", documentPanel: "Document", assistantPanel: "AI assistant", hidePanel: "Hide panel", restorePanel: "Restore panel", focusPanel: "Focus panel", equalPanels: "Equal panels", resetLayout: "Reset layout", moveLeft: "Move left", moveRight: "Move right", dragPanel: "Drag to move",
     upload: "Or attach the existing document", chooseFile: "Choose document", removeFile: "Remove", fileHint: "PDF, image, TXT, RTF, DOCX, or ODT. Maximum size depends on format.", reasoningTime: "Reasoning time", reasoningEstimate: "Usually about 2–3 minutes, with a 10-minute maximum.",
     lease: "Residential lease", service: "Service agreement", nda: "Non-disclosure agreement", loan: "Loan agreement", power: "Power of attorney", complaint: "Formal complaint", request: "Official request", termination: "Termination notice", letter: "Formal letter", proposal: "Commercial proposal", sow: "Statement of work", minutes: "Meeting minutes", cv: "Cover letter", birthday: "Birthday invitation", wedding: "Wedding invitation", event: "Event invitation", thanks: "Thank-you letter", custom: "Custom document",
@@ -39,11 +39,11 @@ const text = {
     goal: "Что ИИ должен изменить, проверить или объяснить?", goalHint: "Укажите пункты, риски, тон, недостающие сведения или желаемый результат.", existing: "Вставьте готовый документ", existingHint: "Вставьте полный текст или прикрепите исходный файл ниже.",
     readiness: "Полнота информации", readinessHint: "Показатель учитывает уже введённые данные и важные сведения, которых ещё не хватает.", missingDetails: "Чего ещё не хватает", missingDetailsHint: "Нажмите на пункт — откроется нужное поле для заполнения.", green: "Данных достаточно для сильного документа", yellow: "Можно продолжать, но детали улучшат результат", red: "Критически важных фактов не хватает", critical: "Нужно для надёжного результата", helpful: "Поможет сделать документ более полным",
     generate: "Создать почти готовый документ", generating: "Создаём документ…", signin: "Войдите, чтобы продолжить", stop: "Остановить создание", stopped: "Создание остановлено. Все ваши ответы сохранены на экране.", warning: "Проверьте недостающую информацию", warningBody: "ИИ может продолжить с заметными заполнителями, но такой результат потребует дополнительной ручной проверки.", add: "Добавить данные", continue: "Продолжить с заполнителями",
-    back: "Вернуться к данным", draft: "Рабочий документ", copy: "Копировать", docx: "DOCX", pdf: "PDF", history: "Последние документы", historyButton: "История документов", empty: "Здесь будут последние 10 созданных документов.", limit: "Использование", delete: "Удалить", sources: "Проверенные официальные источники", issues: "Проверить перед использованием", error: "Не удалось создать документ. Попробуйте снова.",
+    back: "Вернуться к данным", newDocument: "Новый документ", newDocumentConfirm: "Начать новый чистый документ? Сохранённый документ останется в истории.", draft: "Рабочий документ", editDocument: "Редактировать документ", save: "Сохранить", saving: "Сохраняем…", saved: "Сохранено", unsaved: "Есть несохранённые изменения", copy: "Копировать", docx: "DOCX", pdf: "PDF", history: "Последние документы", historyButton: "История документов", empty: "Здесь будут последние 10 созданных документов.", limit: "Использование", delete: "Удалить", sources: "Проверенные официальные источники", issues: "Проверить перед использованием", error: "Не удалось создать документ. Попробуйте снова.",
     disclaimer: "Документ создан ИИ только в информационных целях. Полнота, юридическая сила, исполнимость и пригодность не гарантируются. Проверьте факты и местные правила до подписания, отправки или подачи.",
     proTitle: "Мастерская документов", proBody: "Создавайте, проверяйте и редактируйте документы с подсказками ИИ.", proButton: "Посмотреть тариф", loadingPlan: "Проверяем ваш тариф…", planError: "Не удалось загрузить мастерскую. Попробуйте ещё раз.", retryPlan: "Попробовать снова",
     assistantTitle: "Помощник по подготовке", assistantIntro: "Спросите, каких данных не хватает, зачем нужен определённый пункт или как правильно ответить ещё до создания документа.", assistantPlaceholder: "Задайте вопрос об этой анкете…", ask: "Спросить", suggested: "Готовые вопросы", suggestion1: "Какой важной информации всё ещё не хватает?", suggestion2: "Какие ответы особенно важны в моей юрисдикции?", suggestion3: "Объясни эти вопросы простыми словами.",
-    selected: "Выбранный фрагмент", clearSelection: "Убрать", documentAssistant: "Работа с ИИ", documentAssistantIntro: "Выделите фрагмент или нажмите на подсвеченное место. Спросите, зачем оно нужно, или попросите точно изменить его.", editPlaceholder: "Задайте вопрос или опишите изменение…", send: "Отправить", expand: "Фокус", collapse: "Выйти из фокуса", uncertain: "Нужно уточнить", missingInfo: "Не хватает данных", confidence: "Уверенность ИИ", lowConfidence: "Низкая уверенность — проверьте подсвеченные места перед использованием.", noIssues: "Неясные фрагменты не найдены, но важный документ всё равно нужно проверить.",
+    selected: "Выбранный фрагмент", clearSelection: "Убрать", documentAssistant: "Работа с ИИ", documentAssistantIntro: "Выделите фрагмент или нажмите на подсвеченное место. Спросите, зачем оно нужно, или попросите точно изменить его.", editPlaceholder: "Задайте вопрос или опишите изменение…", send: "Отправить", polish: "Улучшить оформление с ИИ", polishPrompt: "Улучши профессиональное оформление и структуру документа. Сохрани все факты и условия. Сделай понятные заголовки, короткие читаемые абзацы, единообразные списки и логичный порядок разделов.", expand: "Фокус", collapse: "Выйти из фокуса", uncertain: "Нужно уточнить", missingInfo: "Не хватает данных", confidence: "Уверенность ИИ", lowConfidence: "Низкая уверенность — проверьте подсвеченные места перед использованием.", noIssues: "Неясные фрагменты не найдены, но важный документ всё равно нужно проверить.",
     layout: "Расположение окон", layoutHint: "Перетаскивайте заголовки окон, меняйте порядок, скрывайте или разворачивайте любое окно.", insightsPanel: "Проверка и подсказки", documentPanel: "Документ", assistantPanel: "ИИ-помощник", hidePanel: "Скрыть окно", restorePanel: "Вернуть окно", focusPanel: "Развернуть окно", equalPanels: "Равные окна", resetLayout: "Вернуть исходный вид", moveLeft: "Сдвинуть влево", moveRight: "Сдвинуть вправо", dragPanel: "Перетащите, чтобы переместить",
     upload: "Или прикрепите готовый документ", chooseFile: "Выбрать документ", removeFile: "Удалить", fileHint: "PDF, изображение, TXT, RTF, DOCX или ODT. Максимальный размер зависит от формата.", reasoningTime: "Время рассуждения", reasoningEstimate: "Обычно около 2–3 минут, максимум — 10 минут.",
     lease: "Договор аренды жилья", service: "Договор услуг", nda: "Соглашение о конфиденциальности", loan: "Договор займа", power: "Доверенность", complaint: "Официальная жалоба", request: "Официальное заявление", termination: "Уведомление о расторжении", letter: "Деловое письмо", proposal: "Коммерческое предложение", sow: "Техническое задание", minutes: "Протокол встречи", cv: "Сопроводительное письмо", birthday: "Приглашение на день рождения", wedding: "Приглашение на свадьбу", event: "Приглашение на мероприятие", thanks: "Благодарственное письмо", custom: "Свой документ",
@@ -56,11 +56,11 @@ const text = {
     goal: "Ko AI jāmaina, jāpārbauda vai jāizskaidro?", goalHint: "Norādiet punktus, riskus, toni, trūkstošo informāciju vai vēlamo rezultātu.", existing: "Ielīmējiet esošo dokumentu", existingHint: "Ielīmējiet pilnu tekstu vai pievienojiet sākotnējo failu.",
     readiness: "Informācijas pilnīgums", readinessHint: "Rādītājs ņem vērā ievadīto informāciju un svarīgos faktus, kuru vēl trūkst.", missingDetails: "Kas vēl trūkst", missingDetailsHint: "Izvēlieties punktu, lai uzreiz pārietu uz attiecīgo lauku.", green: "Pietiek datu kvalitatīvam dokumentam", yellow: "Var turpināt, bet detaļas uzlabos rezultātu", red: "Trūkst kritiski svarīgu faktu", critical: "Vajadzīgs uzticamam rezultātam", helpful: "Palīdzēs izveidot pilnīgāku dokumentu",
     generate: "Izveidot gandrīz gatavu dokumentu", generating: "Veidojam dokumentu…", signin: "Pierakstieties, lai turpinātu", stop: "Apturēt izveidi", stopped: "Izveide apturēta. Jūsu atbildes palika ekrānā.", warning: "Pārbaudiet trūkstošo informāciju", warningBody: "AI var turpināt ar redzamiem vietturiem, taču rezultāts būs jāpārbauda rūpīgāk.", add: "Pievienot datus", continue: "Turpināt ar vietturiem",
-    back: "Atpakaļ pie datiem", draft: "Darba dokuments", copy: "Kopēt", docx: "DOCX", pdf: "PDF", history: "Jaunākie dokumenti", historyButton: "Dokumentu vēsture", empty: "Šeit būs pēdējie 10 dokumenti.", limit: "Lietojums", delete: "Dzēst", sources: "Pārbaudītie oficiālie avoti", issues: "Pārbaudīt pirms lietošanas", error: "Dokumentu neizdevās izveidot. Mēģiniet vēlreiz.",
+    back: "Atpakaļ pie datiem", newDocument: "Jauns dokuments", newDocumentConfirm: "Sākt jaunu tukšu dokumentu? Saglabātais dokuments paliks vēsturē.", draft: "Darba dokuments", editDocument: "Rediģēt dokumentu", save: "Saglabāt", saving: "Saglabā…", saved: "Saglabāts", unsaved: "Nesaglabātas izmaiņas", copy: "Kopēt", docx: "DOCX", pdf: "PDF", history: "Jaunākie dokumenti", historyButton: "Dokumentu vēsture", empty: "Šeit būs pēdējie 10 dokumenti.", limit: "Lietojums", delete: "Dzēst", sources: "Pārbaudītie oficiālie avoti", issues: "Pārbaudīt pirms lietošanas", error: "Dokumentu neizdevās izveidot. Mēģiniet vēlreiz.",
     disclaimer: "AI dokuments ir tikai informatīvs. Pilnība, juridiskais spēks, izpildāmība un piemērotība netiek garantēta. Pirms parakstīšanas, nosūtīšanas vai iesniegšanas pārbaudiet faktus un vietējos noteikumus.",
     proTitle: "Dokumentu darbnīca", proBody: "Veidojiet, pārbaudiet un rediģējiet dokumentus ar AI norādēm.", proButton: "Skatīt plānu", loadingPlan: "Pārbaudām jūsu plānu…", planError: "Neizdevās ielādēt darbnīcu. Mēģiniet vēlreiz.", retryPlan: "Mēģināt vēlreiz",
     assistantTitle: "Sagatavošanas palīgs", assistantIntro: "Jautājiet, kādas informācijas trūkst, kāpēc detaļa ir vajadzīga vai kā atbildēt pirms ģenerēšanas.", assistantPlaceholder: "Jautājiet par šo anketu…", ask: "Jautāt", suggested: "Ieteiktie jautājumi", suggestion1: "Kādas svarīgas informācijas vēl trūkst?", suggestion2: "Kuras atbildes ir īpaši svarīgas manā jurisdikcijā?", suggestion3: "Izskaidro jautājumus vienkāršāk.",
-    selected: "Izvēlētais fragments", clearSelection: "Notīrīt", documentAssistant: "Darbs ar AI", documentAssistantIntro: "Iezīmējiet fragmentu vai pieskarieties izceltai neskaidrībai. Jautājiet, kāpēc tā vajadzīga, vai lūdziet konkrētu labojumu.", editPlaceholder: "Uzdodiet jautājumu vai aprakstiet izmaiņu…", send: "Sūtīt", expand: "Fokuss", collapse: "Iziet no fokusa", uncertain: "Jāprecizē", missingInfo: "Trūkst informācijas", confidence: "AI pārliecība", lowConfidence: "Zema pārliecība — pārbaudiet izceltās vietas.", noIssues: "Neatrisināti fragmenti nav atrasti, taču svarīgs dokuments joprojām jāpārbauda.",
+    selected: "Izvēlētais fragments", clearSelection: "Notīrīt", documentAssistant: "Darbs ar AI", documentAssistantIntro: "Iezīmējiet fragmentu vai pieskarieties izceltai neskaidrībai. Jautājiet, kāpēc tā vajadzīga, vai lūdziet konkrētu labojumu.", editPlaceholder: "Uzdodiet jautājumu vai aprakstiet izmaiņu…", send: "Sūtīt", polish: "Uzlabot noformējumu ar AI", polishPrompt: "Uzlabo dokumenta profesionālo noformējumu un struktūru. Saglabā visus faktus un nosacījumus. Izmanto skaidrus virsrakstus, īsas rindkopas, vienotus sarakstus un loģisku sadaļu secību.", expand: "Fokuss", collapse: "Iziet no fokusa", uncertain: "Jāprecizē", missingInfo: "Trūkst informācijas", confidence: "AI pārliecība", lowConfidence: "Zema pārliecība — pārbaudiet izceltās vietas.", noIssues: "Neatrisināti fragmenti nav atrasti, taču svarīgs dokuments joprojām jāpārbauda.",
     layout: "Darba telpas izkārtojums", layoutHint: "Velciet paneļu virsrakstus, lai mainītu secību. Paslēpiet, atjaunojiet vai fokusējiet jebkuru paneli.", insightsPanel: "Pārbaudes un norādes", documentPanel: "Dokuments", assistantPanel: "AI palīgs", hidePanel: "Paslēpt paneli", restorePanel: "Atjaunot paneli", focusPanel: "Fokusēt paneli", equalPanels: "Vienādi paneļi", resetLayout: "Atjaunot izkārtojumu", moveLeft: "Pārvietot pa kreisi", moveRight: "Pārvietot pa labi", dragPanel: "Velciet, lai pārvietotu",
     upload: "Vai pievienojiet esošo dokumentu", chooseFile: "Izvēlēties dokumentu", removeFile: "Noņemt", fileHint: "PDF, attēls, TXT, RTF, DOCX vai ODT. Maksimālais izmērs atkarīgs no formāta.", reasoningTime: "Spriešanas laiks", reasoningEstimate: "Parasti ap 2–3 minūtēm, maksimums 10 minūtes.",
     lease: "Dzīvojamās telpas īres līgums", service: "Pakalpojumu līgums", nda: "Konfidencialitātes līgums", loan: "Aizdevuma līgums", power: "Pilnvara", complaint: "Oficiāla sūdzība", request: "Oficiāls iesniegums", termination: "Uzteikuma paziņojums", letter: "Oficiāla vēstule", proposal: "Komerciāls piedāvājums", sow: "Darba uzdevums", minutes: "Sanāksmes protokols", cv: "Motivācijas vēstule", birthday: "Dzimšanas dienas ielūgums", wedding: "Kāzu ielūgums", event: "Pasākuma ielūgums", thanks: "Pateicības vēstule", custom: "Cits dokuments",
@@ -75,6 +75,65 @@ function formatDuration(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
   const seconds = (totalSeconds % 60).toString().padStart(2, "0");
   return `${minutes}:${seconds}`;
+}
+
+const editorColors = {
+  accent: "#0b746c",
+  red: "#a63232",
+  blue: "#245aa8",
+  gray: "#5d6966",
+} as const;
+
+function escapeEditorText(value: string) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+function initialEditorHtml(document: GeneratedDocument) {
+  if (document.editorHtml) return document.editorHtml;
+  return `<h1>${escapeEditorText(document.title)}</h1>${document.sections.map((section) => `<h2>${escapeEditorText(section.heading)}</h2>${section.body.split("\n").filter(Boolean).map((paragraph) => `<p>${escapeEditorText(paragraph)}</p>`).join("")}`).join("")}`;
+}
+
+function normalizedEditorHtml(root: HTMLElement) {
+  const visit = (node: ChildNode): string => {
+    if (node.nodeType === 3) return escapeEditorText(node.textContent ?? "");
+    if (!(node instanceof HTMLElement)) return "";
+    const tag = node.tagName.toLowerCase();
+    if (tag === "br") return "<br>";
+    const children = Array.from(node.childNodes).map(visit).join("");
+    const aliases: Record<string, string> = { b: "strong", i: "em", div: "p" };
+    const normalizedTag = aliases[tag] ?? tag;
+    if (["p", "h1", "h2", "h3", "ul", "ol", "li", "strong", "em", "u"].includes(normalizedTag)) return `<${normalizedTag}>${children}</${normalizedTag}>`;
+    if (tag === "span" && /^editor-color-(accent|red|blue|gray)$/.test(node.className)) return `<span class="${node.className}">${children}</span>`;
+    if (tag === "font") {
+      const raw = (node.getAttribute("color") ?? "").toLowerCase();
+      const color = (Object.entries(editorColors).find(([, value]) => value === raw)?.[0] ?? "accent") as keyof typeof editorColors;
+      return `<span class="editor-color-${color}">${children}</span>`;
+    }
+    return children;
+  };
+  return Array.from(root.childNodes).map(visit).join("");
+}
+
+function editorPayload(root: HTMLElement, original: GeneratedDocument) {
+  const html = normalizedEditorHtml(root);
+  const template = window.document.createElement("template");
+  template.innerHTML = html;
+  let title = original.title;
+  let activeHeading = "Document";
+  const sectionBodies = new Map<string, string[]>();
+  const blocks = Array.from(template.content.querySelectorAll("h1,h2,h3,p,li"));
+  for (const block of blocks) {
+    const value = block.textContent?.trim();
+    if (!value) continue;
+    if (block.tagName === "H1") { title = value.slice(0, 300); continue; }
+    if (block.tagName === "H2" || block.tagName === "H3") { activeHeading = value.slice(0, 500); if (!sectionBodies.has(activeHeading)) sectionBodies.set(activeHeading, []); continue; }
+    if (!sectionBodies.has(activeHeading)) sectionBodies.set(activeHeading, []);
+    sectionBodies.get(activeHeading)!.push(block.tagName === "LI" ? `• ${value}` : value);
+  }
+  const sections = Array.from(sectionBodies, ([heading, body]) => ({ heading, body: body.join("\n") })).filter((section) => section.body.trim());
+  if (!sections.length) sections.push({ heading: original.sections[0]?.heading || "Document", body: root.innerText.trim() || original.plainText });
+  const plainText = [title, ...sections.flatMap((section) => [section.heading, section.body])].join("\n\n").trim();
+  return { title, sections, plainText, editorHtml: html };
 }
 
 export function DocumentStudioPrototype({ locale, account, initialPrompt = "", onRequireAccount }: { locale: ProfileLanguage; account: SupabaseAccount | null; initialPrompt?: string; onRequireAccount: () => void }) {
@@ -185,6 +244,20 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
     window.requestAnimationFrame(() => field?.focus());
   };
   const switchTemplate = (value: string) => { setTemplate(value); setFields({}); setAssistantMessages([]); setError(""); };
+  const startNewDocument = () => {
+    setCurrent(null);
+    setWorkflow("guided");
+    setMode("create");
+    setTemplate("lease");
+    setRegion("");
+    setFields({});
+    setSourceFile(null);
+    setQuickPrompt("");
+    setAssistantQuestion("");
+    setAssistantMessages([]);
+    setWarning(false);
+    setError("");
+  };
   const cancelGeneration = () => { generationController.current?.abort(); setError(t.stopped); };
   const generate = async (confirmed = false) => {
     if (!account) { onRequireAccount(); return; }
@@ -214,17 +287,17 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
     } catch (cause) { setError(cause instanceof Error && cause.message ? cause.message : t.error); }
     finally { setAssistantBusy(false); }
   };
-  const download = async (format: "docx" | "pdf") => {
-    if (!current) return;
+  const download = async (saved: Saved, format: "docx" | "pdf") => {
     if (format === "pdf") {
       const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-      const blob = new Blob([`<!doctype html><meta charset="utf-8"><title>${escape(current.result.title)}</title><style>body{font:12pt/1.55 system-ui;max-width:760px;margin:40px auto;white-space:pre-wrap}@media print{body{margin:0}}</style><body>${escape(current.result.plainText)}<script>onload=()=>print()<\/script>`], { type: "text/html" });
+      const content = saved.result.editorHtml ?? `<p>${escape(saved.result.plainText).replaceAll("\n", "<br>")}</p>`;
+      const blob = new Blob([`<!doctype html><meta charset="utf-8"><title>${escape(saved.result.title)}</title><style>body{font:12pt/1.55 system-ui;color:#182321;max-width:760px;margin:40px auto}h1{font-size:26pt;line-height:1.15}h2{font-size:19pt;margin-top:1.3em}h3{font-size:15pt;margin-top:1.15em}.editor-color-accent{color:#087d72}.editor-color-red{color:#b02a37}.editor-color-blue{color:#245fa8}.editor-color-gray{color:#6b7774}@media print{body{margin:0}h1,h2,h3{break-after:avoid}}</style><body>${content}<script>onload=()=>print()<\/script>`], { type: "text/html" });
       const url = URL.createObjectURL(blob); window.open(url, "_blank", "noopener,noreferrer"); window.setTimeout(() => URL.revokeObjectURL(url), 60_000); return;
     }
     const token = await getAccessToken(); if (!token) return;
-    const response = await fetch(`/api/document-studio/export?id=${encodeURIComponent(current.id)}&format=${format}`, { headers: { Authorization: `Bearer ${token}` } });
+    const response = await fetch(`/api/document-studio/export?id=${encodeURIComponent(saved.id)}&format=${format}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) { setError(t.error); return; }
-    const blob = await response.blob(), url = URL.createObjectURL(blob), anchor = document.createElement("a"); anchor.href = url; anchor.download = `${current.result.title}.${format}`; anchor.click(); URL.revokeObjectURL(url);
+    const blob = await response.blob(), url = URL.createObjectURL(blob), anchor = document.createElement("a"); anchor.href = url; anchor.download = `${saved.result.title}.${format}`; anchor.click(); URL.revokeObjectURL(url);
   };
   const remove = async (id: string) => {
     const token = await getAccessToken(); if (!token) return;
@@ -232,7 +305,7 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
     if (response.ok) { setHistory((previous) => previous.filter((document) => document.id !== id)); if (current?.id === id) setCurrent(null); }
   };
 
-  if (current) return <StudioDraft t={t} item={current} quota={quota} onBack={() => setCurrent(null)} onUpdated={(document, nextQuota) => { setCurrent(document); setQuota(nextQuota); setHistory((previous) => [document, ...previous.filter((item) => item.id !== document.id)].slice(0, 10)); }} onCopy={() => navigator.clipboard.writeText(current.result.plainText)} onDownload={download} />;
+  if (current) return <StudioDraft t={t} item={current} quota={quota} onBack={() => setCurrent(null)} onNew={startNewDocument} onUpdated={(document, nextQuota) => { setCurrent(document); setQuota(nextQuota); setHistory((previous) => [document, ...previous.filter((item) => item.id !== document.id)].slice(0, 10)); }} onDownload={download} />;
 
   if (!account) return <StudioGate t={t} signedIn={false} onAction={onRequireAccount} />;
   if (!planLoaded) return <section className="studio-shell"><div className="studio-plan-loading" role="status"><p>{t.loadingPlan}</p></div></section>;
@@ -307,7 +380,7 @@ function StudioFileField({ t, file, onFile }: { t: Copy; file: File | null; onFi
 type StudioPanelId = "insights" | "document" | "assistant";
 const defaultStudioPanelOrder: StudioPanelId[] = ["insights", "document", "assistant"];
 
-function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: { t: Copy; item: Saved; quota: Quota | null; onBack: () => void; onUpdated: (item: Saved, quota: Quota) => void; onCopy: () => void; onDownload: (format: "docx" | "pdf") => void }) {
+function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: { t: Copy; item: Saved; quota: Quota | null; onBack: () => void; onNew: () => void; onUpdated: (item: Saved, quota: Quota) => void; onDownload: (item: Saved, format: "docx" | "pdf") => void }) {
   const [selectedText, setSelectedText] = useState("");
   const [instruction, setInstruction] = useState("");
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -319,7 +392,11 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
   const [draggedPanel, setDraggedPanel] = useState<StudioPanelId | null>(null);
   const [equalPanels, setEqualPanels] = useState(false);
   const [dockRetreating, setDockRetreating] = useState(false);
-  const documentRef = useRef<HTMLDivElement>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<"saved" | "unsaved" | "">("");
+  const editorRef = useRef<HTMLDivElement>(null);
+  const editorSelectionRef = useRef<Range | null>(null);
   const lastPageScrollRef = useRef(0);
   const lastDocumentScrollRef = useRef(0);
   useEffect(() => {
@@ -366,29 +443,57 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
   }, [updateReadingControls]);
   const document = item.result;
   const annotations = document.annotations ?? [];
+  useEffect(() => {
+    if (!editorRef.current || dirty) return;
+    editorRef.current.innerHTML = initialEditorHtml(document);
+    setSaveState("saved");
+  }, [dirty, document]);
   const panelLabels: Record<StudioPanelId, string> = {
     insights: t.insightsPanel,
     document: t.documentPanel,
     assistant: t.assistantPanel,
   };
   const selectFromDocument = () => {
-    const selection = window.getSelection(); if (!selection || !selection.rangeCount || !documentRef.current) return;
-    const range = selection.getRangeAt(0); if (!documentRef.current.contains(range.commonAncestorContainer)) return;
+    const selection = window.getSelection(); if (!selection || !selection.rangeCount || !editorRef.current) return;
+    const range = selection.getRangeAt(0); if (!editorRef.current.contains(range.commonAncestorContainer)) return;
+    editorSelectionRef.current = range.cloneRange();
     const value = selection.toString().trim().slice(0, 6000); if (value) setSelectedText(value);
   };
   const pickAnnotation = (excerpt: string, question: string) => { setSelectedText(excerpt); setInstruction(question); };
-  const ask = async () => {
-    const question = instruction.trim(); if (!question || busy) return;
+  const saveManualEdit = async () => {
+    if (!editorRef.current) return item;
+    if (!dirty) return item;
+    setSaving(true); setError("");
+    try {
+      const token = await getAccessToken(); if (!token) throw new Error();
+      const response = await fetch("/api/document-studio", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, manualDocument: editorPayload(editorRef.current, document) }) });
+      const data = await response.json() as { document?: Saved; quota?: Quota; error?: { message?: string } }; if (!response.ok || !data.document || !data.quota) throw new Error(data.error?.message);
+      setDirty(false); setSaveState("saved"); onUpdated(data.document, data.quota); return data.document;
+    } catch (cause) { setError(cause instanceof Error && cause.message ? cause.message : t.error); setSaveState("unsaved"); return null; }
+    finally { setSaving(false); }
+  };
+  const restoreEditorSelection = () => {
+    const selection = window.getSelection(); if (!selection || !editorSelectionRef.current) return;
+    selection.removeAllRanges(); selection.addRange(editorSelectionRef.current);
+  };
+  const runEditorCommand = (command: string, value?: string) => {
+    editorRef.current?.focus(); restoreEditorSelection(); window.document.execCommand(command, false, value); setDirty(true); setSaveState("unsaved"); selectFromDocument();
+  };
+  const handleBack = async () => { if (dirty && !(await saveManualEdit())) return; onBack(); };
+  const handleNew = async () => { if (dirty && !(await saveManualEdit())) return; if (window.confirm(t.newDocumentConfirm)) onNew(); };
+  const handleDownload = async (format: "docx" | "pdf") => { const saved = dirty ? await saveManualEdit() : item; if (saved) await onDownload(saved, format); };
+  const ask = async (preset?: string) => {
+    const question = (preset ?? instruction).trim(); if (!question || busy) return;
+    if (dirty && !(await saveManualEdit())) return;
     setMessages((previous) => [...previous, { role: "user", text: question }]); setInstruction(""); setBusy(true); setError("");
     try {
       const token = await getAccessToken(); if (!token) throw new Error();
-      const response = await fetch("/api/document-studio", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, instruction: question, selectedText }) });
+       const response = await fetch("/api/document-studio", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, instruction: question, selectedText }) });
       const data = await response.json() as { message?: string; document?: Saved; quota?: Quota; error?: { message?: string } }; if (!response.ok || !data.message || !data.document || !data.quota) throw new Error(data.error?.message);
       setMessages((previous) => [...previous, { role: "assistant", text: data.message! }]); if (data.document) onUpdated(data.document, data.quota); setSelectedText("");
     } catch (cause) { setError(cause instanceof Error && cause.message ? cause.message : t.error); }
     finally { setBusy(false); }
   };
-  const paragraphAnnotation = (heading: string, paragraph: string) => annotations.find((annotation) => annotation.sectionHeading === heading && (paragraph.includes(annotation.excerpt) || annotation.excerpt.includes(paragraph.slice(0, 80)))) ?? (paragraph.includes("[TO BE COMPLETED") ? { sectionHeading: heading, excerpt: paragraph, reason: t.missingInfo, kind: "missing" as const, question: t.missingInfo } : null);
   const showPanel = (panel: StudioPanelId) => {
     setHiddenPanels((current) => current.filter((value) => value !== panel));
     setFocusedPanel(null);
@@ -445,15 +550,22 @@ function StudioDraft({ t, item, quota, onBack, onUpdated, onCopy, onDownload }: 
   const panels = {
     insights: <aside className="studio-insights-panel studio-flex-panel" onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("insights")}>
       <header className="studio-panel-header" {...dragAttributes("insights")}><div><span className="studio-panel-grip" aria-hidden="true">⠿</span><strong>{t.insightsPanel}</strong></div>{panelControls("insights")}</header>
-      <div className="studio-panel-scroll"><button className="studio-back-button" type="button" onClick={onBack}>← {t.back}</button>{document.preSignatureCheck && <div className="studio-final-check-result"><strong>✓ {t.preSignDone}</strong><p>{t.preSignChecks}</p></div>}<div className={`studio-confidence ${document.confidence}`}><small>{t.confidence}</small><strong>{document.confidence.toUpperCase()}</strong>{document.confidence === "low" && <p>{t.lowConfidence}</p>}</div><div><small>{t.issues}</small>{annotations.length || document.assumptions.length || document.unresolvedIssues.length ? <ul>{[...document.assumptions, ...document.unresolvedIssues.map((issue) => issue.issue)].map((value, index) => <li key={index}>{value}</li>)}</ul> : <p>{t.noIssues}</p>}</div>{document.legalSources.length > 0 && <div><small>{t.sources}</small><ul>{document.legalSources.map((source, index) => <li key={index}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul></div>}{quota && <div><small>{t.limit}</small><p>{quota.remaining} · 24h {quota.dailyUsed}/{quota.dailyLimit}</p></div>}</div>
+      <div className="studio-panel-scroll"><div className="studio-draft-navigation"><button className="studio-back-button" type="button" onClick={() => void handleBack()}>← {t.back}</button><button className="studio-new-document-button" type="button" onClick={() => void handleNew()}>＋ {t.newDocument}</button></div>{document.preSignatureCheck && <div className="studio-final-check-result"><strong>✓ {t.preSignDone}</strong><p>{t.preSignChecks}</p></div>}<div className={`studio-confidence ${document.confidence}`}><small>{t.confidence}</small><strong>{document.confidence.toUpperCase()}</strong>{document.confidence === "low" && <p>{t.lowConfidence}</p>}</div><div><small>{t.issues}</small>{annotations.length || document.assumptions.length || document.unresolvedIssues.length ? <ul>{[...document.assumptions, ...document.unresolvedIssues.map((issue) => issue.issue)].map((value, index) => <li key={index}>{value}</li>)}</ul> : <p>{t.noIssues}</p>}</div>{annotations.length > 0 && <div className="studio-annotation-list"><small>{t.missingDetails}</small>{annotations.map((annotation, index) => <button type="button" key={`${annotation.sectionHeading}-${index}`} onClick={() => pickAnnotation(annotation.excerpt, annotation.question)}><strong>{annotation.sectionHeading}</strong><span>{annotation.reason}</span></button>)}</div>}{document.legalSources.length > 0 && <div><small>{t.sources}</small><ul>{document.legalSources.map((source, index) => <li key={index}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul></div>}{quota && <div><small>{t.limit}</small><p>{quota.remaining} · 24h {quota.dailyUsed}/{quota.dailyLimit}</p></div>}</div>
     </aside>,
     document: <article className="studio-document-paper studio-flex-panel" onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("document")}>
-      <div className="studio-document-toolbar studio-panel-header" {...dragAttributes("document")}><div className="studio-panel-title"><span className="studio-panel-grip" aria-hidden="true">⠿</span><strong>{t.draft}</strong></div><div className="studio-document-actions"><button type="button" onClick={onCopy}>{t.copy}</button><button type="button" onClick={() => onDownload("docx")}>{t.docx}</button><button type="button" onClick={() => onDownload("pdf")}>{t.pdf}</button>{panelControls("document")}</div></div>
-      <div className="studio-document-scroll" ref={documentRef} onScroll={(event) => updateReadingControls(event.currentTarget.scrollTop, lastDocumentScrollRef)} onMouseUp={selectFromDocument} onTouchEnd={selectFromDocument}><p className="document-kicker">{document.country}{document.region ? ` · ${document.region}` : ""}</p><h2>{document.title}</h2>{document.sections.map((section, index) => <section key={index}><h3>{section.heading}</h3>{section.body.split("\n").filter(Boolean).map((paragraph, paragraphIndex) => { const annotation = paragraphAnnotation(section.heading, paragraph); return <div className={annotation ? `studio-annotated-line ${annotation.kind}` : "studio-document-line"} key={paragraphIndex}><p>{paragraph}</p>{annotation && <button type="button" title={annotation.reason} aria-label={`${t.uncertain}: ${annotation.reason}`} onClick={() => pickAnnotation(annotation.excerpt, annotation.question)}>?</button>}</div>; })}</section>)}</div>
+      <div className="studio-document-toolbar studio-panel-header"><div className="studio-panel-title" {...dragAttributes("document")}><span className="studio-panel-grip" aria-hidden="true">⠿</span><strong>{t.editDocument}</strong><span className={`studio-save-state ${saveState === "unsaved" ? "dirty" : ""}`}>{saving ? t.saving : saveState === "unsaved" ? t.unsaved : t.saved}</span></div><div className="studio-document-actions"><button type="button" className="studio-save-button" disabled={!dirty || saving} onClick={() => void saveManualEdit()}>{saving ? "…" : t.save}</button><button type="button" onClick={() => void navigator.clipboard.writeText(editorRef.current?.innerText || document.plainText)}>{t.copy}</button><button type="button" onClick={() => void handleDownload("docx")}>{t.docx}</button><button type="button" onClick={() => void handleDownload("pdf")}>{t.pdf}</button>{panelControls("document")}</div></div>
+      <div className="studio-editor-formatbar" role="toolbar" aria-label={t.editDocument}>
+        <select aria-label="Text style" defaultValue="p" onChange={(event) => runEditorCommand("formatBlock", event.target.value)}><option value="p">Text</option><option value="h1">Title</option><option value="h2">Heading</option><option value="h3">Subheading</option></select>
+        <div><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("bold")}><b>B</b></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("italic")}><i>I</i></button><button type="button" aria-label="Underline" title="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("underline")}><u>U</u></button></div>
+        <div><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("insertUnorderedList")}>• List</button><button type="button" aria-label="Numbered list" title="Numbered list" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("insertOrderedList")}>1. List</button></div>
+        <div className="studio-color-swatches" aria-label="Text color">{Object.entries(editorColors).map(([name, value]) => <button type="button" key={name} aria-label={`${name} text`} title={`${name} text`} style={{ "--editor-swatch": value } as CSSProperties} onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("foreColor", value)} />)}</div>
+        <div><button type="button" aria-label="Undo" title="Undo" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("undo")}>↶</button><button type="button" aria-label="Redo" title="Redo" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("redo")}>↷</button><button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("removeFormat")}>Clear</button></div>
+      </div>
+      <div className="studio-document-scroll studio-rich-editor" ref={editorRef} role="textbox" aria-label={t.editDocument} aria-multiline="true" contentEditable suppressContentEditableWarning onScroll={(event) => updateReadingControls(event.currentTarget.scrollTop, lastDocumentScrollRef)} onInput={() => { setDirty(true); setSaveState("unsaved"); }} onMouseUp={selectFromDocument} onKeyUp={selectFromDocument} onTouchEnd={selectFromDocument} onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") { event.preventDefault(); void saveManualEdit(); } }} />
     </article>,
     assistant: <aside className="studio-document-assistant studio-flex-panel" aria-label={t.documentAssistant} onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("assistant")}>
       <header className="studio-panel-header" {...dragAttributes("assistant")}><div><span className="studio-panel-grip" aria-hidden="true">⠿</span><small>AI</small><h2>{t.documentAssistant}</h2></div>{panelControls("assistant")}</header>
-      <div className="studio-panel-scroll"><p>{t.documentAssistantIntro}</p>{selectedText && <blockquote><span>{t.selected}</span><p>{selectedText}</p><button type="button" onClick={() => setSelectedText("")}>{t.clearSelection}</button></blockquote>}<div className="studio-assistant-messages" aria-live="polite">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>{error && <p className="studio-api-error" role="alert">{error}</p>}<div className="studio-assistant-composer"><textarea rows={3} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={t.editPlaceholder} /><button type="button" disabled={!instruction.trim() || busy} onClick={() => void ask()}>{busy ? "…" : t.send}</button></div></div>
+      <div className="studio-panel-scroll"><p>{t.documentAssistantIntro}</p><button type="button" className="studio-ai-polish" disabled={busy || saving} onClick={() => void ask(t.polishPrompt)}>✦ {t.polish}</button>{selectedText && <blockquote><span>{t.selected}</span><p>{selectedText}</p><button type="button" onClick={() => setSelectedText("")}>{t.clearSelection}</button></blockquote>}<div className="studio-assistant-messages" aria-live="polite">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>{error && <p className="studio-api-error" role="alert">{error}</p>}<div className="studio-assistant-composer"><textarea rows={3} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={t.editPlaceholder} /><button type="button" disabled={!instruction.trim() || busy} onClick={() => void ask()}>{busy ? "…" : t.send}</button></div></div>
     </aside>,
   } satisfies Record<StudioPanelId, ReactNode>;
   return <div className={`studio-draft-workspace${focusedPanel ? ` panel-focused focus-${focusedPanel}` : ""}`}>

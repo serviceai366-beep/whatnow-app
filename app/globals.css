@@ -4052,3 +4052,41 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   .settings-picker-trigger, .settings-picker-chevron { transition-duration: 1ms; }
   .settings-picker-menu { animation: none; }
 }
+
+/* Professional rich-text editing inside the generated document workspace. */
+.studio-draft-navigation { display:grid; grid-template-columns:minmax(0,1fr); gap:7px; margin:0!important; }
+.studio-new-document-button { width:100%; padding:10px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius:12px; color:var(--accent-dark); background:color-mix(in srgb,var(--accent-soft) 55%,var(--surface)); font:inherit; font-weight:850; }
+.studio-panel-title { cursor:grab; }
+.studio-panel-title:active { cursor:grabbing; }
+.studio-save-state { max-width:160px; overflow:hidden; color:var(--accent-dark); font-size:.66rem; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.studio-save-state.dirty { color:#9a5b12; }
+.studio-document-actions .studio-save-button { border-color:color-mix(in srgb,var(--accent) 40%,var(--border)); color:#fff; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); }
+.studio-document-actions .studio-save-button:disabled { color:var(--muted); background:var(--surface); opacity:.55; }
+.studio-editor-formatbar { display:flex; align-items:center; gap:7px; padding:8px 10px; overflow-x:auto; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--surface) 88%,var(--accent-soft)); scrollbar-width:none; }
+.studio-editor-formatbar::-webkit-scrollbar { display:none; }
+.studio-editor-formatbar > div { display:flex; flex:0 0 auto; gap:4px; padding-left:7px; border-left:1px solid var(--border); }
+.studio-editor-formatbar button,.studio-editor-formatbar select { min-height:34px; flex:0 0 auto; padding:6px 9px; border:1px solid var(--border); border-radius:9px; color:var(--text); background:var(--surface); font:inherit; font-size:.72rem; font-weight:800; }
+.studio-editor-formatbar button:hover,.studio-editor-formatbar select:hover { border-color:var(--accent); background:var(--accent-soft); }
+.studio-color-swatches button { position:relative; width:30px; padding:0; }
+.studio-color-swatches button::after { content:""; display:block; width:15px; height:15px; margin:auto; border:2px solid #fff; border-radius:50%; background:var(--editor-swatch); box-shadow:0 0 0 1px rgb(0 0 0 / 16%); }
+.studio-rich-editor { caret-color:var(--accent-dark); cursor:text; }
+.studio-rich-editor:focus { box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent); }
+.studio-rich-editor h1 { margin:0 0 1.3em; font-size:2rem; line-height:1.2; text-align:center; }
+.studio-rich-editor h2 { margin:1.8em 0 .65em; font-size:1.35rem; line-height:1.25; }
+.studio-rich-editor h3 { margin:1.45em 0 .55em; font-size:1.08rem; line-height:1.3; }
+.studio-rich-editor p { margin:.85em 0; }
+.studio-rich-editor ul,.studio-rich-editor ol { padding-left:1.5em; }
+.studio-rich-editor .editor-color-accent,.studio-rich-editor font[color="#0b746c"] { color:#0b746c; }
+.studio-rich-editor .editor-color-red,.studio-rich-editor font[color="#a63232"] { color:#a63232; }
+.studio-rich-editor .editor-color-blue,.studio-rich-editor font[color="#245aa8"] { color:#245aa8; }
+.studio-rich-editor .editor-color-gray,.studio-rich-editor font[color="#5d6966"] { color:#5d6966; }
+.studio-ai-polish { width:100%; min-height:42px; margin:0 0 12px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--accent) 38%,var(--border)); border-radius:13px; color:#fff; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); font:inherit; font-size:.78rem; font-weight:850; }
+.studio-annotation-list { display:grid; gap:7px; }
+.studio-annotation-list > button { display:grid; gap:2px; width:100%; padding:9px 10px; border:1px solid #e5bd58; border-radius:11px; color:#684d0c; background:#fff6d9; font:inherit; font-size:.74rem; text-align:left; }
+.studio-annotation-list > button span { color:#766735; line-height:1.35; }
+
+@media (max-width:820px) {
+  .studio-panel-title .studio-save-state { display:none; }
+  .studio-editor-formatbar { padding:7px 8px; }
+  .studio-editor-formatbar button,.studio-editor-formatbar select { min-height:36px; }
+}
