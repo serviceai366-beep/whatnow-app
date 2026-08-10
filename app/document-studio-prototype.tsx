@@ -589,9 +589,18 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
     setDraggedPanel(null);
   };
   const startPointerDrag = (panel: StudioPanelId, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (focusedPanel || event.button !== 0) return;
+    // The six-dot grip is a pointer-only drag surface. Native HTML5 dragging
+    // competes with pointer capture (especially on touch browsers), so stop
+    // the browser's default button drag and let our pointer state own it.
+    if (focusedPanel || (event.pointerType === "mouse" && event.button !== 0)) return;
+    event.preventDefault();
     pointerDragRef.current = { panel, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, startOffsetY: panelOffsets[panel] ?? 0, axis: "undecided" };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is unavailable in a few embedded browsers; the
+      // pointer handlers still provide the normal fallback path.
+    }
     setDraggedPanel(panel);
     window.document.body.classList.add("studio-panels-dragging");
   };
@@ -616,7 +625,11 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
   };
   const finishPointerDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (pointerDragRef.current?.pointerId !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // The capture may already have been released by the browser.
+    }
     pointerDragRef.current = null;
     setDraggedPanel(null);
     window.document.body.classList.remove("studio-panels-dragging");
@@ -683,16 +696,16 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
   const panelGrip = (panel: StudioPanelId) => <button
     className="studio-panel-grip"
     type="button"
-    draggable={!focusedPanel}
+    draggable={false}
     disabled={Boolean(focusedPanel)}
+    aria-grabbed={draggedPanel === panel}
     aria-label={`${t.dragPanel}: ${panelLabels[panel]}`}
     title={focusedPanel ? undefined : t.dragPanel}
-    onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; setDraggedPanel(panel); }}
-    onDragEnd={() => setDraggedPanel(null)}
     onPointerDown={(event) => startPointerDrag(panel, event)}
     onPointerMove={continuePointerDrag}
     onPointerUp={finishPointerDrag}
     onPointerCancel={finishPointerDrag}
+    onLostPointerCapture={finishPointerDrag}
   ><span aria-hidden="true">⠿</span></button>;
   const panels = {
     insights: <aside className="studio-insights-panel studio-flex-panel" onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("insights")}>
