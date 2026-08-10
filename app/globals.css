@@ -3273,8 +3273,8 @@ body.studio-panels-resizing, body.studio-panels-resizing * { cursor: col-resize 
   .studio-assistant-composer { grid-template-columns:1fr; }
   .studio-assistant-composer button { min-height:44px; }
   .studio-annotated-line { margin-inline:-7px; }
-  .studio-draft-workspace.panel-focused { inset: 3px; height: calc(100dvh - 6px); padding: 5px; border-radius: 24px; }
-  .studio-draft-workspace.panel-focused .studio-layout-dock { display: flex; }
+  body.studio-panels-focused .studio-draft-workspace.panel-focused { inset: 61px 3px 3px; height: calc(100dvh - 64px); padding: 5px; border-radius: 24px; }
+  .studio-focused-exit { top: 10px; left: 62px; min-height: 40px; padding: 7px 11px; font-size: .68rem; }
 }
 
 @media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
@@ -4200,15 +4200,20 @@ body.studio-panels-focused .history-backdrop {
   z-index: 220;
 }
 body.studio-panels-focused .studio-draft-workspace.panel-focused {
-  padding-top: 72px;
+  /* Keep the focused workspace below the compact global header.  The old
+     full-viewport overlay put its command bar underneath the header glass,
+     making the formatting controls appear to disappear. */
+  inset: 72px 6px 6px;
+  height: calc(100dvh - 78px);
+  padding-top: 8px;
 }
 .studio-focused-exit {
-  position: absolute;
-  z-index: 4;
-  top: 72px;
-  right: 16px;
-  min-height: 36px;
-  padding: 7px 12px;
+  position: fixed;
+  z-index: 190;
+  top: 15px;
+  left: 78px;
+  min-height: 42px;
+  padding: 8px 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
   border-radius: 999px;
   color: var(--accent-dark);
@@ -4219,6 +4224,7 @@ body.studio-panels-focused .studio-draft-workspace.panel-focused {
   font: inherit;
   font-size: .72rem;
   font-weight: 850;
+  white-space: nowrap;
   cursor: pointer;
 }
 .studio-focused-exit:hover { border-color: var(--accent); background: var(--surface); }
@@ -4268,6 +4274,21 @@ body.studio-panels-focused .studio-draft-workspace.panel-focused {
 .studio-rich-editor .editor-size-large { font-size:1.22em; }
 .studio-rich-editor .editor-size-xlarge { font-size:1.5em; }
 .studio-draft-workspace.panel-focused .studio-document-commandbar { top:0; }
+.studio-draft-workspace.panel-focused .studio-document-paper {
+  overflow: hidden;
+}
+.studio-draft-workspace.panel-focused .studio-document-commandbar {
+  position: relative;
+  top: 0;
+  z-index: 40;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.studio-draft-workspace.panel-focused .studio-document-toolbar,
+.studio-draft-workspace.panel-focused .studio-editor-formatbar {
+  position: relative;
+  z-index: 41;
+}
 .studio-ai-polish { width:100%; min-height:42px; margin:0 0 12px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--accent) 38%,var(--border)); border-radius:13px; color:#fff; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); font:inherit; font-size:.78rem; font-weight:850; }
 .studio-annotation-list { display:grid; gap:7px; }
 .studio-annotation-list > button { display:grid; gap:2px; width:100%; padding:9px 10px; border:1px solid #e5bd58; border-radius:11px; color:#684d0c; background:#fff6d9; font:inherit; font-size:.74rem; text-align:left; }
