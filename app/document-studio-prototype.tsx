@@ -322,7 +322,7 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
     if (response.ok) { setHistory((previous) => previous.filter((document) => document.id !== id)); if (current?.id === id) setCurrent(null); }
   };
 
-  if (current) return <StudioDraft t={t} item={current} quota={quota} onBack={() => setCurrent(null)} onNew={startNewDocument} onUpdated={(document, nextQuota) => { setCurrent(document); setQuota(nextQuota); setHistory((previous) => [document, ...previous.filter((item) => item.id !== document.id)].slice(0, 10)); }} onDownload={download} />;
+  if (current) return <StudioDraft locale={copyLocale} t={t} item={current} quota={quota} onBack={() => setCurrent(null)} onNew={startNewDocument} onUpdated={(document, nextQuota) => { setCurrent(document); setQuota(nextQuota); setHistory((previous) => [document, ...previous.filter((item) => item.id !== document.id)].slice(0, 10)); }} onDownload={download} />;
 
   if (!account) return <StudioGate t={t} signedIn={false} onAction={onRequireAccount} />;
   if (!planLoaded) return <section className="studio-shell"><div className="studio-plan-loading" role="status"><p>{t.loadingPlan}</p></div></section>;
@@ -400,7 +400,7 @@ const defaultStudioPanelRatios: Record<StudioPanelId, number> = { insights: 0.75
 const studioPanelMinimumWidths: Record<StudioPanelId, number> = { insights: 190, document: 360, assistant: 240 };
 type StudioPanelResize = { pointerId: number; index: number; startX: number; panels: StudioPanelId[]; widths: number[] };
 
-function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: { t: Copy; item: Saved; quota: Quota | null; onBack: () => void; onNew: () => void; onUpdated: (item: Saved, quota: Quota) => void; onDownload: (item: Saved, format: "docx" | "pdf") => void }) {
+function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownload }: { locale: StudioGuideLocale; t: Copy; item: Saved; quota: Quota | null; onBack: () => void; onNew: () => void; onUpdated: (item: Saved, quota: Quota) => void; onDownload: (item: Saved, format: "docx" | "pdf") => void }) {
   const [selectedText, setSelectedText] = useState("");
   const [instruction, setInstruction] = useState("");
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -539,21 +539,22 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
   const handleDownload = async (format: "docx" | "pdf") => { const saved = dirty ? await saveManualEdit() : item; if (saved) await onDownload(saved, format); };
   const ask = async (preset?: string) => {
     const question = (preset ?? instruction).trim(); if (!question || busy) return;
-    const formattingApplied = applyAiFormattingInstruction(question);
-    const asksForTextChange = /(?:correct|fix|rewrite|replace|change the text|исправ|замен|перепиш|измени текст|labot|pārrakst|aizstāj)/u.test(question.toLocaleLowerCase());
-    if (formattingApplied && !asksForTextChange) {
-      setMessages((previous) => [...previous, { role: "user", text: question }, { role: "assistant", text: locale === "ru" ? "Готово — оформление выбранного фрагмента изменено. Сохраните документ, чтобы закрепить правку." : locale === "lv" ? "Gatavs — atlasītā fragmenta noformējums ir mainīts. Saglabājiet dokumentu, lai nostiprinātu izmaiņas." : "Done — the selected passage has been formatted. Save the document to keep the change." }]);
-      setInstruction(""); setSelectedText(""); return;
-    }
-    if (dirty && !(await saveManualEdit())) return;
-    setMessages((previous) => [...previous, { role: "user", text: question }]); setInstruction(""); setBusy(true); setError("");
+    let requestStarted = false;
     try {
+      const formattingApplied = applyAiFormattingInstruction(question);
+      const asksForTextChange = /(?:correct|fix|rewrite|replace|change the text|исправ|замен|перепиш|измени текст|labot|pārrakst|aizstāj)/u.test(question.toLocaleLowerCase());
+      if (formattingApplied && !asksForTextChange) {
+        setMessages((previous) => [...previous, { role: "user", text: question }, { role: "assistant", text: locale === "ru" ? "Готово — оформление выбранного фрагмента изменено. Сохраните документ, чтобы закрепить правку." : locale === "lv" ? "Gatavs — atlasītā fragmenta noformējums ir mainīts. Saglabājiet dokumentu, lai nostiprinātu izmaiņas." : "Done — the selected passage has been formatted. Save the document to keep the change." }]);
+        setInstruction(""); setSelectedText(""); return;
+      }
+      if (dirty && !(await saveManualEdit())) return;
+      setMessages((previous) => [...previous, { role: "user", text: question }]); setInstruction(""); setBusy(true); setError(""); requestStarted = true;
       const token = await getAccessToken(); if (!token) throw new Error();
        const response = await fetch("/api/document-studio", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, instruction: question, selectedText }) });
       const data = await response.json() as { message?: string; document?: Saved; quota?: Quota; error?: { message?: string } }; if (!response.ok || !data.message || !data.document || !data.quota) throw new Error(data.error?.message);
       setMessages((previous) => [...previous, { role: "assistant", text: data.message! }]); if (data.document) onUpdated(data.document, data.quota); setSelectedText("");
     } catch (cause) { setError(cause instanceof Error && cause.message ? cause.message : t.error); }
-    finally { setBusy(false); }
+    finally { if (requestStarted) setBusy(false); }
   };
   const showPanel = (panel: StudioPanelId) => {
     setHiddenPanels((current) => current.filter((value) => value !== panel));
