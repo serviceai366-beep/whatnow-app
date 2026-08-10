@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible problem in the WhatNow? source or hosted app.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove personal document contents, credentials, payment data, and private support messages before posting.
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable sequence that shows the problem.
+      placeholder: "1. Open…\n2. Select…\n3. Press…"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Include the visible error and the relevant browser or server message, redacted.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, OS, device, and whether this is local or hosted.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal data, document contents, credentials, and payment details.
+          required: true
