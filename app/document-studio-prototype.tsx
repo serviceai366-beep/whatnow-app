@@ -379,6 +379,9 @@ function StudioFileField({ t, file, onFile }: { t: Copy; file: File | null; onFi
 
 type StudioPanelId = "insights" | "document" | "assistant";
 const defaultStudioPanelOrder: StudioPanelId[] = ["insights", "document", "assistant"];
+const defaultStudioPanelRatios: Record<StudioPanelId, number> = { insights: 0.75, document: 2, assistant: 1 };
+const studioPanelMinimumWidths: Record<StudioPanelId, number> = { insights: 190, document: 360, assistant: 240 };
+type StudioPanelResize = { pointerId: number; index: number; startX: number; panels: StudioPanelId[]; widths: number[] };
 
 function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: { t: Copy; item: Saved; quota: Quota | null; onBack: () => void; onNew: () => void; onUpdated: (item: Saved, quota: Quota) => void; onDownload: (item: Saved, format: "docx" | "pdf") => void }) {
   const [selectedText, setSelectedText] = useState("");
@@ -391,18 +394,25 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
   const [focusedPanel, setFocusedPanel] = useState<StudioPanelId | null>(null);
   const [draggedPanel, setDraggedPanel] = useState<StudioPanelId | null>(null);
   const [equalPanels, setEqualPanels] = useState(false);
+  const [panelRatios, setPanelRatios] = useState<Record<StudioPanelId, number>>(() => ({ ...defaultStudioPanelRatios }));
+  const [resizingPanels, setResizingPanels] = useState(false);
   const [dockRetreating, setDockRetreating] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "unsaved" | "">("");
   const editorRef = useRef<HTMLDivElement>(null);
   const editorSelectionRef = useRef<Range | null>(null);
+  const panelGridRef = useRef<HTMLDivElement>(null);
   const pointerDragRef = useRef<{ panel: StudioPanelId; pointerId: number; startX: number } | null>(null);
+  const panelResizeRef = useRef<StudioPanelResize | null>(null);
   const lastPageScrollRef = useRef(0);
   const lastDocumentScrollRef = useRef(0);
   useEffect(() => {
     window.document.body.classList.add("studio-editor-open");
-    return () => window.document.body.classList.remove("studio-editor-open");
+    return () => {
+      window.document.body.classList.remove("studio-editor-open");
+      window.document.body.classList.remove("studio-panels-resizing");
+    };
   }, []);
   useEffect(() => {
     if (!focusedPanel) return;
@@ -550,13 +560,58 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
     pointerDragRef.current = null;
     setDraggedPanel(null);
   };
+  const visiblePanels = focusedPanel ? [focusedPanel] : panelOrder.filter((panel) => !hiddenPanels.includes(panel));
+  const applyPanelResize = (resize: StudioPanelResize, clientX: number) => {
+    const leftPanel = resize.panels[resize.index];
+    const rightPanel = resize.panels[resize.index + 1];
+    if (!leftPanel || !rightPanel) return;
+    const pairWidth = resize.widths[resize.index] + resize.widths[resize.index + 1];
+    const leftMinimum = studioPanelMinimumWidths[leftPanel];
+    const rightMinimum = studioPanelMinimumWidths[rightPanel];
+    const maximumLeft = Math.max(leftMinimum, pairWidth - rightMinimum);
+    const nextLeft = Math.min(maximumLeft, Math.max(leftMinimum, resize.widths[resize.index] + clientX - resize.startX));
+    const nextWidths = [...resize.widths];
+    nextWidths[resize.index] = nextLeft;
+    nextWidths[resize.index + 1] = pairWidth - nextLeft;
+    const totalWidth = nextWidths.reduce((total, width) => total + width, 0);
+    setPanelRatios((current) => {
+      const next = { ...current };
+      resize.panels.forEach((panel, index) => { next[panel] = nextWidths[index] / totalWidth; });
+      return next;
+    });
+  };
+  const startPanelResize = (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (focusedPanel || event.button !== 0 || window.matchMedia("(max-width: 980px)").matches || !panelGridRef.current) return;
+    const panelNodes = visiblePanels.map((panel) => panelGridRef.current?.querySelector<HTMLElement>(`[data-studio-panel="${panel}"]`) ?? null);
+    if (panelNodes.some((node) => !node)) return;
+    panelResizeRef.current = { pointerId: event.pointerId, index, startX: event.clientX, panels: [...visiblePanels], widths: panelNodes.map((node) => node!.getBoundingClientRect().width) };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setEqualPanels(false);
+    setResizingPanels(true);
+    window.document.body.classList.add("studio-panels-resizing");
+  };
+  const continuePanelResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const resize = panelResizeRef.current;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    applyPanelResize(resize, event.clientX);
+  };
+  const finishPanelResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (panelResizeRef.current?.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    panelResizeRef.current = null;
+    setResizingPanels(false);
+    window.document.body.classList.remove("studio-panels-resizing");
+  };
   const resetLayout = () => {
     setPanelOrder(defaultStudioPanelOrder);
     setHiddenPanels([]);
     setFocusedPanel(null);
     setEqualPanels(false);
+    setPanelRatios({ ...defaultStudioPanelRatios });
   };
-  const visiblePanels = focusedPanel ? [focusedPanel] : panelOrder.filter((panel) => !hiddenPanels.includes(panel));
+  const panelGridStyle = {
+    "--studio-panel-columns": visiblePanels.map((panel) => `minmax(0, ${equalPanels ? 1 : panelRatios[panel]}fr)`).join(" "),
+  } as CSSProperties;
   const panelControls = (panel: StudioPanelId) => {
     return <div className="studio-panel-controls">
       <button type="button" title={focusedPanel === panel ? t.collapse : t.focusPanel} aria-label={`${focusedPanel === panel ? t.collapse : t.focusPanel}: ${panelLabels[panel]}`} onClick={() => focusPanel(panel)}>{focusedPanel === panel ? "↙" : "↗"}</button>
@@ -605,6 +660,6 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
       <div><strong>{t.layout}</strong><small>{t.layoutHint}</small></div>
       <div className="studio-layout-actions">{panelOrder.map((panel) => <button type="button" key={panel} className={!hiddenPanels.includes(panel) ? "active" : ""} aria-pressed={!hiddenPanels.includes(panel)} onClick={() => focusedPanel ? focusPanel(panel) : hiddenPanels.includes(panel) ? showPanel(panel) : hidePanel(panel)}><span>{panel === "insights" ? "☰" : panel === "document" ? "▤" : "✦"}</span>{panelLabels[panel]}</button>)}<button type="button" className={equalPanels ? "active" : ""} aria-pressed={equalPanels} onClick={() => setEqualPanels((current) => !current)}>▦ {t.equalPanels}</button><button type="button" onClick={resetLayout}>↺ {t.resetLayout}</button></div>
     </nav>
-    <div className={`studio-panel-grid${equalPanels ? " equal-panels" : ""}`} data-panels={visiblePanels.length}>{visiblePanels.map((panel) => <div className={`studio-panel-slot panel-${panel}${draggedPanel === panel ? " dragging" : ""}`} data-studio-panel={panel} key={panel}>{panels[panel]}</div>)}</div>
+    <div ref={panelGridRef} className={`studio-panel-grid${equalPanels ? " equal-panels" : ""}${resizingPanels ? " resizing" : ""}`} data-panels={visiblePanels.length} style={panelGridStyle}>{visiblePanels.map((panel, index) => <div className={`studio-panel-slot panel-${panel}${draggedPanel === panel ? " dragging" : ""}`} data-studio-panel={panel} key={panel}>{panels[panel]}{!focusedPanel && index < visiblePanels.length - 1 && <button className="studio-panel-resize-handle" type="button" title={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} aria-label={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} onPointerDown={(event) => startPanelResize(index, event)} onPointerMove={continuePanelResize} onPointerUp={finishPanelResize} onPointerCancel={finishPanelResize}><span aria-hidden="true" /></button>}</div>)}</div>
   </div>;
 }
