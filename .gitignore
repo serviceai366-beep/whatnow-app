@@ -44,3 +44,11 @@ next-env.d.ts
 
 # Supabase CLI local project metadata
 /supabase/.temp/
+
+# Local Codex/Sites build artifacts and package-manager metadata.
+# The public repository intentionally tracks the npm lockfile only.
+/artifacts/
+*.tar.gz
+tsconfig.tsbuildinfo
+pnpm-lock.yaml
+pnpm-workspace.yaml
