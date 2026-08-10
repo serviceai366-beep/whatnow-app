@@ -437,7 +437,11 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDockRetreating(false);
       window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat: false } }));
+      return;
     }
+    const retreat = window.scrollY > 6 || lastDocumentScrollRef.current > 6;
+    setDockRetreating(retreat);
+    window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat } }));
   }, [focusedPanel]);
   useEffect(() => {
     const trackPageScroll = () => updateReadingControls(window.scrollY, lastPageScrollRef);
