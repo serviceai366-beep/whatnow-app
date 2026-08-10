@@ -701,7 +701,6 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
     </aside>,
   } satisfies Record<StudioPanelId, ReactNode>;
   return <div className={`studio-draft-workspace${focusedPanel ? ` panel-focused focus-${focusedPanel}` : ""}`}>
-    {focusedPanel && <button className="studio-focused-exit" type="button" onClick={() => setFocusedPanel(null)} aria-label={t.collapse}>{t.collapse}</button>}
     {!focusedPanel && <nav className={`studio-layout-dock${dockRetreating ? " retreating" : ""}`} aria-label={t.layout}>
       <div><strong>{t.layout}</strong><small>{t.layoutHint}</small></div>
       <div className="studio-layout-actions">{panelOrder.map((panel) => <button type="button" key={panel} className={!hiddenPanels.includes(panel) ? "active" : ""} aria-pressed={!hiddenPanels.includes(panel)} onClick={() => focusedPanel ? focusPanel(panel) : hiddenPanels.includes(panel) ? showPanel(panel) : hidePanel(panel)}><span>{panel === "insights" ? "☰" : panel === "document" ? "▤" : "✦"}</span>{panelLabels[panel]}</button>)}<button type="button" className={equalPanels ? "active" : ""} aria-pressed={equalPanels} onClick={() => setEqualPanels((current) => !current)}>▦ {t.equalPanels}</button><button type="button" onClick={resetLayout}>↺ {t.resetLayout}</button></div>
