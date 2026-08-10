@@ -418,19 +418,18 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
     };
   }, [focusedPanel]);
   const updateReadingControls = useCallback((nextScroll: number, previousScrollRef: { current: number }) => {
-    const previousScroll = previousScrollRef.current;
+    previousScrollRef.current = nextScroll;
     if (focusedPanel) {
-      previousScrollRef.current = nextScroll;
       return;
     }
-    if (nextScroll > previousScroll + 6) {
-      setDockRetreating(true);
-      window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat: true } }));
-    } else if (nextScroll < previousScroll - 6 || nextScroll <= 6) {
-      setDockRetreating(false);
-      window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat: false } }));
-    }
-    previousScrollRef.current = nextScroll;
+    // The layout dock is a top-of-page control: it stays visible only while
+    // both the page and the document canvas are at their top edge. This avoids
+    // bringing it back merely because the user scrolled upward mid-document.
+    const pageAtTop = window.scrollY <= 6;
+    const documentAtTop = lastDocumentScrollRef.current <= 6;
+    const retreat = !pageAtTop || !documentAtTop;
+    setDockRetreating(retreat);
+    window.dispatchEvent(new CustomEvent("whatnow:studio-scroll", { detail: { retreat } }));
   }, [focusedPanel]);
   useEffect(() => {
     if (focusedPanel) {
@@ -442,7 +441,7 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
   }, [focusedPanel]);
   useEffect(() => {
     const trackPageScroll = () => updateReadingControls(window.scrollY, lastPageScrollRef);
-    lastPageScrollRef.current = window.scrollY;
+    trackPageScroll();
     window.addEventListener("scroll", trackPageScroll, { passive: true });
     return () => window.removeEventListener("scroll", trackPageScroll);
   }, [updateReadingControls]);

@@ -4100,9 +4100,11 @@ button:active:not(:disabled) { transform: scale(.975); transition-duration: .1s;
   margin: 0;
   min-height: 56px;
   padding: 8px 10px;
-  transform: none !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
+}
+.studio-editor-open .studio-layout-dock.retreating {
+  transform: translateY(calc(-100% - 12px));
+  opacity: 0;
+  pointer-events: none;
 }
 .studio-draft-navigation { display:grid; grid-template-columns:minmax(0,1fr); gap:7px; margin:0!important; }
 .studio-new-document-button { width:100%; padding:10px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius:12px; color:var(--accent-dark); background:color-mix(in srgb,var(--accent-soft) 55%,var(--surface)); font:inherit; font-weight:850; }
