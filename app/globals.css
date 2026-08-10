@@ -4116,6 +4116,7 @@ body.studio-panels-resizing, body.studio-panels-resizing * { cursor: col-resize 
 
 /* Professional rich-text editing inside the generated document workspace. */
 .studio-editor-open .site-header {
+  z-index: 160;
   top: 8px;
   right: auto;
   left: 10px;
@@ -4154,6 +4155,73 @@ body.studio-panels-resizing, body.studio-panels-resizing * { cursor: col-resize 
   opacity: 0;
   pointer-events: none;
 }
+
+/* A focused document panel is an in-app workspace, not browser fullscreen.
+   Keep the global account control above it so the user can always open the
+   profile and sign out, and provide an explicit, local way to leave focus. */
+body.studio-panels-focused .studio-editor-open .site-header {
+  z-index: 180;
+  left: 10px;
+  right: 10px;
+  width: auto;
+  min-height: 56px;
+  max-width: none;
+  padding: 5px 9px;
+}
+body.studio-panels-focused .studio-editor-open .site-header .header-actions {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+body.studio-panels-focused .studio-editor-open .site-header .header-nav-actions,
+body.studio-panels-focused .studio-editor-open .site-header .x-account-link {
+  display: none;
+}
+body.studio-panels-focused .studio-editor-open .site-header .header-utility-actions {
+  display: flex;
+  margin-left: auto;
+}
+body.studio-panels-focused .studio-editor-open .site-header .account-control {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  flex: 0 0 42px;
+  padding: 4px;
+  overflow: hidden;
+  border-radius: 50%;
+}
+body.studio-panels-focused .studio-editor-open .site-header .account-details,
+body.studio-panels-focused .studio-editor-open .site-header .account-chevron {
+  display: none;
+}
+body.studio-panels-focused .auth-backdrop,
+body.studio-panels-focused .hub-backdrop,
+body.studio-panels-focused .history-backdrop {
+  z-index: 220;
+}
+body.studio-panels-focused .studio-draft-workspace.panel-focused {
+  padding-top: 72px;
+}
+.studio-focused-exit {
+  position: absolute;
+  z-index: 4;
+  top: 72px;
+  right: 16px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: color-mix(in srgb, var(--glass-strong) 88%, transparent);
+  box-shadow: 0 8px 20px rgb(7 55 47 / 12%), inset 0 1px rgb(255 255 255 / 70%);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+.studio-focused-exit:hover { border-color: var(--accent); background: var(--surface); }
 .studio-draft-navigation { display:grid; grid-template-columns:minmax(0,1fr); gap:7px; margin:0!important; }
 .studio-new-document-button { width:100%; padding:10px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius:12px; color:var(--accent-dark); background:color-mix(in srgb,var(--accent-soft) 55%,var(--surface)); font:inherit; font-weight:850; }
 .studio-panel-title { cursor:default; }
