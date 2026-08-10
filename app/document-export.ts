@@ -13,22 +13,31 @@ function decodeHtml(value: string) {
 }
 
 function richParagraph(tag: string, inner: string) {
-  let bold = /^h[1-3]$/.test(tag), italic = false, underline = false, color = "";
-  const size = tag === "h1" ? 34 : tag === "h2" ? 28 : tag === "h3" ? 24 : 22;
+  let bold = /^h[1-3]$/.test(tag), italic = false, underline = false, color = "", highlight = "";
+  const baseSize = tag === "h1" ? 34 : tag === "h2" ? 28 : tag === "h3" ? 24 : 22;
+  let size = baseSize;
   const colors: Record<string, string> = { accent: "087D72", red: "B02A37", blue: "245FA8", gray: "6B7774" };
+  const highlights: Record<string, string> = { yellow: "FFF0A6", red: "FFD7D7", green: "D8F3DF" };
+  const spanStack: { color: string; highlight: string; size: number }[] = [];
   const runs = (inner.match(/<[^>]+>|[^<]+/g) ?? []).flatMap((token) => {
     if (token.startsWith("<")) {
       const lower = token.toLowerCase();
       if (/^<strong/.test(lower)) bold = true; else if (/^<\/strong/.test(lower)) bold = /^h[1-3]$/.test(tag);
       else if (/^<em/.test(lower)) italic = true; else if (/^<\/em/.test(lower)) italic = false;
       else if (/^<u[\s>]/.test(lower)) underline = true; else if (/^<\/u/.test(lower)) underline = false;
-      else if (/^<span/.test(lower)) { const match = lower.match(/editor-color-(accent|red|blue|gray)/); color = match?.[1] ?? ""; }
-      else if (/^<\/span/.test(lower)) color = "";
+      else if (/^<span/.test(lower)) {
+        spanStack.push({ color, highlight, size });
+        const colorMatch = lower.match(/editor-color-(accent|red|blue|gray)/), highlightMatch = lower.match(/editor-highlight-(yellow|red|green)/), sizeMatch = lower.match(/editor-size-(small|large|xlarge)/);
+        if (colorMatch) color = colorMatch[1];
+        if (highlightMatch) highlight = highlightMatch[1];
+        if (sizeMatch) size = sizeMatch[1] === "small" ? 18 : sizeMatch[1] === "xlarge" ? 32 : 27;
+      }
+      else if (/^<\/span/.test(lower)) { const previous = spanStack.pop(); color = previous?.color ?? ""; highlight = previous?.highlight ?? ""; size = previous?.size ?? baseSize; }
       else if (/^<br/.test(lower)) return ["<w:r><w:br/></w:r>"];
       return [];
     }
     const text = decodeHtml(token); if (!text) return [];
-    const properties = [bold ? "<w:b/>" : "", italic ? "<w:i/>" : "", underline ? '<w:u w:val="single"/>' : "", `<w:sz w:val="${size}"/>`, color ? `<w:color w:val="${colors[color]}"/>` : ""].join("");
+    const properties = [bold ? "<w:b/>" : "", italic ? "<w:i/>" : "", underline ? '<w:u w:val="single"/>' : "", `<w:sz w:val="${size}"/>`, color ? `<w:color w:val="${colors[color]}"/>` : "", highlight ? `<w:shd w:val="clear" w:fill="${highlights[highlight]}"/>` : ""].join("");
     return [`<w:r><w:rPr>${properties}</w:rPr><w:t xml:space="preserve">${xml(text)}</w:t></w:r>`];
   }).join("");
   const before = tag === "h1" ? 240 : tag === "h2" ? 200 : tag === "h3" ? 160 : 80, after = tag === "li" ? 40 : 100;

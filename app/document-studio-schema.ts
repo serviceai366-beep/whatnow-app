@@ -125,7 +125,7 @@ export function validateGeneratedDocument(value: unknown): value is GeneratedDoc
     && ["low", "medium", "high"].includes(String(value.confidence)) && typeof value.safetyNotice === "string";
 }
 
-const editorTag = /^(?:<\/?(?:p|h1|h2|h3|ul|ol|li|strong|em|u|br)\s*\/?\s*>|<\/?span(?:\s+class="editor-color-(?:accent|red|blue|gray)")?\s*>)$/i;
+const editorTag = /^(?:<\/?(?:p|h1|h2|h3|ul|ol|li|strong|em|u|br)\s*\/?\s*>|<\/?span(?:\s+class="editor-(?:color-(?:accent|red|blue|gray)|highlight-(?:yellow|red|green)|size-(?:small|large|xlarge))")?\s*>)$/i;
 
 export function isSafeStudioEditorHtml(value: string) {
   if (value.length > 180_000 || /<(?:script|style|iframe|object|embed|svg|math|img|a)\b/i.test(value) || /\son[a-z]+\s*=|\sstyle\s*=|javascript:/i.test(value)) return false;

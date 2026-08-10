@@ -3179,11 +3179,9 @@ body.studio-panels-resizing, body.studio-panels-resizing * { cursor: col-resize 
   box-shadow: 0 30px 90px rgb(3 20 17 / 34%);
   backdrop-filter: blur(34px) saturate(165%);
 }
-.studio-draft-workspace.panel-focused .studio-layout-dock { position: relative; top: 0; margin-bottom: 8px; }
-.studio-draft-workspace.panel-focused .studio-layout-dock small { display: none; }
 .studio-draft-workspace.panel-focused .studio-panel-grid {
   min-height: 0;
-  height: calc(100% - 70px);
+  height: 100%;
   overflow: hidden;
 }
 .studio-draft-workspace.panel-focused .studio-panel-slot,
@@ -4181,8 +4179,9 @@ body.studio-panels-resizing, body.studio-panels-resizing * { cursor: col-resize 
 .studio-editor-formatbar > div { display:flex; flex:0 0 auto; gap:4px; padding-left:7px; border-left:1px solid var(--border); }
 .studio-editor-formatbar button,.studio-editor-formatbar select { min-height:34px; flex:0 0 auto; padding:6px 9px; border:1px solid var(--border); border-radius:9px; color:var(--text); background:var(--surface); font:inherit; font-size:.72rem; font-weight:800; }
 .studio-editor-formatbar button:hover,.studio-editor-formatbar select:hover { border-color:var(--accent); background:var(--accent-soft); }
-.studio-color-swatches button { position:relative; width:30px; padding:0; }
-.studio-color-swatches button::after { content:""; display:block; width:15px; height:15px; margin:auto; border:2px solid #fff; border-radius:50%; background:var(--editor-swatch); box-shadow:0 0 0 1px rgb(0 0 0 / 16%); }
+.studio-color-swatches button,.studio-highlight-swatches button { position:relative; width:30px; padding:0; }
+.studio-color-swatches button::after,.studio-highlight-swatches button::after { content:""; display:block; width:15px; height:15px; margin:auto; border:2px solid #fff; border-radius:50%; background:var(--editor-swatch); box-shadow:0 0 0 1px rgb(0 0 0 / 16%); }
+.studio-highlight-swatches button::after { border-radius:4px; }
 .studio-rich-editor { caret-color:var(--accent-dark); cursor:text; }
 .studio-rich-editor:focus { box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent); }
 .studio-rich-editor h1 { margin:0 0 1.3em; font-size:2rem; line-height:1.2; text-align:center; }
@@ -4194,6 +4193,13 @@ body.studio-panels-resizing, body.studio-panels-resizing * { cursor: col-resize 
 .studio-rich-editor .editor-color-red,.studio-rich-editor font[color="#a63232"] { color:#a63232; }
 .studio-rich-editor .editor-color-blue,.studio-rich-editor font[color="#245aa8"] { color:#245aa8; }
 .studio-rich-editor .editor-color-gray,.studio-rich-editor font[color="#5d6966"] { color:#5d6966; }
+.studio-rich-editor .editor-highlight-yellow { background:#fff0a6; }
+.studio-rich-editor .editor-highlight-red { background:#ffd7d7; }
+.studio-rich-editor .editor-highlight-green { background:#d8f3df; }
+.studio-rich-editor .editor-size-small { font-size:.82em; }
+.studio-rich-editor .editor-size-large { font-size:1.22em; }
+.studio-rich-editor .editor-size-xlarge { font-size:1.5em; }
+.studio-draft-workspace.panel-focused .studio-document-commandbar { top:0; }
 .studio-ai-polish { width:100%; min-height:42px; margin:0 0 12px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--accent) 38%,var(--border)); border-radius:13px; color:#fff; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); font:inherit; font-size:.78rem; font-weight:850; }
 .studio-annotation-list { display:grid; gap:7px; }
 .studio-annotation-list > button { display:grid; gap:2px; width:100%; padding:9px 10px; border:1px solid #e5bd58; border-radius:11px; color:#684d0c; background:#fff6d9; font:inherit; font-size:.74rem; text-align:left; }

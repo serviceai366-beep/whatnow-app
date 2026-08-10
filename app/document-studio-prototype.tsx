@@ -84,6 +84,12 @@ const editorColors = {
   gray: "#5d6966",
 } as const;
 
+const editorHighlights = {
+  yellow: "#fff0a6",
+  red: "#ffd7d7",
+  green: "#d8f3df",
+} as const;
+
 function escapeEditorText(value: string) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
@@ -103,11 +109,22 @@ function normalizedEditorHtml(root: HTMLElement) {
     const aliases: Record<string, string> = { b: "strong", i: "em", div: "p" };
     const normalizedTag = aliases[tag] ?? tag;
     if (["p", "h1", "h2", "h3", "ul", "ol", "li", "strong", "em", "u"].includes(normalizedTag)) return `<${normalizedTag}>${children}</${normalizedTag}>`;
-    if (tag === "span" && /^editor-color-(accent|red|blue|gray)$/.test(node.className)) return `<span class="${node.className}">${children}</span>`;
+    if (tag === "span" && /^editor-(?:color-(?:accent|red|blue|gray)|highlight-(?:yellow|red|green)|size-(?:small|large|xlarge))$/.test(node.className)) return `<span class="${node.className}">${children}</span>`;
+    if (tag === "span" && node.style.backgroundColor) {
+      const raw = node.style.backgroundColor.replaceAll(" ", "").toLowerCase();
+      const key = raw.includes("255,215,215") || raw === editorHighlights.red ? "red" : raw.includes("216,243,223") || raw === editorHighlights.green ? "green" : "yellow";
+      return `<span class="editor-highlight-${key}">${children}</span>`;
+    }
     if (tag === "font") {
       const raw = (node.getAttribute("color") ?? "").toLowerCase();
-      const color = (Object.entries(editorColors).find(([, value]) => value === raw)?.[0] ?? "accent") as keyof typeof editorColors;
-      return `<span class="editor-color-${color}">${children}</span>`;
+      const size = node.getAttribute("size");
+      let output = children;
+      if (raw) {
+        const color = (Object.entries(editorColors).find(([, value]) => value === raw)?.[0] ?? "accent") as keyof typeof editorColors;
+        output = `<span class="editor-color-${color}">${output}</span>`;
+      }
+      if (size) output = `<span class="editor-size-${Number(size) <= 2 ? "small" : Number(size) >= 5 ? "xlarge" : "large"}">${output}</span>`;
+      return output;
     }
     return children;
   };
@@ -497,11 +514,35 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
   const runEditorCommand = (command: string, value?: string) => {
     editorRef.current?.focus(); restoreEditorSelection(); window.document.execCommand(command, false, value); setDirty(true); setSaveState("unsaved"); selectFromDocument();
   };
+  const applyAiFormattingInstruction = (question: string) => {
+    if (!selectedText || !editorSelectionRef.current) return false;
+    const value = question.toLocaleLowerCase();
+    const requestsFormatting = /(?:bold|жирн|trekn|font|шрифт|izmē|color|colour|цвет|krās|highlight|подсвет|выдел|izcel|red|красн|sarkan|blue|син|zil|green|зел|zaļ)/u.test(value);
+    if (!requestsFormatting) return false;
+    let applied = false;
+    const command = (name: string, commandValue?: string) => { runEditorCommand(name, commandValue); applied = true; };
+    if (/(?:bold|жирн|trekn)/u.test(value)) command("bold");
+    if (/(?:italic|курсив|slīprakst)/u.test(value)) command("italic");
+    if (/(?:underline|подчерк|pasvītr)/u.test(value)) command("underline");
+    if (/(?:bigger|larger|large font|увелич|крупн|больш.*шрифт|palielin|lielāk)/u.test(value)) command("fontSize", "5");
+    if (/(?:smaller|small font|уменьш|мелк|mazāk)/u.test(value)) command("fontSize", "2");
+    if (/(?:red|красн|sarkan)/u.test(value)) command("foreColor", editorColors.red);
+    else if (/(?:blue|син|zil)/u.test(value)) command("foreColor", editorColors.blue);
+    else if (/(?:green|зел|zaļ)/u.test(value)) command("foreColor", editorColors.accent);
+    if (/(?:highlight|подсвет|маркер|фон|izcel)/u.test(value)) command("hiliteColor", /(?:red|красн|sarkan)/u.test(value) ? editorHighlights.red : /(?:green|зел|zaļ)/u.test(value) ? editorHighlights.green : editorHighlights.yellow);
+    return applied;
+  };
   const handleBack = async () => { if (dirty && !(await saveManualEdit())) return; onBack(); };
   const handleNew = async () => { if (dirty && !(await saveManualEdit())) return; if (window.confirm(t.newDocumentConfirm)) onNew(); };
   const handleDownload = async (format: "docx" | "pdf") => { const saved = dirty ? await saveManualEdit() : item; if (saved) await onDownload(saved, format); };
   const ask = async (preset?: string) => {
     const question = (preset ?? instruction).trim(); if (!question || busy) return;
+    const formattingApplied = applyAiFormattingInstruction(question);
+    const asksForTextChange = /(?:correct|fix|rewrite|replace|change the text|исправ|замен|перепиш|измени текст|labot|pārrakst|aizstāj)/u.test(question.toLocaleLowerCase());
+    if (formattingApplied && !asksForTextChange) {
+      setMessages((previous) => [...previous, { role: "user", text: question }, { role: "assistant", text: locale === "ru" ? "Готово — оформление выбранного фрагмента изменено. Сохраните документ, чтобы закрепить правку." : locale === "lv" ? "Gatavs — atlasītā fragmenta noformējums ir mainīts. Saglabājiet dokumentu, lai nostiprinātu izmaiņas." : "Done — the selected passage has been formatted. Save the document to keep the change." }]);
+      setInstruction(""); setSelectedText(""); return;
+    }
     if (dirty && !(await saveManualEdit())) return;
     setMessages((previous) => [...previous, { role: "user", text: question }]); setInstruction(""); setBusy(true); setError("");
     try {
@@ -642,9 +683,11 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
       <div className="studio-document-toolbar studio-panel-header"><div className="studio-panel-title">{panelGrip("document")}<strong>{t.editDocument}</strong><span className={`studio-save-state ${saveState === "unsaved" ? "dirty" : ""}`}>{saving ? t.saving : saveState === "unsaved" ? t.unsaved : t.saved}</span></div><div className="studio-document-actions"><button type="button" className="studio-save-button" disabled={!dirty || saving} onClick={() => void saveManualEdit()}>{saving ? "…" : t.save}</button><button type="button" onClick={() => void navigator.clipboard.writeText(editorRef.current?.innerText || document.plainText)}>{t.copy}</button><button type="button" onClick={() => void handleDownload("docx")}>{t.docx}</button><button type="button" onClick={() => void handleDownload("pdf")}>{t.pdf}</button>{panelControls("document")}</div></div>
       <div className="studio-editor-formatbar" role="toolbar" aria-label={t.editDocument}>
         <select aria-label="Text style" defaultValue="p" onChange={(event) => runEditorCommand("formatBlock", event.target.value)}><option value="p">Text</option><option value="h1">Title</option><option value="h2">Heading</option><option value="h3">Subheading</option></select>
+        <select aria-label="Font size" defaultValue="3" onChange={(event) => runEditorCommand("fontSize", event.target.value)}><option value="2">Small</option><option value="3">Normal</option><option value="4">Large</option><option value="5">Extra large</option></select>
         <div><button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("bold")}><b>B</b></button><button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("italic")}><i>I</i></button><button type="button" aria-label="Underline" title="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("underline")}><u>U</u></button></div>
         <div><button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("insertUnorderedList")}>• List</button><button type="button" aria-label="Numbered list" title="Numbered list" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("insertOrderedList")}>1. List</button></div>
         <div className="studio-color-swatches" aria-label="Text color">{Object.entries(editorColors).map(([name, value]) => <button type="button" key={name} aria-label={`${name} text`} title={`${name} text`} style={{ "--editor-swatch": value } as CSSProperties} onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("foreColor", value)} />)}</div>
+        <div className="studio-highlight-swatches" aria-label="Highlight color">{Object.entries(editorHighlights).map(([name, value]) => <button type="button" key={name} aria-label={`${name} highlight`} title={`${name} highlight`} style={{ "--editor-swatch": value } as CSSProperties} onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("hiliteColor", value)} />)}</div>
         <div><button type="button" aria-label="Undo" title="Undo" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("undo")}>↶</button><button type="button" aria-label="Redo" title="Redo" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("redo")}>↷</button><button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => runEditorCommand("removeFormat")}>Clear</button></div>
       </div>
       </div>
@@ -656,10 +699,10 @@ function StudioDraft({ t, item, quota, onBack, onNew, onUpdated, onDownload }: {
     </aside>,
   } satisfies Record<StudioPanelId, ReactNode>;
   return <div className={`studio-draft-workspace${focusedPanel ? ` panel-focused focus-${focusedPanel}` : ""}`}>
-    <nav className={`studio-layout-dock${dockRetreating && !focusedPanel ? " retreating" : ""}`} aria-label={t.layout}>
+    {!focusedPanel && <nav className={`studio-layout-dock${dockRetreating ? " retreating" : ""}`} aria-label={t.layout}>
       <div><strong>{t.layout}</strong><small>{t.layoutHint}</small></div>
       <div className="studio-layout-actions">{panelOrder.map((panel) => <button type="button" key={panel} className={!hiddenPanels.includes(panel) ? "active" : ""} aria-pressed={!hiddenPanels.includes(panel)} onClick={() => focusedPanel ? focusPanel(panel) : hiddenPanels.includes(panel) ? showPanel(panel) : hidePanel(panel)}><span>{panel === "insights" ? "☰" : panel === "document" ? "▤" : "✦"}</span>{panelLabels[panel]}</button>)}<button type="button" className={equalPanels ? "active" : ""} aria-pressed={equalPanels} onClick={() => setEqualPanels((current) => !current)}>▦ {t.equalPanels}</button><button type="button" onClick={resetLayout}>↺ {t.resetLayout}</button></div>
-    </nav>
+    </nav>}
     <div ref={panelGridRef} className={`studio-panel-grid${equalPanels ? " equal-panels" : ""}${resizingPanels ? " resizing" : ""}`} data-panels={visiblePanels.length} style={panelGridStyle}>{visiblePanels.map((panel, index) => <div className={`studio-panel-slot panel-${panel}${draggedPanel === panel ? " dragging" : ""}`} data-studio-panel={panel} key={panel}>{panels[panel]}{!focusedPanel && index < visiblePanels.length - 1 && <button className="studio-panel-resize-handle" type="button" title={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} aria-label={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} onPointerDown={(event) => startPanelResize(index, event)} onPointerMove={continuePanelResize} onPointerUp={finishPanelResize} onPointerCancel={finishPanelResize}><span aria-hidden="true" /></button>}</div>)}</div>
   </div>;
 }
