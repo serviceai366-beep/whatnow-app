@@ -1,9 +1,11 @@
 export type SubscriptionPlanCode = "free" | "pro";
 export type SubscriptionState = "free" | "test_checkout_pending" | "active" | "past_due" | "canceled";
+export type SubscriptionBillingSource = "none" | "stripe" | "grant";
 
 export type SubscriptionSnapshot = {
   planCode: SubscriptionPlanCode;
   state: SubscriptionState;
+  billingSource?: SubscriptionBillingSource;
   checkoutAvailable: boolean;
   managementAvailable: boolean;
   testMode: boolean;

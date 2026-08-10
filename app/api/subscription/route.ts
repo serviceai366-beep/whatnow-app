@@ -45,6 +45,7 @@ function publicPayload(
     subscription: subscription ?? {
       planCode: "free",
       state: "free",
+      billingSource: "none",
       checkoutAvailable,
       managementAvailable: false,
       testMode,
@@ -83,6 +84,7 @@ export async function GET(request: Request): Promise<Response> {
   const subscription = proGrant ? {
     planCode: "pro" as const,
     state: "active" as const,
+    billingSource: "grant" as const,
     checkoutAvailable: false,
     managementAvailable: false,
     testMode: false,
@@ -91,6 +93,7 @@ export async function GET(request: Request): Promise<Response> {
   } : storedForCurrentMode ? {
     planCode: storedForCurrentMode.planCode,
     state: storedForCurrentMode.state,
+    billingSource: storedForCurrentMode.state === "active" ? "stripe" as const : "none" as const,
     checkoutAvailable: checkoutConfigured && storedForCurrentMode.state !== "active",
     managementAvailable: checkoutConfigured && storedForCurrentMode.state === "active" && storedForCurrentMode.managementAvailable,
     testMode: storedForCurrentMode.testMode,

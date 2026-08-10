@@ -69,6 +69,7 @@ test("subscription endpoint reports Free and cannot charge without test configur
     assert.equal(body.subscription.planCode, "free");
     assert.equal(body.subscription.checkoutAvailable, false);
     assert.equal(body.subscription.managementAvailable, false);
+    assert.equal(body.subscription.billingSource, "none");
     assert.equal(body.pricing.monthlyGrossCents, 999);
     assert.equal(body.pricing.rolling24HourSafetyThreshold, 30);
     assert.equal(body.pricing.rolling30DaySafetyThreshold, 300);
@@ -131,6 +132,7 @@ test("plan UI is localized for private test and live checkout states", async () 
   assert.match(panel, /cancelAtPeriodEnd/);
   assert.match(panel, /Cancellation scheduled/);
   assert.match(panel, /renews automatically/);
+  assert.match(panel, /Pro access was granted for this account during setup/);
   assert.match(env, /STRIPE_CHECKOUT_MODE=disabled/);
   assert.match(env, /STRIPE_TEST_ALLOWED_EMAILS=/);
   assert.doesNotMatch(panel, /sk_test_|sk_live_/);
