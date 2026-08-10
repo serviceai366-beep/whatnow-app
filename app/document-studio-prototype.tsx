@@ -27,7 +27,7 @@ const text = {
     proTitle: "Document Studio", proBody: "Create, review, and edit documents with guided AI assistance.", proButton: "View plan", loadingPlan: "Checking your plan…", planError: "We could not load your workspace. Please try again.", retryPlan: "Try again",
     assistantTitle: "Preparation assistant", assistantIntro: "Ask what information is missing, why a detail matters, or how to answer a question before generation.", assistantPlaceholder: "Ask about this document brief…", ask: "Ask", suggested: "Suggested questions", suggestion1: "What important information is still missing?", suggestion2: "Which answers matter most in my jurisdiction?", suggestion3: "Explain the questions in simpler words.",
     selected: "Selected passage", clearSelection: "Clear", documentAssistant: "Work with AI", documentAssistantIntro: "Select a passage or tap a highlighted uncertainty. Ask why it is needed or request an exact change.", editPlaceholder: "Ask a question or describe the change…", send: "Send", polish: "Polish layout with AI", polishPrompt: "Improve the document's professional formatting and structure. Preserve every fact and term. Use clear headings, short readable paragraphs, consistent lists, and a logical section order.", expand: "Focus", collapse: "Exit focus", uncertain: "Needs clarification", missingInfo: "Missing information", confidence: "AI confidence", lowConfidence: "Low confidence — review the highlighted passages before use.", noIssues: "No unresolved passages were identified, but important documents still need review.",
-    layout: "Workspace layout", layoutHint: "Drag the six-dot handle to reorder panels. Hide, restore, or focus any panel.", insightsPanel: "Checks & guidance", documentPanel: "Document", assistantPanel: "AI assistant", hidePanel: "Hide panel", restorePanel: "Restore panel", focusPanel: "Focus panel", equalPanels: "Equal panels", resetLayout: "Reset layout", moveLeft: "Move left", moveRight: "Move right", dragPanel: "Drag to move",
+    layout: "Workspace layout", layoutHint: "Drag the six-dot handle up or down to place a panel where it suits you; horizontal dragging reorders panels.", insightsPanel: "Checks & guidance", documentPanel: "Document", assistantPanel: "AI assistant", hidePanel: "Hide panel", restorePanel: "Restore panel", focusPanel: "Focus panel", equalPanels: "Equal panels", resetLayout: "Reset layout", moveLeft: "Move left", moveRight: "Move right", dragPanel: "Drag to move",
     upload: "Or attach the existing document", chooseFile: "Choose document", removeFile: "Remove", fileHint: "PDF, image, TXT, RTF, DOCX, or ODT. Maximum size depends on format.", reasoningTime: "Reasoning time", reasoningEstimate: "Usually about 2–3 minutes, with a 10-minute maximum.",
     lease: "Residential lease", service: "Service agreement", nda: "Non-disclosure agreement", loan: "Loan agreement", power: "Power of attorney", complaint: "Formal complaint", request: "Official request", termination: "Termination notice", letter: "Formal letter", proposal: "Commercial proposal", sow: "Statement of work", minutes: "Meeting minutes", cv: "Cover letter", birthday: "Birthday invitation", wedding: "Wedding invitation", event: "Event invitation", thanks: "Thank-you letter", custom: "Custom document",
   },
@@ -44,7 +44,7 @@ const text = {
     proTitle: "Мастерская документов", proBody: "Создавайте, проверяйте и редактируйте документы с подсказками ИИ.", proButton: "Посмотреть тариф", loadingPlan: "Проверяем ваш тариф…", planError: "Не удалось загрузить мастерскую. Попробуйте ещё раз.", retryPlan: "Попробовать снова",
     assistantTitle: "Помощник по подготовке", assistantIntro: "Спросите, каких данных не хватает, зачем нужен определённый пункт или как правильно ответить ещё до создания документа.", assistantPlaceholder: "Задайте вопрос об этой анкете…", ask: "Спросить", suggested: "Готовые вопросы", suggestion1: "Какой важной информации всё ещё не хватает?", suggestion2: "Какие ответы особенно важны в моей юрисдикции?", suggestion3: "Объясни эти вопросы простыми словами.",
     selected: "Выбранный фрагмент", clearSelection: "Убрать", documentAssistant: "Работа с ИИ", documentAssistantIntro: "Выделите фрагмент или нажмите на подсвеченное место. Спросите, зачем оно нужно, или попросите точно изменить его.", editPlaceholder: "Задайте вопрос или опишите изменение…", send: "Отправить", polish: "Улучшить оформление с ИИ", polishPrompt: "Улучши профессиональное оформление и структуру документа. Сохрани все факты и условия. Сделай понятные заголовки, короткие читаемые абзацы, единообразные списки и логичный порядок разделов.", expand: "Фокус", collapse: "Выйти из фокуса", uncertain: "Нужно уточнить", missingInfo: "Не хватает данных", confidence: "Уверенность ИИ", lowConfidence: "Низкая уверенность — проверьте подсвеченные места перед использованием.", noIssues: "Неясные фрагменты не найдены, но важный документ всё равно нужно проверить.",
-    layout: "Расположение окон", layoutHint: "Тяните окно за ручку из шести точек. Любое окно можно скрыть или развернуть.", insightsPanel: "Проверка и подсказки", documentPanel: "Документ", assistantPanel: "ИИ-помощник", hidePanel: "Скрыть окно", restorePanel: "Вернуть окно", focusPanel: "Развернуть окно", equalPanels: "Равные окна", resetLayout: "Вернуть исходный вид", moveLeft: "Сдвинуть влево", moveRight: "Сдвинуть вправо", dragPanel: "Перетащите, чтобы переместить",
+    layout: "Расположение окон", layoutHint: "Тяните окно за ручку из шести точек вверх или вниз; горизонтальное движение меняет порядок окон.", insightsPanel: "Проверка и подсказки", documentPanel: "Документ", assistantPanel: "ИИ-помощник", hidePanel: "Скрыть окно", restorePanel: "Вернуть окно", focusPanel: "Развернуть окно", equalPanels: "Равные окна", resetLayout: "Вернуть исходный вид", moveLeft: "Сдвинуть влево", moveRight: "Сдвинуть вправо", dragPanel: "Перетащите, чтобы переместить",
     upload: "Или прикрепите готовый документ", chooseFile: "Выбрать документ", removeFile: "Удалить", fileHint: "PDF, изображение, TXT, RTF, DOCX или ODT. Максимальный размер зависит от формата.", reasoningTime: "Время рассуждения", reasoningEstimate: "Обычно около 2–3 минут, максимум — 10 минут.",
     lease: "Договор аренды жилья", service: "Договор услуг", nda: "Соглашение о конфиденциальности", loan: "Договор займа", power: "Доверенность", complaint: "Официальная жалоба", request: "Официальное заявление", termination: "Уведомление о расторжении", letter: "Деловое письмо", proposal: "Коммерческое предложение", sow: "Техническое задание", minutes: "Протокол встречи", cv: "Сопроводительное письмо", birthday: "Приглашение на день рождения", wedding: "Приглашение на свадьбу", event: "Приглашение на мероприятие", thanks: "Благодарственное письмо", custom: "Свой документ",
   },
@@ -61,7 +61,7 @@ const text = {
     proTitle: "Dokumentu darbnīca", proBody: "Veidojiet, pārbaudiet un rediģējiet dokumentus ar AI norādēm.", proButton: "Skatīt plānu", loadingPlan: "Pārbaudām jūsu plānu…", planError: "Neizdevās ielādēt darbnīcu. Mēģiniet vēlreiz.", retryPlan: "Mēģināt vēlreiz",
     assistantTitle: "Sagatavošanas palīgs", assistantIntro: "Jautājiet, kādas informācijas trūkst, kāpēc detaļa ir vajadzīga vai kā atbildēt pirms ģenerēšanas.", assistantPlaceholder: "Jautājiet par šo anketu…", ask: "Jautāt", suggested: "Ieteiktie jautājumi", suggestion1: "Kādas svarīgas informācijas vēl trūkst?", suggestion2: "Kuras atbildes ir īpaši svarīgas manā jurisdikcijā?", suggestion3: "Izskaidro jautājumus vienkāršāk.",
     selected: "Izvēlētais fragments", clearSelection: "Notīrīt", documentAssistant: "Darbs ar AI", documentAssistantIntro: "Iezīmējiet fragmentu vai pieskarieties izceltai neskaidrībai. Jautājiet, kāpēc tā vajadzīga, vai lūdziet konkrētu labojumu.", editPlaceholder: "Uzdodiet jautājumu vai aprakstiet izmaiņu…", send: "Sūtīt", polish: "Uzlabot noformējumu ar AI", polishPrompt: "Uzlabo dokumenta profesionālo noformējumu un struktūru. Saglabā visus faktus un nosacījumus. Izmanto skaidrus virsrakstus, īsas rindkopas, vienotus sarakstus un loģisku sadaļu secību.", expand: "Fokuss", collapse: "Iziet no fokusa", uncertain: "Jāprecizē", missingInfo: "Trūkst informācijas", confidence: "AI pārliecība", lowConfidence: "Zema pārliecība — pārbaudiet izceltās vietas.", noIssues: "Neatrisināti fragmenti nav atrasti, taču svarīgs dokuments joprojām jāpārbauda.",
-    layout: "Darba telpas izkārtojums", layoutHint: "Velciet paneli aiz sešu punktu roktura. Jebkuru paneli var paslēpt vai izvērst.", insightsPanel: "Pārbaudes un norādes", documentPanel: "Dokuments", assistantPanel: "AI palīgs", hidePanel: "Paslēpt paneli", restorePanel: "Atjaunot paneli", focusPanel: "Fokusēt paneli", equalPanels: "Vienādi paneļi", resetLayout: "Atjaunot izkārtojumu", moveLeft: "Pārvietot pa kreisi", moveRight: "Pārvietot pa labi", dragPanel: "Velciet, lai pārvietotu",
+    layout: "Darba telpas izkārtojums", layoutHint: "Velciet paneli aiz sešu punktu roktura uz augšu vai leju; horizontāla vilkšana maina paneļu secību.", insightsPanel: "Pārbaudes un norādes", documentPanel: "Dokuments", assistantPanel: "AI palīgs", hidePanel: "Paslēpt paneli", restorePanel: "Atjaunot paneli", focusPanel: "Fokusēt paneli", equalPanels: "Vienādi paneļi", resetLayout: "Atjaunot izkārtojumu", moveLeft: "Pārvietot pa kreisi", moveRight: "Pārvietot pa labi", dragPanel: "Velciet, lai pārvietotu",
     upload: "Vai pievienojiet esošo dokumentu", chooseFile: "Izvēlēties dokumentu", removeFile: "Noņemt", fileHint: "PDF, attēls, TXT, RTF, DOCX vai ODT. Maksimālais izmērs atkarīgs no formāta.", reasoningTime: "Spriešanas laiks", reasoningEstimate: "Parasti ap 2–3 minūtēm, maksimums 10 minūtes.",
     lease: "Dzīvojamās telpas īres līgums", service: "Pakalpojumu līgums", nda: "Konfidencialitātes līgums", loan: "Aizdevuma līgums", power: "Pilnvara", complaint: "Oficiāla sūdzība", request: "Oficiāls iesniegums", termination: "Uzteikuma paziņojums", letter: "Oficiāla vēstule", proposal: "Komerciāls piedāvājums", sow: "Darba uzdevums", minutes: "Sanāksmes protokols", cv: "Motivācijas vēstule", birthday: "Dzimšanas dienas ielūgums", wedding: "Kāzu ielūgums", event: "Pasākuma ielūgums", thanks: "Pateicības vēstule", custom: "Cits dokuments",
   },
@@ -347,7 +347,7 @@ export function DocumentStudioPrototype({ locale, account, initialPrompt = "", o
           {mode === "create" ? guide.fields.map((field) => <label key={field.key} className={field.multiline ? "span-2 studio-guided-field" : "studio-guided-field"}><span>{guideText(field.question, copyLocale)}{field.required ? " *" : ""}</span>{field.multiline ? <textarea id={`studio-field-${field.key}`} rows={4} value={fields[field.key] ?? ""} onChange={(event) => update(field.key, event.target.value)} /> : <input id={`studio-field-${field.key}`} value={fields[field.key] ?? ""} onChange={(event) => update(field.key, event.target.value)} />}<small>{guideText(field.example, copyLocale)}</small></label>) : <>{!preSignatureCheck && <label className="span-2 studio-guided-field"><span>{t.goal} *</span><textarea id="studio-field-goal" rows={5} value={fields.goal ?? ""} onChange={(event) => update("goal", event.target.value)} /><small>{t.goalHint}</small></label>}{preSignatureCheck && <aside className="studio-review-checks"><strong>{t.review}</strong><p>{t.reviewChecks}</p></aside>}<label className="span-2 studio-guided-field"><span>{t.existing} *</span><textarea id="studio-field-existing" rows={14} value={fields.existing ?? ""} onChange={(event) => update("existing", event.target.value)} /><small>{t.existingHint}</small></label></>}
         </div>
         {mode !== "create" && <StudioFileField t={t} file={sourceFile} onFile={(file) => { setSourceFile(file); setError(""); }} />}
-        <div className="studio-preparation-assistant"><header><div><small>{t.assistantTitle}</small><p>{t.assistantIntro}</p></div><span>AI</span></header>{assistantMessages.length > 0 && <div className="studio-assistant-messages" aria-live="polite">{assistantMessages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>}<div className="studio-suggestion-row" aria-label={t.suggested}>{[t.suggestion1, t.suggestion2, t.suggestion3].map((suggestion) => <button type="button" key={suggestion} disabled={assistantBusy || busy} onClick={() => void askPreparationAssistant(suggestion)}>{suggestion}</button>)}</div><div className="studio-assistant-composer"><textarea rows={2} value={assistantQuestion} onChange={(event) => setAssistantQuestion(event.target.value)} placeholder={t.assistantPlaceholder} disabled={assistantBusy || busy} /><button type="button" disabled={!assistantQuestion.trim() || assistantBusy || busy} onClick={() => void askPreparationAssistant()}>{assistantBusy ? "…" : t.ask}</button></div></div>
+        <div className="studio-preparation-assistant"><header><div><small>{t.assistantTitle}</small><p>{t.assistantIntro}</p></div><span>AI</span></header>{assistantMessages.length > 0 && <div className="studio-assistant-messages" aria-live="polite">{assistantMessages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>}<div className="studio-suggestion-row" aria-label={t.suggested}>{[t.suggestion1, t.suggestion2, t.suggestion3].map((suggestion) => <button type="button" key={suggestion} disabled={assistantBusy || busy} onClick={() => void askPreparationAssistant(suggestion)}>{suggestion}</button>)}</div><div className="studio-assistant-composer"><textarea rows={2} value={assistantQuestion} onChange={(event) => setAssistantQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void askPreparationAssistant(); } }} placeholder={t.assistantPlaceholder} disabled={assistantBusy || busy} /><button type="button" disabled={!assistantQuestion.trim() || assistantBusy || busy} onClick={() => void askPreparationAssistant()}>{assistantBusy ? "…" : t.ask}</button></div></div>
         <ReadinessSummary t={t} readiness={readiness} score={readinessScore} missing={missingFields} onPick={focusField} />
         {error && <p className="studio-api-error" role="alert">{error}</p>}
         <button className="primary-button studio-generate" disabled={busy || quota.remaining === 0} type="button" onClick={() => void generate()}>{busy ? t.generating : preSignatureCheck ? t.reviewGenerate : t.generate}<span>→</span></button>
@@ -397,6 +397,7 @@ function StudioFileField({ t, file, onFile }: { t: Copy; file: File | null; onFi
 type StudioPanelId = "insights" | "document" | "assistant";
 const defaultStudioPanelOrder: StudioPanelId[] = ["insights", "document", "assistant"];
 const defaultStudioPanelRatios: Record<StudioPanelId, number> = { insights: 0.75, document: 2, assistant: 1 };
+const defaultStudioPanelOffsets: Record<StudioPanelId, number> = { insights: 0, document: 0, assistant: 0 };
 const studioPanelMinimumWidths: Record<StudioPanelId, number> = { insights: 190, document: 360, assistant: 240 };
 type StudioPanelResize = { pointerId: number; index: number; startX: number; panels: StudioPanelId[]; widths: number[] };
 
@@ -410,6 +411,7 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
   const [hiddenPanels, setHiddenPanels] = useState<StudioPanelId[]>([]);
   const [focusedPanel, setFocusedPanel] = useState<StudioPanelId | null>(null);
   const [draggedPanel, setDraggedPanel] = useState<StudioPanelId | null>(null);
+  const [panelOffsets, setPanelOffsets] = useState<Record<StudioPanelId, number>>(() => ({ ...defaultStudioPanelOffsets }));
   const [equalPanels, setEqualPanels] = useState(false);
   const [panelRatios, setPanelRatios] = useState<Record<StudioPanelId, number>>(() => ({ ...defaultStudioPanelRatios }));
   const [resizingPanels, setResizingPanels] = useState(false);
@@ -420,7 +422,7 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
   const editorRef = useRef<HTMLDivElement>(null);
   const editorSelectionRef = useRef<Range | null>(null);
   const panelGridRef = useRef<HTMLDivElement>(null);
-  const pointerDragRef = useRef<{ panel: StudioPanelId; pointerId: number; startX: number } | null>(null);
+  const pointerDragRef = useRef<{ panel: StudioPanelId; pointerId: number; startX: number; startY: number; startOffsetY: number; axis: "undecided" | "horizontal" | "vertical" } | null>(null);
   const panelResizeRef = useRef<StudioPanelResize | null>(null);
   const lastPageScrollRef = useRef(0);
   const lastDocumentScrollRef = useRef(0);
@@ -429,6 +431,7 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
     return () => {
       window.document.body.classList.remove("studio-editor-open");
       window.document.body.classList.remove("studio-panels-resizing");
+      window.document.body.classList.remove("studio-panels-dragging");
     };
   }, []);
   useEffect(() => {
@@ -587,13 +590,26 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
   };
   const startPointerDrag = (panel: StudioPanelId, event: ReactPointerEvent<HTMLButtonElement>) => {
     if (focusedPanel || event.button !== 0) return;
-    pointerDragRef.current = { panel, pointerId: event.pointerId, startX: event.clientX };
+    pointerDragRef.current = { panel, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, startOffsetY: panelOffsets[panel] ?? 0, axis: "undecided" };
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggedPanel(panel);
+    window.document.body.classList.add("studio-panels-dragging");
   };
   const continuePointerDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = pointerDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId || Math.abs(event.clientX - drag.startX) < 8) return;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (drag.axis === "undecided") {
+      if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 8) return;
+      drag.axis = Math.abs(deltaY) > Math.abs(deltaX) ? "vertical" : "horizontal";
+    }
+    if (drag.axis === "vertical") {
+      const nextOffset = Math.max(-360, Math.min(360, drag.startOffsetY + deltaY));
+      setPanelOffsets((current) => current[drag.panel] === nextOffset ? current : { ...current, [drag.panel]: nextOffset });
+      return;
+    }
+    if (Math.abs(deltaX) < 8) return;
     const targetNode = window.document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-studio-panel]") as HTMLElement | null;
     const target = targetNode?.dataset.studioPanel as StudioPanelId | undefined;
     if (target && target !== drag.panel) reorderPanel(drag.panel, target);
@@ -603,6 +619,7 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     pointerDragRef.current = null;
     setDraggedPanel(null);
+    window.document.body.classList.remove("studio-panels-dragging");
   };
   const visiblePanels = focusedPanel ? [focusedPanel] : panelOrder.filter((panel) => !hiddenPanels.includes(panel));
   const applyPanelResize = (resize: StudioPanelResize, clientX: number) => {
@@ -652,6 +669,7 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
     setFocusedPanel(null);
     setEqualPanels(false);
     setPanelRatios({ ...defaultStudioPanelRatios });
+    setPanelOffsets({ ...defaultStudioPanelOffsets });
   };
   const panelGridStyle = {
     "--studio-panel-columns": visiblePanels.map((panel) => `minmax(0, ${equalPanels ? 1 : panelRatios[panel]}fr)`).join(" "),
@@ -698,7 +716,7 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
     </article>,
     assistant: <aside className="studio-document-assistant studio-flex-panel" aria-label={t.documentAssistant} onDragOver={(event) => event.preventDefault()} onDrop={() => dropPanel("assistant")}>
       <header className="studio-panel-header"><div>{panelGrip("assistant")}<small>AI</small><h2>{t.documentAssistant}</h2></div>{panelControls("assistant")}</header>
-      <div className="studio-panel-scroll"><p>{t.documentAssistantIntro}</p><button type="button" className="studio-ai-polish" disabled={busy || saving} onClick={() => void ask(t.polishPrompt)}>✦ {t.polish}</button>{selectedText && <blockquote><span>{t.selected}</span><p>{selectedText}</p><button type="button" onClick={() => setSelectedText("")}>{t.clearSelection}</button></blockquote>}<div className="studio-assistant-messages" aria-live="polite">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>{error && <p className="studio-api-error" role="alert">{error}</p>}<div className="studio-assistant-composer"><textarea rows={3} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={t.editPlaceholder} /><button type="button" disabled={!instruction.trim() || busy} onClick={() => void ask()}>{busy ? "…" : t.send}</button></div></div>
+      <div className="studio-panel-scroll"><p>{t.documentAssistantIntro}</p><button type="button" className="studio-ai-polish" disabled={busy || saving} onClick={() => void ask(t.polishPrompt)}>✦ {t.polish}</button>{selectedText && <blockquote><span>{t.selected}</span><p>{selectedText}</p><button type="button" onClick={() => setSelectedText("")}>{t.clearSelection}</button></blockquote>}<div className="studio-assistant-messages" aria-live="polite">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}>{message.text}</p>)}</div>{error && <p className="studio-api-error" role="alert">{error}</p>}<div className="studio-assistant-composer"><textarea rows={3} value={instruction} onChange={(event) => setInstruction(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void ask(); } }} placeholder={t.editPlaceholder} /><button type="button" disabled={!instruction.trim() || busy} onClick={() => void ask()}>{busy ? "…" : t.send}</button></div></div>
     </aside>,
   } satisfies Record<StudioPanelId, ReactNode>;
   return <div className={`studio-draft-workspace${focusedPanel ? ` panel-focused focus-${focusedPanel}` : ""}`}>
@@ -706,6 +724,6 @@ function StudioDraft({ locale, t, item, quota, onBack, onNew, onUpdated, onDownl
       <div><strong>{t.layout}</strong><small>{t.layoutHint}</small></div>
       <div className="studio-layout-actions">{panelOrder.map((panel) => <button type="button" key={panel} className={!hiddenPanels.includes(panel) ? "active" : ""} aria-pressed={!hiddenPanels.includes(panel)} onClick={() => focusedPanel ? focusPanel(panel) : hiddenPanels.includes(panel) ? showPanel(panel) : hidePanel(panel)}><span>{panel === "insights" ? "☰" : panel === "document" ? "▤" : "✦"}</span>{panelLabels[panel]}</button>)}<button type="button" className={equalPanels ? "active" : ""} aria-pressed={equalPanels} onClick={() => setEqualPanels((current) => !current)}>▦ {t.equalPanels}</button><button type="button" onClick={resetLayout}>↺ {t.resetLayout}</button></div>
     </nav>}
-    <div ref={panelGridRef} className={`studio-panel-grid${equalPanels ? " equal-panels" : ""}${resizingPanels ? " resizing" : ""}`} data-panels={visiblePanels.length} style={panelGridStyle}>{visiblePanels.map((panel, index) => <div className={`studio-panel-slot panel-${panel}${draggedPanel === panel ? " dragging" : ""}`} data-studio-panel={panel} key={panel}>{panels[panel]}{!focusedPanel && index < visiblePanels.length - 1 && <button className="studio-panel-resize-handle" type="button" title={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} aria-label={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} onPointerDown={(event) => startPanelResize(index, event)} onPointerMove={continuePanelResize} onPointerUp={finishPanelResize} onPointerCancel={finishPanelResize}><span aria-hidden="true" /></button>}</div>)}</div>
+    <div ref={panelGridRef} className={`studio-panel-grid${equalPanels ? " equal-panels" : ""}${resizingPanels ? " resizing" : ""}`} data-panels={visiblePanels.length} style={panelGridStyle}>{visiblePanels.map((panel, index) => <div className={`studio-panel-slot panel-${panel}${draggedPanel === panel ? " dragging" : ""}`} data-studio-panel={panel} key={panel} style={{ "--studio-panel-offset-y": `${panelOffsets[panel] ?? 0}px` } as CSSProperties}>{panels[panel]}{!focusedPanel && index < visiblePanels.length - 1 && <button className="studio-panel-resize-handle" type="button" title={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} aria-label={`${panelLabels[panel]} ↔ ${panelLabels[visiblePanels[index + 1]]}`} onPointerDown={(event) => startPanelResize(index, event)} onPointerMove={continuePanelResize} onPointerUp={finishPanelResize} onPointerCancel={finishPanelResize}><span aria-hidden="true" /></button>}</div>)}</div>
   </div>;
 }
